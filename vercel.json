@@ -1,0 +1,19 @@
+{
+  "functions": {
+    "app/api/performance-review/send-to-drive/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/performance-review/draft-example/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/performance-review/draft-explanation/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/performance-review/draft-next-goals/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/performance-review/redraft-goal/route.ts": {
+      "maxDuration": 30
+    }
+  }
+}
