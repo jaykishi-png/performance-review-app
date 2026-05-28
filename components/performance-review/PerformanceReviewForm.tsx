@@ -1940,24 +1940,32 @@ export function PerformanceReviewForm() {
 
         {/* Navigation */}
         {step < STEPS.length - 1 && (
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => setStep(s => Math.max(0, s - 1))}
-              disabled={step === 0}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#1e2030] text-sm text-gray-400 hover:text-gray-200 hover:border-[#2a2d3a] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-            >
-              <ChevronLeft size={15} /> Back
-            </button>
-            <button
-              type="button"
-              onClick={() => setStep(s => Math.min(STEPS.length - 1, s + 1))}
-              disabled={!canProceed()}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-purple-800/80 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
-            >
-              {step === STEPS.length - 2 ? 'Generate Review' : 'Continue'}
-              <ChevronRight size={15} />
-            </button>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setStep(s => Math.max(0, s - 1))}
+                disabled={step === 0}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#1e2030] text-sm text-gray-400 hover:text-gray-200 hover:border-[#2a2d3a] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronLeft size={15} /> Back
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep(s => Math.min(STEPS.length - 1, s + 1))}
+                disabled={step === STEPS.length - 2 ? !allContentStepsComplete : !canProceed()}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-purple-800/80 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
+              >
+                {step === STEPS.length - 2 ? 'Generate Review' : 'Continue'}
+                <ChevronRight size={15} />
+              </button>
+            </div>
+            {/* Incomplete warning shown only on last content step */}
+            {step === STEPS.length - 2 && !allContentStepsComplete && (
+              <p className="text-[11px] text-amber-500/80 text-right">
+                {CONTENT_STEP_COUNT - filledStepsCount} step{CONTENT_STEP_COUNT - filledStepsCount !== 1 ? 's' : ''} still need content before you can generate the review.
+              </p>
+            )}
           </div>
         )}
 
