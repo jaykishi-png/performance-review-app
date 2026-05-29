@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings } from 'lucide-react'
 
 // ─── Competency glossary ──────────────────────────────────────────────────────
 
@@ -149,6 +149,32 @@ function getReports(): DirectReport[] {
 }
 function saveReports(reports: DirectReport[]): void {
   localStorage.setItem(REPORTS_KEY, JSON.stringify(reports))
+}
+
+// ─── Settings ─────────────────────────────────────────────────────────────────
+
+const SETTINGS_KEY = 'manager-perf-review-settings'
+
+interface AppSettings {
+  driveFolderUrl: string
+}
+
+function getSettings(): AppSettings {
+  try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') } catch { return { driveFolderUrl: '' } }
+}
+function saveSettings(s: AppSettings): void {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s))
+}
+
+/** Extract a Google Drive folder ID from a URL or return the raw string if it looks like an ID already. */
+function parseFolderId(urlOrId: string): string {
+  const trimmed = urlOrId.trim()
+  // Match /folders/<id> in a Drive URL
+  const match = trimmed.match(/\/folders\/([a-zA-Z0-9_-]+)/)
+  if (match) return match[1]
+  // If it looks like a raw ID (no slashes, long alphanumeric), use as-is
+  if (/^[a-zA-Z0-9_-]{10,}$/.test(trimmed)) return trimmed
+  return ''
 }
 
 // ─── Save / load ─────────────────────────────────────────────────────────────
@@ -401,6 +427,98 @@ function DirectReportsPanel({
               )}
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SettingsPanel({
+  settings,
+  onSave,
+  onClose,
+}: {
+  settings: AppSettings
+  onSave: (s: AppSettings) => void
+  onClose: () => void
+}) {
+  const [folderUrl, setFolderUrl] = useState(settings.driveFolderUrl)
+
+  const folderId  = parseFolderId(folderUrl)
+  const isValid   = folderUrl.trim() === '' || folderId !== ''
+
+  function handleSave() {
+    onSave({ driveFolderUrl: folderUrl.trim() })
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-sm bg-[#0b0d14] border-l border-[#1e2030] flex flex-col h-full shadow-2xl">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e2030] flex-shrink-0">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-100 flex items-center gap-2">
+              <Settings size={14} className="text-purple-400" /> Settings
+            </h2>
+            <p className="text-[11px] text-gray-600 mt-0.5">Saved to this browser</p>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-600 hover:text-gray-300 hover:bg-[#1e2030] transition-all">
+            <X size={15} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-6">
+
+          {/* Drive folder */}
+          <div className="space-y-2">
+            <div>
+              <p className="text-[11px] font-semibold text-gray-300">Google Drive Save Location</p>
+              <p className="text-[11px] text-gray-600 mt-0.5 leading-relaxed">
+                Paste the URL of the Drive folder where generated docs should be saved.
+                Leave blank to use the default folder.
+              </p>
+            </div>
+            <input
+              value={folderUrl}
+              onChange={e => setFolderUrl(e.target.value)}
+              placeholder="https://drive.google.com/drive/folders/…"
+              className={`w-full bg-[#0d0f1a] border rounded-xl px-4 py-2.5 text-[12px] text-gray-200 placeholder-gray-600 focus:outline-none transition-colors ${
+                !isValid ? 'border-red-700/60 focus:border-red-600' : 'border-[#2a2d3a] focus:border-purple-600'
+              }`}
+            />
+            {!isValid && (
+              <p className="text-[10px] text-red-400">Couldn&apos;t find a folder ID in that URL — check the link and try again.</p>
+            )}
+            {folderId && isValid && (
+              <p className="text-[10px] text-emerald-500 flex items-center gap-1">
+                <CheckCircle2 size={10} /> Folder ID: <span className="font-mono">{folderId}</span>
+              </p>
+            )}
+            {!folderUrl.trim() && (
+              <p className="text-[10px] text-gray-600">Using the default folder configured on the server.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex-shrink-0 px-5 py-4 border-t border-[#1e2030] flex gap-2">
+          <button
+            onClick={handleSave}
+            disabled={!isValid}
+            className="flex-1 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 disabled:opacity-40 text-white text-[12px] font-medium transition-colors"
+          >
+            Save Settings
+          </button>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl border border-[#2a2d3a] text-[12px] text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            Cancel
+          </button>
         </div>
       </div>
     </div>
@@ -1592,7 +1710,7 @@ Employee Signature`
   ].join('\n')
 }
 
-function StepOutput({ form }: { form: FormData }) {
+function StepOutput({ form, driveFolderId }: { form: FormData; driveFolderId?: string }) {
   const [driveStatus, setDriveStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle')
   const [driveUrl, setDriveUrl]       = useState('')
   const [driveError, setDriveError]   = useState('')
@@ -1616,7 +1734,7 @@ function StepOutput({ form }: { form: FormData }) {
       const res = await fetch('/api/performance-review/send-to-drive', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, ...(driveFolderId ? { driveFolderId } : {}) }),
       })
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error ?? 'Unknown error')
@@ -1946,7 +2064,9 @@ export function PerformanceReviewForm() {
   const [saves, setSaves] = useState<SavedReview[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [showDirectReports, setShowDirectReports] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const [directReports, setDirectReports] = useState<DirectReport[]>([])
+  const [settings, setSettings] = useState<AppSettings>({ driveFolderUrl: '' })
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const reviewIdRef = useRef('')
 
@@ -1966,6 +2086,7 @@ export function PerformanceReviewForm() {
     }
     setSaves(existing)
     setDirectReports(getReports())
+    setSettings(s => ({ ...s, ...getSettings() }))
   }, [])
 
   // Keep maxStep as the high-water mark — never goes backward
@@ -2013,6 +2134,11 @@ export function PerformanceReviewForm() {
     setStep(0)
     setMaxStep(0)
     setSaveStatus('idle')
+  }
+
+  function handleSaveSettings(s: AppSettings) {
+    saveSettings(s)
+    setSettings(s)
   }
 
   function handleSaveReport(r: DirectReport) {
@@ -2076,6 +2202,13 @@ export function PerformanceReviewForm() {
 
   return (
     <div className="min-h-screen bg-[#0b0d14] text-white">
+      {showSettings && (
+        <SettingsPanel
+          settings={settings}
+          onSave={handleSaveSettings}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
       {showDirectReports && (
         <DirectReportsPanel
           reports={directReports}
@@ -2125,6 +2258,18 @@ export function PerformanceReviewForm() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-800/80 hover:bg-purple-700 text-[11px] text-white font-medium transition-colors"
               >
                 + Create New
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowSettings(true)}
+                title="Settings"
+                className={`relative flex items-center justify-center w-8 h-8 rounded-lg border text-[11px] transition-all ${
+                  settings.driveFolderUrl
+                    ? 'border-purple-700/50 bg-purple-900/20 text-purple-400 hover:text-purple-200'
+                    : 'border-[#1e2030] bg-[#0d0f1a] text-gray-500 hover:text-gray-200 hover:border-[#2a2d3a]'
+                }`}
+              >
+                <Settings size={13} />
               </button>
               <button
                 type="button"
@@ -2217,7 +2362,7 @@ export function PerformanceReviewForm() {
           {step === 5 && <StepCompetency form={form} update={update} index={5} type="either" canToggleType />}
           {step === 6 && <StepGoals form={form} update={update} saves={saves} currentReviewId={reviewIdRef.current} />}
           {step === 7 && <StepNextGoals form={form} update={update} />}
-          {step === 8 && <StepOutput form={form} />}
+          {step === 8 && <StepOutput form={form} driveFolderId={parseFolderId(settings.driveFolderUrl)} />}
         </div>
 
         {/* Navigation */}

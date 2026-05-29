@@ -95,7 +95,11 @@ export async function POST(req: NextRequest) {
       competencyFive: CompetencyEntry; competencyFiveType: 'positive' | 'constructive'
       goals: GoalEntry[]; overallScore: number; overallSummary: string
       nextGoals: NextGoal[]
+      driveFolderId?: string
     }
+
+    // Use caller-supplied folder ID if provided, otherwise fall back to default
+    const targetFolder = form.driveFolderId?.trim() || PERF_REVIEW_FOLDER
 
     const auth  = getAuth()
     const drive = google.drive({ version: 'v3', auth })
@@ -109,7 +113,7 @@ export async function POST(req: NextRequest) {
 
     const copyRes = await drive.files.copy({
       fileId: TEMPLATE_DOC_ID,
-      requestBody: { name: docTitle, parents: [PERF_REVIEW_FOLDER] },
+      requestBody: { name: docTitle, parents: [targetFolder] },
     })
     const docId = copyRes.data.id
     if (!docId) throw new Error('Failed to copy template — no doc ID returned.')
