@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw } from 'lucide-react'
+import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2 } from 'lucide-react'
 
 // ─── Competency glossary ──────────────────────────────────────────────────────
 
@@ -133,6 +133,24 @@ const STEPS = [
   { id: 'output',    label: 'Review Output',      part: null },
 ]
 
+// ─── Direct Reports ───────────────────────────────────────────────────────────
+
+interface DirectReport {
+  id: string
+  name: string
+  position: string
+  division: string
+}
+
+const REPORTS_KEY = 'manager-direct-reports'
+
+function getReports(): DirectReport[] {
+  try { return JSON.parse(localStorage.getItem(REPORTS_KEY) ?? '[]') } catch { return [] }
+}
+function saveReports(reports: DirectReport[]): void {
+  localStorage.setItem(REPORTS_KEY, JSON.stringify(reports))
+}
+
 // ─── Save / load ─────────────────────────────────────────────────────────────
 
 interface SavedReview {
@@ -221,6 +239,173 @@ function relativeTime(iso: string): string {
 }
 
 // ─── History panel ────────────────────────────────────────────────────────────
+
+function DirectReportsPanel({
+  reports,
+  onSave,
+  onDelete,
+  onClose,
+}: {
+  reports: DirectReport[]
+  onSave: (r: DirectReport) => void
+  onDelete: (id: string) => void
+  onClose: () => void
+}) {
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState({ name: '', position: '', division: '' })
+  const [isAdding, setIsAdding] = useState(false)
+
+  function startAdd() {
+    setEditingId(null)
+    setForm({ name: '', position: '', division: '' })
+    setIsAdding(true)
+  }
+
+  function startEdit(r: DirectReport) {
+    setIsAdding(false)
+    setEditingId(r.id)
+    setForm({ name: r.name, position: r.position, division: r.division })
+  }
+
+  function handleSave() {
+    if (!form.name.trim()) return
+    onSave({
+      id: editingId ?? crypto.randomUUID(),
+      name: form.name.trim(),
+      position: form.position.trim(),
+      division: form.division.trim(),
+    })
+    setIsAdding(false)
+    setEditingId(null)
+    setForm({ name: '', position: '', division: '' })
+  }
+
+  function cancel() {
+    setIsAdding(false)
+    setEditingId(null)
+    setForm({ name: '', position: '', division: '' })
+  }
+
+  const showForm = isAdding || editingId !== null
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-sm bg-[#0b0d14] border-l border-[#1e2030] flex flex-col h-full shadow-2xl">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e2030] flex-shrink-0">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-100 flex items-center gap-2">
+              <Users size={14} className="text-purple-400" /> My Team
+            </h2>
+            <p className="text-[11px] text-gray-600 mt-0.5">
+              {reports.length === 0 ? 'No direct reports added yet' : `${reports.length} direct report${reports.length !== 1 ? 's' : ''}`}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={startAdd}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-800/80 hover:bg-purple-700 text-[11px] text-white font-medium transition-colors"
+            >
+              <Plus size={11} /> Add
+            </button>
+            <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-600 hover:text-gray-300 hover:bg-[#1e2030] transition-all">
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+
+        {/* List */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-2
+          [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-track]:bg-transparent
+          [&::-webkit-scrollbar-thumb]:bg-[#2a2d3a] [&::-webkit-scrollbar-thumb]:rounded-full">
+
+          {/* Add / Edit form */}
+          {showForm && (
+            <div className="rounded-xl border border-purple-700/40 bg-purple-900/10 p-4 space-y-3 mb-2">
+              <p className="text-[11px] font-semibold text-purple-300">{editingId ? 'Edit Direct Report' : 'Add Direct Report'}</p>
+              <div className="space-y-2">
+                <input
+                  autoFocus
+                  value={form.name}
+                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="Full name *"
+                  className="w-full bg-[#0d0f1a] border border-[#2a2d3a] rounded-lg px-3 py-2 text-[12px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-600"
+                />
+                <input
+                  value={form.position}
+                  onChange={e => setForm(f => ({ ...f, position: e.target.value }))}
+                  placeholder="Position / Title"
+                  className="w-full bg-[#0d0f1a] border border-[#2a2d3a] rounded-lg px-3 py-2 text-[12px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-600"
+                />
+                <input
+                  value={form.division}
+                  onChange={e => setForm(f => ({ ...f, division: e.target.value }))}
+                  placeholder="Division / Department"
+                  className="w-full bg-[#0d0f1a] border border-[#2a2d3a] rounded-lg px-3 py-2 text-[12px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-600"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSave}
+                  disabled={!form.name.trim()}
+                  className="flex-1 py-1.5 rounded-lg bg-purple-700 hover:bg-purple-600 disabled:opacity-40 text-white text-[11px] font-medium transition-colors"
+                >
+                  {editingId ? 'Save Changes' : 'Add'}
+                </button>
+                <button
+                  onClick={cancel}
+                  className="px-3 py-1.5 rounded-lg border border-[#2a2d3a] text-[11px] text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {reports.length === 0 && !showForm && (
+            <div className="text-center py-16">
+              <p className="text-3xl mb-3">👥</p>
+              <p className="text-sm text-gray-500">No direct reports yet</p>
+              <p className="text-[11px] text-gray-700 mt-1.5 max-w-[200px] mx-auto leading-relaxed">
+                Add your team members so you can quickly select them when starting a review
+              </p>
+            </div>
+          )}
+
+          {reports.map(r => (
+            <div key={r.id} className="rounded-xl border border-[#1e2030] bg-[#0d0f1a] p-4">
+              {editingId === r.id ? null : (
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-[13px] font-medium text-gray-200">{r.name}</p>
+                    {r.position && <p className="text-[11px] text-gray-500 mt-0.5">{r.position}</p>}
+                    {r.division && <p className="text-[11px] text-gray-600 mt-0.5">{r.division}</p>}
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => startEdit(r)}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-600 hover:text-gray-300 hover:bg-[#1e2030] transition-all"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                    <button
+                      onClick={() => onDelete(r.id)}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-900/20 transition-all"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function HistoryPanel({
   saves,
@@ -466,13 +651,53 @@ async function aiDraftSingleExample(
 
 // ─── Step components ──────────────────────────────────────────────────────────
 
-function StepInfo({ form, update }: { form: FormData; update: (p: Partial<FormData>) => void }) {
+function StepInfo({
+  form,
+  update,
+  directReports,
+}: {
+  form: FormData
+  update: (p: Partial<FormData>) => void
+  directReports: DirectReport[]
+}) {
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold text-gray-100 mb-1">Employee Information</h2>
         <p className="text-[12px] text-gray-500">Basic details for the review header.</p>
       </div>
+
+      {/* Quick-select from direct reports */}
+      {directReports.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Select from My Team</p>
+          <div className="flex flex-wrap gap-2">
+            {directReports.map(r => {
+              const isSelected = form.employeeName === r.name && form.employeePosition === r.position && form.employeeDivision === r.division
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => update({ employeeName: r.name, employeePosition: r.position, employeeDivision: r.division })}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-left transition-all ${
+                    isSelected
+                      ? 'border-purple-600 bg-purple-900/30 text-purple-200'
+                      : 'border-[#1e2030] bg-[#0b0d14] text-gray-400 hover:border-purple-700/50 hover:text-gray-200'
+                  }`}
+                >
+                  <span className="text-[13px]">👤</span>
+                  <span className="text-[12px] font-medium leading-none">{r.name}</span>
+                  {r.position && (
+                    <span className="text-[10px] text-gray-600">{r.position}</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+          <div className="border-t border-[#1e2030] pt-3" />
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Employee Name</Label>
@@ -1720,6 +1945,8 @@ export function PerformanceReviewForm() {
   const [form, setForm] = useState<FormData>(defaultForm())
   const [saves, setSaves] = useState<SavedReview[]>([])
   const [showHistory, setShowHistory] = useState(false)
+  const [showDirectReports, setShowDirectReports] = useState(false)
+  const [directReports, setDirectReports] = useState<DirectReport[]>([])
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const reviewIdRef = useRef('')
 
@@ -1738,6 +1965,7 @@ export function PerformanceReviewForm() {
       reviewIdRef.current = crypto.randomUUID()
     }
     setSaves(existing)
+    setDirectReports(getReports())
   }, [])
 
   // Keep maxStep as the high-water mark — never goes backward
@@ -1787,6 +2015,20 @@ export function PerformanceReviewForm() {
     setSaveStatus('idle')
   }
 
+  function handleSaveReport(r: DirectReport) {
+    const updated = directReports.some(d => d.id === r.id)
+      ? directReports.map(d => d.id === r.id ? r : d)
+      : [...directReports, r]
+    saveReports(updated)
+    setDirectReports(updated)
+  }
+
+  function handleDeleteReport(id: string) {
+    const updated = directReports.filter(d => d.id !== id)
+    saveReports(updated)
+    setDirectReports(updated)
+  }
+
   function update(patch: Partial<FormData>) {
     setForm(prev => ({ ...prev, ...patch }))
   }
@@ -1815,6 +2057,14 @@ export function PerformanceReviewForm() {
 
   return (
     <div className="min-h-screen bg-[#0b0d14] text-white">
+      {showDirectReports && (
+        <DirectReportsPanel
+          reports={directReports}
+          onSave={handleSaveReport}
+          onDelete={handleDeleteReport}
+          onClose={() => setShowDirectReports(false)}
+        />
+      )}
       {showHistory && (
         <HistoryPanel
           saves={saves}
@@ -1856,6 +2106,19 @@ export function PerformanceReviewForm() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-800/80 hover:bg-purple-700 text-[11px] text-white font-medium transition-colors"
               >
                 + Create New
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDirectReports(true)}
+                className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e2030] bg-[#0d0f1a] text-[11px] text-gray-500 hover:text-gray-200 hover:border-[#2a2d3a] transition-all"
+              >
+                <Users size={12} />
+                My Team
+                {directReports.length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-purple-700 text-[9px] font-bold text-white flex items-center justify-center">
+                    {directReports.length > 9 ? '9+' : directReports.length}
+                  </span>
+                )}
               </button>
               <button
                 type="button"
@@ -1927,7 +2190,7 @@ export function PerformanceReviewForm() {
 
         {/* Step content */}
         <div className="bg-[#0d0f1a] rounded-2xl border border-[#1e2030] p-6 mb-6">
-          {step === 0 && <StepInfo form={form} update={update} />}
+          {step === 0 && <StepInfo form={form} update={update} directReports={directReports} />}
           {step === 1 && <StepCompetency form={form} update={update} index={1} type="positive" />}
           {step === 2 && <StepCompetency form={form} update={update} index={2} type="positive" />}
           {step === 3 && <StepCompetency form={form} update={update} index={3} type="constructive" />}
