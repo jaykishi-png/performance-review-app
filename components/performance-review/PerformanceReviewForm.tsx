@@ -1973,26 +1973,6 @@ export function PerformanceReviewForm() {
     setMaxStep(prev => Math.max(prev, step))
   }, [step])
 
-  // Enter key → Continue / Generate Review (skip when focus is inside a textarea or select)
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key !== 'Enter') return
-      const tag = (e.target as HTMLElement).tagName
-      if (tag === 'TEXTAREA' || tag === 'SELECT') return
-      // Don't fire if a panel is open
-      if (showHistory || showDirectReports) return
-      // Only active on content steps (not the output step)
-      if (step >= STEPS.length - 1) return
-      const isLastContent = step === STEPS.length - 2
-      const canGo = isLastContent ? allContentStepsComplete : canProceed()
-      if (!canGo) return
-      e.preventDefault()
-      setStep(s => Math.min(STEPS.length - 1, s + 1))
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [step, showHistory, showDirectReports, allContentStepsComplete]) // eslint-disable-line react-hooks/exhaustive-deps
-
   // Auto-save 1.5s after any form/step change (only once employee name is entered)
   useEffect(() => {
     if (!form.employeeName.trim()) return
@@ -2074,6 +2054,25 @@ export function PerformanceReviewForm() {
   const filledStepsCount        = Array.from({ length: CONTENT_STEP_COUNT }, (_, i) => i)
     .filter(i => isStepComplete(i, form)).length
   const allContentStepsComplete = filledStepsCount === CONTENT_STEP_COUNT
+
+  // Enter key → Continue / Generate Review (skip when focus is inside a textarea or select)
+  // Declared after allContentStepsComplete so it's in scope for the closure.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Enter') return
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (showHistory || showDirectReports) return
+      if (step >= STEPS.length - 1) return
+      const isLastContent = step === STEPS.length - 2
+      const canGo = isLastContent ? allContentStepsComplete : canProceed()
+      if (!canGo) return
+      e.preventDefault()
+      setStep(s => Math.min(STEPS.length - 1, s + 1))
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [step, showHistory, showDirectReports, allContentStepsComplete]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="min-h-screen bg-[#0b0d14] text-white">
