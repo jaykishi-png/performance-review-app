@@ -251,7 +251,7 @@ Keep the tone professional, constructive, and forward-looking throughout.`
     try {
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
       const res = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         max_tokens: 2000,
         messages: [{ role: 'system', content: system }, ...messages],
       })
@@ -267,6 +267,22 @@ Keep the tone professional, constructive, and forward-looking throughout.`
 
   throw new Error(`All AI providers failed — ${providerErrors.join(' | ')}`)
 }
+
+// ─── Clean exported text (removes junk from Word doc exports) ────────────────
+function cleanDocText(raw: string): string {
+  return raw
+    // Collapse 3+ consecutive newlines into 2
+    .replace(/\n{3,}/g, '\n\n')
+    // Remove lines that are just whitespace or repeated dashes/underscores (table borders etc.)
+    .replace(/^[\s\-_=]{4,}$/gm, '')
+    // Collapse runs of spaces
+    .replace(/[ \t]{3,}/g, '  ')
+    // Trim overall
+    .trim()
+}
+
+// Max characters to send to AI (~30k chars ≈ ~7,500 tokens — plenty for any self-review)
+const MAX_DOC_CHARS = 30_000
 
 // ─── POST ─────────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
@@ -285,11 +301,17 @@ export async function POST(req: NextRequest) {
     if (!docText && employeeDocUrl?.trim()) {
       const docId = extractDocId(employeeDocUrl.trim())
       if (!docId) throw new Error('Could not extract a Google Doc ID from the URL provided.')
-      docText = await fetchGoogleDocText(docId)
+      const raw = await fetchGoogleDocText(docId)
+      docText = cleanDocText(raw)
     }
 
     if (!docText) throw new Error('No employee self-review text provided.')
     if (docText.length < 50) throw new Error('Employee self-review appears too short to analyze. Please provide more content.')
+
+    // Truncate if the document is still excessively long after cleaning
+    if (docText.length > MAX_DOC_CHARS) {
+      docText = docText.slice(0, MAX_DOC_CHARS) + '\n\n[Document truncated for processing]'
+    }
 
     const managerSummary = buildManagerSummary(form)
     const report = await generateComparison(managerSummary, docText, form.employeeName)
