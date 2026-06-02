@@ -1781,6 +1781,76 @@ Employee Signature`
   ].join('\n')
 }
 
+// ─── Markdown rendering helpers (module-level, not inside JSX) ───────────────
+
+/** Replace **bold** with <strong> elements inline */
+function renderInline(text: string): React.ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i} className="text-gray-200 font-semibold">{part.slice(2, -2)}</strong>
+      : <span key={i}>{part}</span>
+  )
+}
+
+/** Render a single body line with bullet/numbered/paragraph handling */
+function renderBodyLine(line: string, li: number): React.ReactNode {
+  const trimmed = line.trim()
+  if (!trimmed) return <div key={li} className="h-1" />
+  if (/^[-*]\s/.test(trimmed)) {
+    return (
+      <div key={li} className="flex gap-2 text-[12px] text-gray-400 leading-relaxed">
+        <span className="text-purple-500 mt-0.5 flex-shrink-0">•</span>
+        <span>{renderInline(trimmed.replace(/^[-*]\s+/, ''))}</span>
+      </div>
+    )
+  }
+  if (/^\d+\.\s/.test(trimmed)) {
+    const num  = trimmed.match(/^(\d+)\./)?.[1] ?? ''
+    const rest = trimmed.replace(/^\d+\.\s+/, '')
+    return (
+      <div key={li} className="flex gap-2 text-[12px] text-gray-400 leading-relaxed">
+        <span className="text-purple-500 flex-shrink-0 w-4 text-right">{num}.</span>
+        <span>{renderInline(rest)}</span>
+      </div>
+    )
+  }
+  return (
+    <p key={li} className="text-[12px] text-gray-400 leading-relaxed">
+      {renderInline(trimmed)}
+    </p>
+  )
+}
+
+/** Render a full markdown comparison report */
+function renderComparisonReport(report: string): React.ReactNode {
+  return report.split(/\n(?=## )/).map((section, idx) => {
+    const lines      = section.trim().split('\n')
+    const rawHeading = lines[0]
+    const isHeading  = rawHeading.startsWith('## ')
+    const heading    = isHeading ? rawHeading.replace(/^##\s*/, '') : ''
+    const bodyLines  = isHeading ? lines.slice(1) : lines
+
+    const [hColor, bColor] =
+      heading.includes('AGREE') || heading.includes('ALIGN') ? ['text-emerald-400', 'border-emerald-900/40'] :
+      heading.includes('DIFFER')                              ? ['text-amber-400',   'border-amber-900/40']   :
+      heading.includes('TALKING')                             ? ['text-blue-400',    'border-blue-900/40']    :
+      heading.includes('ACTION') || heading.includes('PLAN')  ? ['text-purple-400',  'border-purple-900/40']  :
+      heading.includes('GOAL')                                ? ['text-cyan-400',    'border-cyan-900/40']    :
+                                                                ['text-gray-200',    'border-[#1e2030]']
+
+    return (
+      <div key={idx} className={`space-y-2 pt-4 first:pt-0 border-t first:border-t-0 ${bColor}`}>
+        {heading && (
+          <p className={`text-[10px] font-bold uppercase tracking-widest ${hColor}`}>{heading}</p>
+        )}
+        <div className="space-y-1.5">
+          {bodyLines.map((line, li) => renderBodyLine(line, li))}
+        </div>
+      </div>
+    )
+  })
+}
+
 function StepOutput({
   form, driveFolderId, savedDriveUrl, savedDriveDocId, onDriveSaved,
   savedComparisonReport, onReportSaved,
@@ -2327,75 +2397,7 @@ function StepOutput({
               /* Preview mode — rendered markdown */
               <div className="bg-[#0b0d14] border border-[#1e2030] rounded-xl p-5 space-y-5
                 [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-thumb]:bg-[#2a2d3a]">
-                {compareReport.split(/\n(?=## )/).map((section, idx) => {
-                  const lines = section.trim().split('\n')
-                  const rawHeading = lines[0]
-                  const isHeading  = rawHeading.startsWith('## ')
-                  const heading    = isHeading ? rawHeading.replace(/^##\s*/, '') : ''
-                  const bodyLines  = isHeading ? lines.slice(1) : lines
-
-                  const headingColor =
-                    heading.includes('AGREE') || heading.includes('ALIGN') ? 'text-emerald-400 border-emerald-900/40' :
-                    heading.includes('DIFFER')                              ? 'text-amber-400 border-amber-900/40' :
-                    heading.includes('TALKING')                             ? 'text-blue-400 border-blue-900/40' :
-                    heading.includes('ACTION') || heading.includes('PLAN')  ? 'text-purple-400 border-purple-900/40' :
-                    heading.includes('GOAL')                                ? 'text-cyan-400 border-cyan-900/40' :
-                    'text-gray-200 border-[#1e2030]'
-
-                  // Render inline markdown: **bold**
-                  function renderInline(text: string) {
-                    const parts = text.split(/(\*\*[^*]+\*\*)/g)
-                    return parts.map((part, pi) =>
-                      part.startsWith('**') && part.endsWith('**')
-                        ? <strong key={pi} className="text-gray-200 font-semibold">{part.slice(2, -2)}</strong>
-                        : <span key={pi}>{part}</span>
-                    )
-                  }
-
-                  function renderBodyLine(line: string, li: number) {
-                    const trimmed = line.trim()
-                    if (!trimmed) return <div key={li} className="h-1" />
-                    // Bullet
-                    if (/^[-*]\s/.test(trimmed)) {
-                      return (
-                        <div key={li} className="flex gap-2 text-[12px] text-gray-400 leading-relaxed">
-                          <span className="text-purple-500 mt-0.5 flex-shrink-0">•</span>
-                          <span>{renderInline(trimmed.replace(/^[-*]\s+/, ''))}</span>
-                        </div>
-                      )
-                    }
-                    // Numbered list
-                    if (/^\d+\.\s/.test(trimmed)) {
-                      const num   = trimmed.match(/^(\d+)\./)?.[1] ?? ''
-                      const rest  = trimmed.replace(/^\d+\.\s+/, '')
-                      return (
-                        <div key={li} className="flex gap-2 text-[12px] text-gray-400 leading-relaxed">
-                          <span className="text-purple-500 flex-shrink-0 w-4 text-right">{num}.</span>
-                          <span>{renderInline(rest)}</span>
-                        </div>
-                      )
-                    }
-                    // Regular line
-                    return (
-                      <p key={li} className="text-[12px] text-gray-400 leading-relaxed">
-                        {renderInline(trimmed)}
-                      </p>
-                    )
-                  }
-
-                  return (
-                    <div key={idx} className={`space-y-2 pt-4 first:pt-0 border-t first:border-t-0 ${headingColor.split(' ')[1] ?? 'border-[#1e2030]'}`}>
-                      {heading && (
-                        <p className={`text-[10px] font-bold uppercase tracking-widest ${headingColor.split(' ')[0]}`}>
-                          {heading}
-                        </p>
-                      )}
-                      <div className="space-y-1.5">
-                        {bodyLines.map((line, li) => renderBodyLine(line, li))}
-                      </div>
-                    </div>
-                  )
-                })}
+                {renderComparisonReport(compareReport)}
               </div>
             )}
           </div>
