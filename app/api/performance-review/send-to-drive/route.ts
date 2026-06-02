@@ -10,12 +10,17 @@ const PERF_REVIEW_FOLDER = '1vj8HSp0QnBlfwCoLvtzz-z3uJkh_84hg'
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 function getAuth() {
+  // Use a hardcoded redirect URI — the redirect_uri in the constructor is only
+  // needed for generating auth URLs, not for refresh-token operations, but some
+  // versions of the library still validate it. Use the standard postmessage value.
   const auth = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI,
+    'postmessage',
   )
   auth.setCredentials({ refresh_token: process.env.GOOGLE_DRIVE_REFRESH_TOKEN })
+  console.log('[send-to-drive] auth init — client_id prefix:', process.env.GOOGLE_CLIENT_ID?.slice(0, 20))
+  console.log('[send-to-drive] refresh_token prefix:', process.env.GOOGLE_DRIVE_REFRESH_TOKEN?.slice(0, 10))
   return auth
 }
 
