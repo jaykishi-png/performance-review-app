@@ -7,22 +7,21 @@ export default async function AdminPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
+  const serviceClient = await createServiceClient()
+
+  const { data: profile } = await serviceClient
     .from('profiles')
     .select('role')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') redirect('/performance-review')
+  if ((profile as { role: string } | null)?.role !== 'admin') redirect('/performance-review')
 
-  // Fetch all users
-  const serviceClient = await createServiceClient()
   const { data: users } = await serviceClient
     .from('profiles')
     .select('id, name, email, role, is_active, manager_id, created_at')
     .order('created_at', { ascending: false })
 
-  // Fetch pending invites
   const { data: invites } = await serviceClient
     .from('invites')
     .select('id, email, role, created_at, expires_at, accepted_at')
@@ -30,11 +29,17 @@ export default async function AdminPage() {
     .gt('expires_at', new Date().toISOString())
     .order('created_at', { ascending: false })
 
+  // Fetch self-review statuses for all employees
+  const { data: selfReviews } = await serviceClient
+    .from('self_reviews')
+    .select('employee_id, status, submitted_at')
+
   return (
     <AdminDashboard
       currentUser={{ id: user.id, email: user.email!, role: 'admin' }}
       users={users ?? []}
       invites={invites ?? []}
+      selfReviews={(selfReviews ?? []) as { employee_id: string; status: string; submitted_at: string | null }[]}
     />
   )
 }

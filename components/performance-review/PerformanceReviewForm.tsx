@@ -1897,6 +1897,29 @@ function StepOutput({
   const [compareError, setCompareError]         = useState('')
   const [reportCopied, setReportCopied]         = useState(false)
   const [reportEditMode, setReportEditMode]     = useState(false)
+  const [selfReviewStatus, setSelfReviewStatus] = useState<'idle' | 'loading' | 'found' | 'none'>('idle')
+  const [selfReviewText, setSelfReviewText]     = useState('')
+
+  async function loadSubmittedSelfReview() {
+    setSelfReviewStatus('loading')
+    try {
+      // Find employee by name match in profiles
+      const res = await fetch(`/api/self-reviews/find?name=${encodeURIComponent(form.employeeName.trim())}`)
+      if (res.ok) {
+        const { text } = await res.json()
+        if (text) {
+          setSelfReviewText(text)
+          setSelfReviewStatus('found')
+          setCompareInputMode('text')
+          setCompareText(text)
+          return
+        }
+      }
+      setSelfReviewStatus('none')
+    } catch {
+      setSelfReviewStatus('none')
+    }
+  }
 
   const scoreInfo = form.overallScore > 0 ? SCORE_LABELS[form.overallScore] : null
 
@@ -2278,6 +2301,23 @@ function StepOutput({
             Upload the employee&apos;s self-review and get an AI-generated comparison report — including alignment areas, divergence, talking points, and a recommended action plan.
           </p>
         </div>
+
+        {/* Auto-load from portal */}
+        {form.employeeName.trim() && (
+          <div className="mb-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={loadSubmittedSelfReview}
+              disabled={selfReviewStatus === 'loading'}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-700/50 bg-purple-900/20 text-[11px] text-purple-300 hover:bg-purple-900/40 transition-all disabled:opacity-50"
+            >
+              {selfReviewStatus === 'loading' ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+              Load {form.employeeName.split(' ')[0]}&apos;s submitted self-review
+            </button>
+            {selfReviewStatus === 'found' && <span className="text-[11px] text-emerald-500">✓ Loaded</span>}
+            {selfReviewStatus === 'none' && <span className="text-[11px] text-gray-500">No submitted self-review found</span>}
+          </div>
+        )}
 
         {/* Input mode toggle */}
         <div className="flex gap-1 p-1 rounded-lg bg-[#0b0d14] border border-[#1e2030] w-fit">

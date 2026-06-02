@@ -23,10 +23,13 @@ type InviteRecord = {
   accepted_at: string | null
 }
 
+type SelfReviewStatus = { employee_id: string; status: string; submitted_at: string | null }
+
 type Props = {
   currentUser: { id: string; email: string; role: string }
   users: UserRecord[]
   invites: InviteRecord[]
+  selfReviews: SelfReviewStatus[]
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -43,7 +46,7 @@ const ROLE_LABELS: Record<string, string> = {
   pending: 'Pending',
 }
 
-export default function AdminDashboard({ currentUser, users, invites }: Props) {
+export default function AdminDashboard({ currentUser, users, invites, selfReviews }: Props) {
   const router = useRouter()
   const supabase = createClient()
   const [showInviteModal, setShowInviteModal] = useState(false)
@@ -52,7 +55,11 @@ export default function AdminDashboard({ currentUser, users, invites }: Props) {
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteLink, setInviteLink] = useState('')
   const [editingUser, setEditingUser] = useState<string | null>(null)
+  const [editingManager, setEditingManager] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'users' | 'invites'>('users')
+
+  const managers = users.filter(u => u.role === 'manager' || u.role === 'admin')
+  const srMap = Object.fromEntries(selfReviews.map(s => [s.employee_id, s]))
 
   async function signOut() {
     await supabase.auth.signOut()
@@ -85,6 +92,16 @@ export default function AdminDashboard({ currentUser, users, invites }: Props) {
       body: JSON.stringify({ userId, role: newRole }),
     })
     setEditingUser(null)
+    router.refresh()
+  }
+
+  async function updateManager(userId: string, managerId: string | null) {
+    await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, manager_id: managerId }),
+    })
+    setEditingManager(null)
     router.refresh()
   }
 
@@ -204,7 +221,7 @@ export default function AdminDashboard({ currentUser, users, invites }: Props) {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #1e2130' }}>
-                  {['Name / Email', 'Role', 'Status', 'Joined', 'Actions'].map(h => (
+                  {['Name / Email', 'Role', 'Manager', 'Self-Review', 'Status', 'Joined', 'Actions'].map(h => (
                     <th key={h} style={{
                       padding: '12px 20px', textAlign: 'left',
                       fontSize: 12, fontWeight: 600, color: '#6b7280',
@@ -263,6 +280,49 @@ export default function AdminDashboard({ currentUser, users, invites }: Props) {
                         </span>
                       )}
                     </td>
+                    {/* Manager assignment */}
+                    <td style={{ padding: '14px 20px' }}>
+                      {editingManager === u.id ? (
+                        <select
+                          defaultValue={u.manager_id ?? ''}
+                          onChange={e => updateManager(u.id, e.target.value || null)}
+                          onBlur={() => setEditingManager(null)}
+                          autoFocus
+                          style={{ background: '#1e2130', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}
+                        >
+                          <option value="">— None —</option>
+                          {managers.filter(m => m.id !== u.id).map(m => (
+                            <option key={m.id} value={m.id}>{m.name || m.email}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span
+                          onClick={() => u.role === 'employee' && setEditingManager(u.id)}
+                          style={{ fontSize: 12, color: u.manager_id ? '#9ca3af' : '#374151', cursor: u.role === 'employee' ? 'pointer' : 'default' }}
+                          title={u.role === 'employee' ? 'Click to assign manager' : ''}
+                        >
+                          {u.manager_id ? (users.find(m => m.id === u.manager_id)?.name || users.find(m => m.id === u.manager_id)?.email || '—') : (u.role === 'employee' ? <span style={{ color: '#f59e0b', fontSize: 11 }}>Unassigned ✏️</span> : '—')}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Self-review status */}
+                    <td style={{ padding: '14px 20px' }}>
+                      {u.role === 'employee' ? (
+                        srMap[u.id] ? (
+                          <span style={{
+                            padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                            background: srMap[u.id].status === 'submitted' ? '#0d2b1f' : '#1e1f3a',
+                            color: srMap[u.id].status === 'submitted' ? '#34d399' : '#818cf8',
+                          }}>
+                            {srMap[u.id].status === 'submitted' ? '✓ Submitted' : 'Draft'}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 11, color: '#374151' }}>Not started</span>
+                        )
+                      ) : <span style={{ color: '#2a2d3e', fontSize: 12 }}>—</span>}
+                    </td>
+
                     <td style={{ padding: '14px 20px' }}>
                       <span style={{
                         padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500,
