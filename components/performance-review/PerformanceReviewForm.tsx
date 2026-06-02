@@ -2452,15 +2452,7 @@ export function PerformanceReviewForm() {
   const [profileRole, setProfileRole] = useState('')
   const [profileSaving, setProfileSaving] = useState(false)
 
-  // ── Supabase helper ──────────────────────────────────────────────────────────
-  async function getSupabase() {
-    if (typeof process === 'undefined' || !process.env.NEXT_PUBLIC_SUPABASE_URL) return null
-    try {
-      const { createClient } = await import('@/lib/supabase/client')
-      return createClient()
-    } catch { return null }
-  }
-
+  // ── API helpers (server-side Supabase with service key — no RLS issues) ─────
   function dbRowToSave(r: Record<string, unknown>): SavedReview {
     return {
       id: r.id as string,
@@ -2470,42 +2462,79 @@ export function PerformanceReviewForm() {
       maxStep: (r.max_step as number) ?? 0,
       savedAt: (r.saved_at as string) ?? new Date().toISOString(),
       form: r.form_data as FormData,
-      driveUrl: (r.drive_url as string) ?? undefined,
-      driveDocId: (r.drive_doc_id as string) ?? undefined,
-      comparisonReport: (r.comparison_report as string) ?? undefined,
+      driveUrl: (r.drive_url as string) || undefined,
+      driveDocId: (r.drive_doc_id as string) || undefined,
+      comparisonReport: (r.comparison_report as string) || undefined,
     }
   }
 
-  // Init: load reviews from Supabase (falling back to localStorage) + profile
+  async function apiLoadReviews(): Promise<SavedReview[] | null> {
+    try {
+      const res = await fetch('/api/reviews')
+      if (!res.ok) return null
+      const { reviews } = await res.json()
+      return (reviews as Record<string, unknown>[]).map(dbRowToSave)
+    } catch { return null }
+  }
+
+  async function apiSaveReview(save: SavedReview) {
+    try {
+      await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(save),
+      })
+    } catch { /* offline — localStorage already written */ }
+  }
+
+  async function apiDeleteReview(id: string) {
+    try {
+      await fetch('/api/reviews', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+    } catch {}
+  }
+
+  async function apiPatchReview(id: string, fields: Record<string, unknown>) {
+    try {
+      await fetch('/api/reviews', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...fields }),
+      })
+    } catch {}
+  }
+
+  // Init: load reviews from API (falling back to localStorage) + profile
   useEffect(() => {
     setDirectReports(getReports())
     setSettings(s => ({ ...s, ...getSettings() }))
     ;(async () => {
-      const supabase = await getSupabase()
-      if (supabase) {
+      // Load profile
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
-          // Load profile
           setProfileEmail(user.email ?? '')
           const { data: profile } = await supabase.from('profiles').select('name, role').eq('id', user.id).single()
-          if (profile) { setProfileName((profile as {name:string,role:string}).name ?? ''); setProfileRole((profile as {name:string,role:string}).role ?? '') }
-
-          // Load reviews from Supabase
-          const { data: rows } = await supabase
-            .from('reviews')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('saved_at', { ascending: false })
-          if (rows && rows.length > 0) {
-            const mapped = rows.map(r => dbRowToSave(r as Record<string, unknown>))
-            setSaves(mapped)
-            localStorage.setItem(SAVES_KEY, JSON.stringify(mapped))
-            return
+          if (profile) {
+            setProfileName((profile as {name:string,role:string}).name ?? '')
+            setProfileRole((profile as {name:string,role:string}).role ?? '')
           }
         }
+      } catch { /* Supabase not configured */ }
+
+      // Load reviews via API (uses service key server-side)
+      const remote = await apiLoadReviews()
+      if (remote && remote.length > 0) {
+        setSaves(remote)
+        localStorage.setItem(SAVES_KEY, JSON.stringify(remote))
+      } else {
+        setSaves(getSaves())
       }
-      // Fallback: localStorage
-      setSaves(getSaves())
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -2530,26 +2559,8 @@ export function PerformanceReviewForm() {
       }
       upsertSave(save)
       setSaves(getSaves())
-      // Persist to Supabase
-      try {
-        const supabase = await getSupabase()
-        if (supabase) {
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user) {
-            await supabase.from('reviews').upsert({
-              id: save.id,
-              user_id: user.id,
-              employee_name: save.employeeName,
-              employee_position: save.employeePosition,
-              step: save.step,
-              max_step: save.maxStep,
-              saved_at: save.savedAt,
-              form_data: save.form,
-              updated_at: new Date().toISOString(),
-            })
-          }
-        }
-      } catch { /* offline — localStorage already written */ }
+      // Persist to Supabase via API route
+      await apiSaveReview(save)
       setSaveStatus('saved')
     }, 1500)
     return () => clearTimeout(timer)
@@ -2569,11 +2580,7 @@ export function PerformanceReviewForm() {
   function handleDelete(id: string) {
     deleteSave(id)
     setSaves(getSaves())
-    getSupabase().then(async supabase => {
-      if (!supabase) return
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) await supabase.from('reviews').delete().eq('id', id).eq('user_id', user.id)
-    }).catch(() => {})
+    apiDeleteReview(id)
   }
 
   function handleNewReview() {
@@ -2601,12 +2608,7 @@ export function PerformanceReviewForm() {
       localStorage.setItem(SAVES_KEY, JSON.stringify(existing))
       setSaves(getSaves())
     }
-    const id = reviewIdRef.current
-    getSupabase().then(async supabase => {
-      if (!supabase) return
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) await supabase.from('reviews').update({ drive_url: url || null, drive_doc_id: docId || null, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', user.id)
-    }).catch(() => {})
+    apiPatchReview(reviewIdRef.current, { drive_url: url || null, drive_doc_id: docId || null })
   }
 
   function handleReportSaved(report: string) {
@@ -2617,12 +2619,7 @@ export function PerformanceReviewForm() {
       localStorage.setItem(SAVES_KEY, JSON.stringify(existing))
       setSaves(getSaves())
     }
-    const id = reviewIdRef.current
-    getSupabase().then(async supabase => {
-      if (!supabase) return
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) await supabase.from('reviews').update({ comparison_report: report || null, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', user.id)
-    }).catch(() => {})
+    apiPatchReview(reviewIdRef.current, { comparison_report: report || null })
   }
 
   function handleSaveReport(r: DirectReport) {

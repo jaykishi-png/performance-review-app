@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
-import { getRoleHomeRoute } from '@/lib/permissions'
+import { getRoleHomeRoute, type Role } from '@/lib/permissions'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
@@ -10,14 +10,30 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const cookieStore = await cookies()
+
+    // Anon client — used only for the code exchange (sets the session cookie)
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          getAll() {
-            return cookieStore.getAll()
+          getAll() { return cookieStore.getAll() },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
           },
+        },
+      }
+    )
+
+    // Service client — bypasses RLS for reliable profile reads/writes
+    const serviceClient = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll() { return cookieStore.getAll() },
           setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
@@ -32,7 +48,7 @@ export async function GET(request: NextRequest) {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         // Check for a pending invite matching this email
-        const { data: invite } = await supabase
+        const { data: invite } = await serviceClient
           .from('invites')
           .select('role, id')
           .eq('email', user.email!)
@@ -43,27 +59,25 @@ export async function GET(request: NextRequest) {
           .single()
 
         if (invite) {
-          // Apply the invited role
-          await supabase
+          await serviceClient
             .from('profiles')
-            .update({ role: invite.role })
+            .update({ role: (invite as {role: string, id: string}).role })
             .eq('id', user.id)
 
-          // Mark invite accepted
-          await supabase
+          await serviceClient
             .from('invites')
             .update({ accepted_at: new Date().toISOString() })
-            .eq('id', invite.id)
+            .eq('id', (invite as {role: string, id: string}).id)
         }
 
-        // Fetch final role and redirect
-        const { data: profile } = await supabase
+        // Read final role with service client — always works regardless of RLS
+        const { data: profile } = await serviceClient
           .from('profiles')
           .select('role')
           .eq('id', user.id)
           .single()
 
-        const role = profile?.role ?? 'pending'
+        const role = ((profile as {role: string} | null)?.role ?? 'pending') as Role
         const homeRoute = getRoleHomeRoute(role)
         return NextResponse.redirect(`${origin}${homeRoute}`)
       }
