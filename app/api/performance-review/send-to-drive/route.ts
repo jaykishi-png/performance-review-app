@@ -180,20 +180,34 @@ export async function POST(req: NextRequest) {
       if (slot) ops.push({ startIndex: slot.startIndex, endIndex: slot.startIndex, newText })
     }
 
-    // Helper: replace a dropdown chip (empty-string run) or empty cell after a label
+    // Find the index of a Private Use Area character (U+E000–U+F8FF) in a string.
+    // Google Docs encodes dropdown "SELECT ONE" chips as U+E907 within textRun content.
+    function puaIndex(text: string): number {
+      for (let i = 0; i < text.length; i++) {
+        const cp = text.codePointAt(i) ?? 0
+        if (cp >= 0xe000 && cp <= 0xf8ff) return i
+      }
+      return -1
+    }
+
+    // Helper: replace a dropdown chip (PUA char or empty-string run) or empty cell after a label
     function replaceChipOrEmptyAfterLabel(label: string, newText: string) {
       if (!newText) return
       const occ = findOccurrences(runs, label)
       if (!occ.length) return
       const after = occ[0].endIndex
-      // Dropdown chips appear as empty-string runs; empty cells appear as '\n' runs
-      const chip      = runs.find(r => r.startIndex >= after && r.text === '')
       const emptyCell = runs.find(r => r.startIndex >= after && r.text === '\n')
-      if (chip && chip.startIndex <= (emptyCell?.startIndex ?? Infinity)) {
-        ops.push({ startIndex: chip.startIndex, endIndex: chip.endIndex, newText })
-      } else if (emptyCell) {
-        ops.push({ startIndex: emptyCell.startIndex, endIndex: emptyCell.startIndex, newText })
+      // Look for a PUA chip char or empty-string chip run before the empty cell
+      for (const r of runs.filter(rr => rr.startIndex >= after && rr.startIndex <= (emptyCell?.startIndex ?? Infinity))) {
+        if (r.text === '') {
+          ops.push({ startIndex: r.startIndex, endIndex: r.endIndex, newText }); return
+        }
+        const pi = puaIndex(r.text)
+        if (pi >= 0) {
+          ops.push({ startIndex: r.startIndex + pi, endIndex: r.startIndex + pi + 1, newText }); return
+        }
       }
+      if (emptyCell) ops.push({ startIndex: emptyCell.startIndex, endIndex: emptyCell.startIndex, newText })
     }
 
     // ── 4a. Header fields ─────────────────────────────────────────────────────
@@ -206,27 +220,32 @@ export async function POST(req: NextRequest) {
     insertAfterLabel('Appraisal Period:\n', form.appraisalPeriod)
     insertAfterLabel('Review Date:\n',      form.reviewDate)
 
-    // ── 5. Competency names — insert before the \n at end of each header line ─
-    // Template structure: "COMPETENCY ONE (positive): ↵" → insert name before ↵
+    // ── 5. Competency names — replace the U+E907 chip in each header ─────────
+    // Each header has ": [U+E907 chip]" — detect and replace the PUA char with the name.
     const compNames = [
       form.competencyOne.competency,   form.competencyTwo.competency,
       form.competencyThree.competency, form.competencyFour.competency,
       form.competencyFive.competency,
     ]
     const compHeaders = ['COMPETENCY ONE', 'COMPETENCY TWO', 'COMPETENCY THREE', 'COMPETENCY FOUR', 'COMPETENCY FIVE']
+    const partTwoStart = findOccurrences(runs, 'PART TWO')[0]?.startIndex ?? Infinity
     compHeaders.forEach((header, i) => {
       if (!compNames[i]) return
       const headerOcc = findOccurrences(runs, header)
       if (!headerOcc.length) return
       const after = headerOcc[0].endIndex
-      // "EXPLANATION:" marks the end of the header area
-      const explLabel = findOccurrences(runs, 'EXPLANATION:').find(r => r.startIndex > after)
-      const nlRun = runs.find(r =>
-        r.startIndex >= after &&
-        r.startIndex < (explLabel?.startIndex ?? Infinity) &&
-        r.text === '\n'
-      )
-      if (nlRun) ops.push({ startIndex: nlRun.startIndex, endIndex: nlRun.startIndex, newText: compNames[i] })
+      // Bound search to this competency's area (before next header or PART TWO)
+      const nextHeaderStart = compHeaders.slice(i + 1)
+        .map(h => findOccurrences(runs, h)[0]?.startIndex ?? Infinity)
+        .reduce((a, b) => Math.min(a, b), partTwoStart)
+      // Find the PUA chip char in any run within this header area
+      for (const run of runs.filter(r => r.startIndex >= after && r.startIndex < nextHeaderStart)) {
+        const pi = puaIndex(run.text)
+        if (pi >= 0) {
+          ops.push({ startIndex: run.startIndex + pi, endIndex: run.startIndex + pi + 1, newText: compNames[i] })
+          break
+        }
+      }
     })
 
     // ── 6. Examples — "[INSERT EXAMPLE]" appears 15 times in order ────────────
