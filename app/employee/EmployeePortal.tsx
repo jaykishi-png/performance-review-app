@@ -37,7 +37,7 @@ export default function EmployeePortal({
 }) {
   const router = useRouter()
   const supabase = createClient()
-  const [view, setView] = useState<'home' | 'self-review'>('home')
+  const [view, setView] = useState<'home' | 'self-assessment'>('home')
   const [sr, setSr] = useState<SelfReview>(initialSelfReview ?? defaultSelfReview())
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [submitting, setSubmitting] = useState(false)
@@ -125,15 +125,15 @@ export default function EmployeePortal({
             <span style={{ fontWeight: 700, fontSize: 15, color: '#f0f2fa' }}>Performance Review</span>
           </button>
           <span style={{ background: '#1e2130', padding: '3px 10px', borderRadius: 20, fontSize: 11, color: '#60a5fa', fontWeight: 600 }}>Employee</span>
-          {view === 'self-review' && (
+          {view === 'self-assessment' && (
             <>
               <span style={{ color: '#374151', fontSize: 12 }}>/</span>
-              <span style={{ fontSize: 12, color: '#9ca3af' }}>Self-Review</span>
+              <span style={{ fontSize: 12, color: '#9ca3af' }}>Self-Assessment</span>
             </>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {view === 'self-review' && !isSubmitted && (
+          {view === 'self-assessment' && !isSubmitted && (
             <span style={{ fontSize: 11, color: saveStatus === 'saved' ? '#34d399' : '#6b7280' }}>
               {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? '✓ Saved' : ''}
             </span>
@@ -170,9 +170,9 @@ export default function EmployeePortal({
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            {/* Self-Review card */}
+            {/* Self-Assessment card */}
             <div
-              onClick={() => setView('self-review')}
+              onClick={() => setView('self-assessment')}
               style={{ ...S.card, cursor: 'pointer', transition: 'border-color 0.15s', position: 'relative', overflow: 'hidden' }}
               onMouseOver={e => (e.currentTarget.style.borderColor = '#4f46e5')}
               onMouseOut={e => (e.currentTarget.style.borderColor = '#1e2130')}
@@ -188,9 +188,9 @@ export default function EmployeePortal({
                 </div>
               )}
               <div style={{ fontSize: 28, marginBottom: 12 }}>📝</div>
-              <h3 style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600 }}>Self-Review</h3>
+              <h3 style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600 }}>Self-Assessment</h3>
               <p style={{ margin: 0, fontSize: 12, color: '#6b7280', lineHeight: 1.6 }}>
-                {isSubmitted ? 'Your self-review has been submitted to your manager.' : 'Share your perspective on your performance this year.'}
+                {isSubmitted ? 'Your self-assessment has been submitted to your manager.' : 'Share your perspective on your performance this year.'}
               </p>
             </div>
 
@@ -205,8 +205,8 @@ export default function EmployeePortal({
         </div>
       )}
 
-      {/* Self-Review form */}
-      {view === 'self-review' && (
+      {/* Self-Assessment form */}
+      {view === 'self-assessment' && (
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 32px' }}>
 
           {/* Status banner if submitted */}
@@ -223,7 +223,7 @@ export default function EmployeePortal({
           )}
 
           <div style={{ marginBottom: 32 }}>
-            <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700 }}>Annual Self-Review</h2>
+            <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700 }}>Annual Self-Assessment</h2>
             <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Reflect on your performance this year. Be specific and honest — this helps your manager understand your perspective.</p>
           </div>
 
@@ -339,7 +339,7 @@ export default function EmployeePortal({
                   disabled={!canSubmit}
                   style={{ padding: '10px 24px', background: canSubmit ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', color: canSubmit ? 'white' : '#4b5563', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'default' }}
                 >
-                  Submit Self-Review
+                  Submit Self-Assessment
                 </button>
               </div>
             )}
@@ -353,9 +353,9 @@ export default function EmployeePortal({
           onClick={e => { if (e.target === e.currentTarget) setShowConfirm(false) }}>
           <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 16, padding: 32, width: 400, textAlign: 'center' }}>
             <div style={{ fontSize: 40, marginBottom: 16 }}>📤</div>
-            <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700 }}>Submit Self-Review?</h3>
+            <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700 }}>Submit Self-Assessment?</h3>
             <p style={{ margin: '0 0 24px', fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>
-              Once submitted, your self-review will be shared with your manager and you won&apos;t be able to edit it.
+              Once submitted, your self-assessment will be shared with your manager and you won&apos;t be able to edit it.
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setShowConfirm(false)} style={{ flex: 1, padding: '10px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>

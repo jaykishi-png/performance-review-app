@@ -2295,7 +2295,7 @@ function StepOutput({
         <div>
           <p className="text-[13px] font-semibold text-purple-200 flex items-center gap-2">
             <FileText size={14} className="text-purple-400" />
-            Compare with Employee Self-Review
+            Compare with Employee Self-Assessment
           </p>
           <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
             Upload the employee&apos;s self-review and get an AI-generated comparison report — including alignment areas, divergence, talking points, and a recommended action plan.
@@ -2312,7 +2312,7 @@ function StepOutput({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-700/50 bg-purple-900/20 text-[11px] text-purple-300 hover:bg-purple-900/40 transition-all disabled:opacity-50"
             >
               {selfReviewStatus === 'loading' ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
-              Load {form.employeeName.split(' ')[0]}&apos;s submitted self-review
+              Load {form.employeeName.split(' ')[0]}&apos;s submitted self-assessment
             </button>
             {selfReviewStatus === 'found' && <span className="text-[11px] text-emerald-500">✓ Loaded</span>}
             {selfReviewStatus === 'none' && <span className="text-[11px] text-gray-500">No submitted self-review found</span>}
@@ -2360,7 +2360,7 @@ function StepOutput({
           <textarea
             value={compareText}
             onChange={e => setCompareText(e.target.value)}
-            placeholder="Paste the employee's self-review text here…"
+            placeholder="Paste the employee's self-assessment text here…"
             rows={6}
             className="w-full bg-[#0d0f1a] border border-[#2a2d3a] rounded-xl px-4 py-2.5 text-[12px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-600 transition-colors resize-none"
           />
@@ -2920,6 +2920,24 @@ export function PerformanceReviewForm() {
             </div>
             {!sidebarCollapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profileName || profileEmail || 'Profile'}</span>}
           </button>
+          {/* Admin Portal toggle — only for admins */}
+          {profileRole === 'admin' && (
+            <a href="/admin"
+              title={sidebarCollapsed ? 'Admin Portal' : undefined}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                padding: '8px', borderRadius: 8, border: 'none', background: 'transparent',
+                color: '#818cf8', cursor: 'pointer', fontSize: 12, fontWeight: 500,
+                justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                textDecoration: 'none',
+              }}
+              onMouseOver={e => { e.currentTarget.style.background = '#13151f' }}
+              onMouseOut={e => { e.currentTarget.style.background = 'transparent' }}
+            >
+              <span style={{ fontSize: 14 }}>⚙️</span>
+              {!sidebarCollapsed && 'Admin Portal'}
+            </a>
+          )}
           {/* Sign out */}
           <button
             onClick={async () => { const { createClient } = await import('@/lib/supabase/client'); await createClient().auth.signOut(); window.location.href = '/login' }}

@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 
 type UserRecord = {
@@ -11,44 +10,56 @@ type UserRecord = {
   role: string
   is_active: boolean
   manager_id: string | null
+  start_date: string | null
   created_at: string
 }
 
 type InviteRecord = {
-  id: string
-  email: string
-  role: string
-  created_at: string
-  expires_at: string
-  accepted_at: string | null
+  id: string; email: string; role: string
+  created_at: string; expires_at: string; accepted_at: string | null
 }
 
-type SelfReviewStatus = { employee_id: string; status: string; submitted_at: string | null }
+type SelfAssessmentStatus = { employee_id: string; status: string; submitted_at: string | null }
 
 type Props = {
   currentUser: { id: string; email: string; role: string }
   users: UserRecord[]
   invites: InviteRecord[]
-  selfReviews: SelfReviewStatus[]
+  selfAssessments: SelfAssessmentStatus[]
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  admin: '#818cf8',
-  manager: '#34d399',
-  employee: '#60a5fa',
-  pending: '#f59e0b',
+  admin: '#818cf8', manager: '#34d399', employee: '#60a5fa', pending: '#f59e0b',
 }
-
 const ROLE_LABELS: Record<string, string> = {
-  admin: 'Admin',
-  manager: 'Manager',
-  employee: 'Employee',
-  pending: 'Pending',
+  admin: 'Admin', manager: 'Manager', employee: 'Employee', pending: 'Pending',
 }
 
-export default function AdminDashboard({ currentUser, users, invites, selfReviews }: Props) {
+function daysUntilAnniversary(startDate: string): number {
+  const start = new Date(startDate)
+  const today = new Date()
+  const next = new Date(today.getFullYear(), start.getMonth(), start.getDate())
+  if (next < today) next.setFullYear(today.getFullYear() + 1)
+  return Math.ceil((next.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function anniversaryDate(startDate: string): string {
+  const start = new Date(startDate)
+  const today = new Date()
+  const next = new Date(today.getFullYear(), start.getMonth(), start.getDate())
+  if (next < today) next.setFullYear(today.getFullYear() + 1)
+  return next.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function yearsOfService(startDate: string): number {
+  const start = new Date(startDate)
+  const today = new Date()
+  return today.getFullYear() - start.getFullYear()
+}
+
+export default function AdminDashboard({ currentUser, users, invites, selfAssessments }: Props) {
   const router = useRouter()
-  const supabase = createClient()
+  const [activeTab, setActiveTab] = useState<'users' | 'invites' | 'upcoming'>('upcoming')
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'manager' | 'employee'>('employee')
@@ -56,13 +67,27 @@ export default function AdminDashboard({ currentUser, users, invites, selfReview
   const [inviteLink, setInviteLink] = useState('')
   const [editingUser, setEditingUser] = useState<string | null>(null)
   const [editingManager, setEditingManager] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'users' | 'invites'>('users')
+  const [editingStartDate, setEditingStartDate] = useState<string | null>(null)
+  const [reminderCopied, setReminderCopied] = useState<string | null>(null)
 
   const managers = users.filter(u => u.role === 'manager' || u.role === 'admin')
-  const srMap = Object.fromEntries(selfReviews.map(s => [s.employee_id, s]))
+  const saMap = Object.fromEntries(selfAssessments.map(s => [s.employee_id, s]))
+  const activeUsers = users.filter(u => u.is_active)
+
+  // Upcoming reviews — employees/managers with start_date and anniversary within 90 days
+  const upcomingReviews = useMemo(() => {
+    return users
+      .filter(u => u.start_date && u.is_active && u.role !== 'pending')
+      .map(u => ({ ...u, daysUntil: daysUntilAnniversary(u.start_date!), annDate: anniversaryDate(u.start_date!), years: yearsOfService(u.start_date!) + 1 }))
+      .filter(u => u.daysUntil <= 90)
+      .sort((a, b) => a.daysUntil - b.daysUntil)
+  }, [users])
+
+  const urgentCount = upcomingReviews.filter(u => u.daysUntil <= 30).length
 
   async function signOut() {
-    await supabase.auth.signOut()
+    const { createClient } = await import('@/lib/supabase/client')
+    await createClient().auth.signOut()
     router.push('/login')
   }
 
@@ -71,282 +96,263 @@ export default function AdminDashboard({ currentUser, users, invites, selfReview
     setInviteLoading(true)
     try {
       const res = await fetch('/api/admin/invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
       })
       const data = await res.json()
-      if (data.inviteLink) {
-        setInviteLink(data.inviteLink)
-      }
+      if (data.inviteLink) setInviteLink(data.inviteLink)
       router.refresh()
-    } finally {
-      setInviteLoading(false)
-    }
+    } finally { setInviteLoading(false) }
   }
 
-  async function updateRole(userId: string, newRole: string) {
+  async function updateField(userId: string, fields: Record<string, unknown>) {
     await fetch('/api/admin/users', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, role: newRole }),
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, ...fields }),
     })
-    setEditingUser(null)
-    router.refresh()
-  }
-
-  async function updateManager(userId: string, managerId: string | null) {
-    await fetch('/api/admin/users', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, manager_id: managerId }),
-    })
-    setEditingManager(null)
+    setEditingUser(null); setEditingManager(null); setEditingStartDate(null)
     router.refresh()
   }
 
   async function toggleActive(userId: string, isActive: boolean) {
-    await fetch('/api/admin/users', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, is_active: !isActive }),
-    })
-    router.refresh()
+    await updateField(userId, { is_active: !isActive })
   }
 
-  const activeUsers = users.filter(u => u.is_active)
-  const inactiveUsers = users.filter(u => !u.is_active)
+  function copyReminder(u: UserRecord & { daysUntil: number; annDate: string; years: number }) {
+    const managerName = u.manager_id ? (users.find(m => m.id === u.manager_id)?.name || users.find(m => m.id === u.manager_id)?.email || 'their manager') : 'their manager'
+    const text = `Hi ${managerName},\n\nThis is a reminder that ${u.name || u.email}'s annual performance review is coming up on ${u.annDate} (${u.daysUntil} days away) — marking their ${u.years}-year anniversary.\n\nPlease ensure their review is completed in advance of this date.\n\nThank you!`
+    navigator.clipboard.writeText(text)
+    setReminderCopied(u.id)
+    setTimeout(() => setReminderCopied(null), 2000)
+  }
+
+  const S = {
+    th: { padding: '10px 16px', textAlign: 'left' as const, fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' as const, letterSpacing: '0.05em', borderBottom: '1px solid #1e2130' },
+    td: { padding: '12px 16px', fontSize: 13, borderBottom: '1px solid #13151f' },
+  }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#0b0d14',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-      color: '#f0f2fa',
-    }}>
+    <div style={{ minHeight: '100vh', background: '#0b0d14', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#f0f2fa' }}>
+
       {/* Header */}
-      <div style={{
-        background: '#13151f',
-        borderBottom: '1px solid #1e2130',
-        padding: '0 32px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        height: 60,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{
-            width: 32, height: 32,
-            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-            borderRadius: 8,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 16,
-          }}>⭐</div>
-          <span style={{ fontWeight: 700, fontSize: 16 }}>Performance Review</span>
-          <span style={{
-            background: '#1e2130', padding: '3px 10px', borderRadius: 20,
-            fontSize: 12, color: '#818cf8', fontWeight: 600,
-          }}>Admin</span>
+      <div style={{ background: '#0d0f1a', borderBottom: '1px solid #1e2130', padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 18 }}>📋</span>
+          <span style={{ fontWeight: 700, fontSize: 15, color: '#f0f2fa' }}>Performance Review</span>
+          <span style={{ background: '#1e2130', padding: '3px 10px', borderRadius: 20, fontSize: 11, color: '#818cf8', fontWeight: 600 }}>Admin</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <span style={{ fontSize: 13, color: '#6b7280' }}>{currentUser.email}</span>
-          <button
-            onClick={signOut}
-            style={{
-              padding: '6px 14px', background: 'transparent',
-              color: '#6b7280', border: '1px solid #2a2d3e',
-              borderRadius: 6, fontSize: 13, cursor: 'pointer',
-            }}
-          >
-            Sign out
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Switch to Manager View */}
+          <a href="/performance-review" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#1e2130', color: '#9ca3af', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 12, fontWeight: 500, textDecoration: 'none', cursor: 'pointer' }}>
+            ↗ Manager View
+          </a>
+          <span style={{ fontSize: 12, color: '#6b7280' }}>{currentUser.email}</span>
+          <button onClick={signOut} style={{ padding: '5px 12px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3e', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Sign out</button>
         </div>
       </div>
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '36px 32px' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 28px' }}>
+
         {/* Stats row */}
-        <div style={{ display: 'flex', gap: 16, marginBottom: 32 }}>
+        <div style={{ display: 'flex', gap: 14, marginBottom: 28 }}>
           {[
-            { label: 'Total Users', value: users.length },
-            { label: 'Managers', value: users.filter(u => u.role === 'manager').length },
-            { label: 'Employees', value: users.filter(u => u.role === 'employee').length },
-            { label: 'Pending Access', value: users.filter(u => u.role === 'pending').length + invites.length },
-          ].map(stat => (
-            <div key={stat.label} style={{
-              flex: 1, background: '#13151f', border: '1px solid #1e2130',
-              borderRadius: 12, padding: '20px 24px',
-            }}>
-              <div style={{ fontSize: 28, fontWeight: 700, color: '#f0f2fa', marginBottom: 4 }}>
-                {stat.value}
-              </div>
-              <div style={{ fontSize: 13, color: '#6b7280' }}>{stat.label}</div>
+            { label: 'Total Users', value: activeUsers.length, color: '#f0f2fa' },
+            { label: 'Managers', value: activeUsers.filter(u => u.role === 'manager').length, color: '#34d399' },
+            { label: 'Employees', value: activeUsers.filter(u => u.role === 'employee').length, color: '#60a5fa' },
+            { label: 'Reviews Due (90d)', value: upcomingReviews.length, color: urgentCount > 0 ? '#f59e0b' : '#f0f2fa', urgent: urgentCount > 0 },
+            { label: 'Pending Access', value: users.filter(u => u.role === 'pending').length + invites.length, color: '#f0f2fa' },
+          ].map(s => (
+            <div key={s.label} style={{ flex: 1, background: '#13151f', border: `1px solid ${(s as {urgent?: boolean}).urgent ? '#92400e' : '#1e2130'}`, borderRadius: 12, padding: '18px 20px' }}>
+              <div style={{ fontSize: 26, fontWeight: 700, color: s.color, marginBottom: 4 }}>{s.value}</div>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>{s.label}</div>
             </div>
           ))}
         </div>
 
-        {/* Tabs + Invite button */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        {/* Tabs + invite button */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <div style={{ display: 'flex', gap: 0, background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: 4 }}>
-            {(['users', 'invites'] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                style={{
-                  padding: '7px 18px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                  fontSize: 13, fontWeight: 500,
-                  background: activeTab === tab ? '#1e2130' : 'transparent',
-                  color: activeTab === tab ? '#f0f2fa' : '#6b7280',
-                }}
-              >
-                {tab === 'users' ? `Users (${users.length})` : `Pending Invites (${invites.length})`}
-              </button>
+            {([
+              { key: 'upcoming', label: `Upcoming Reviews${urgentCount > 0 ? ` (${urgentCount} urgent)` : ''}` },
+              { key: 'users', label: `Users (${users.length})` },
+              { key: 'invites', label: `Pending Invites (${invites.length})` },
+            ] as const).map(tab => (
+              <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
+                padding: '7px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 500,
+                background: activeTab === tab.key ? '#1e2130' : 'transparent',
+                color: activeTab === tab.key ? (tab.key === 'upcoming' && urgentCount > 0 ? '#f59e0b' : '#f0f2fa') : '#6b7280',
+              }}>{tab.label}</button>
             ))}
           </div>
-          <button
-            onClick={() => { setShowInviteModal(true); setInviteLink('') }}
-            style={{
-              padding: '9px 20px',
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              color: '#fff', border: 'none', borderRadius: 8,
-              fontSize: 14, fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            + Invite User
-          </button>
+          <button onClick={() => { setShowInviteModal(true); setInviteLink('') }} style={{
+            padding: '8px 18px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff',
+            border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+          }}>+ Invite User</button>
         </div>
 
-        {/* Users table */}
+        {/* ── Upcoming Reviews tab ── */}
+        {activeTab === 'upcoming' && (
+          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflow: 'hidden' }}>
+            {upcomingReviews.length === 0 ? (
+              <div style={{ padding: '60px 32px', textAlign: 'center', color: '#6b7280', fontSize: 14 }}>
+                <div style={{ fontSize: 36, marginBottom: 12 }}>📅</div>
+                <div style={{ fontWeight: 500, color: '#9ca3af', marginBottom: 6 }}>No upcoming reviews in the next 90 days</div>
+                <div style={{ fontSize: 12 }}>Add start dates to users in the Users tab to track anniversaries.</div>
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {['Employee', 'Role', 'Manager', 'Review Date', 'Years', 'Days Away', 'Reminder'].map(h => (
+                      <th key={h} style={S.th}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {upcomingReviews.map(u => {
+                    const isUrgent = u.daysUntil <= 30
+                    const managerUser = u.manager_id ? users.find(m => m.id === u.manager_id) : null
+                    return (
+                      <tr key={u.id} style={{ background: isUrgent ? '#1a110a' : 'transparent' }}>
+                        <td style={S.td}>
+                          <div style={{ fontWeight: 500, color: '#e5e7eb' }}>{u.name || '—'}</div>
+                          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 1 }}>{u.email}</div>
+                        </td>
+                        <td style={S.td}>
+                          <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500, background: `${ROLE_COLORS[u.role]}18`, color: ROLE_COLORS[u.role] }}>
+                            {ROLE_LABELS[u.role]}
+                          </span>
+                        </td>
+                        <td style={{ ...S.td, color: '#9ca3af' }}>
+                          {managerUser ? (managerUser.name || managerUser.email) : <span style={{ color: '#374151' }}>Unassigned</span>}
+                        </td>
+                        <td style={{ ...S.td, color: '#c4c9d4', fontWeight: 500 }}>{u.annDate}</td>
+                        <td style={{ ...S.td, color: '#9ca3af' }}>Year {u.years}</td>
+                        <td style={S.td}>
+                          <span style={{
+                            padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                            background: isUrgent ? '#92400e30' : '#1e2130',
+                            color: isUrgent ? '#f59e0b' : '#9ca3af',
+                          }}>
+                            {u.daysUntil === 0 ? 'Today!' : `${u.daysUntil}d`}
+                          </span>
+                        </td>
+                        <td style={S.td}>
+                          <button onClick={() => copyReminder(u)} style={{
+                            padding: '5px 12px', fontSize: 11, cursor: 'pointer', borderRadius: 6,
+                            background: reminderCopied === u.id ? '#0d2b1f' : 'transparent',
+                            color: reminderCopied === u.id ? '#34d399' : '#6b7280',
+                            border: `1px solid ${reminderCopied === u.id ? '#1a4a35' : '#2a2d3e'}`,
+                          }}>
+                            {reminderCopied === u.id ? '✓ Copied' : '📋 Copy Reminder'}
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {/* ── Users tab ── */}
         {activeTab === 'users' && (
           <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #1e2130' }}>
-                  {['Name / Email', 'Role', 'Manager', 'Self-Review', 'Status', 'Joined', 'Actions'].map(h => (
-                    <th key={h} style={{
-                      padding: '12px 20px', textAlign: 'left',
-                      fontSize: 12, fontWeight: 600, color: '#6b7280',
-                      textTransform: 'uppercase', letterSpacing: '0.05em',
-                    }}>{h}</th>
-                  ))}
-                </tr>
+                <tr>{['Name / Email', 'Role', 'Manager', 'Start Date', 'Self-Assessment', 'Status', 'Actions'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
               </thead>
               <tbody>
-                {[...activeUsers, ...inactiveUsers].map((u, i) => (
-                  <tr key={u.id} style={{
-                    borderBottom: i < users.length - 1 ? '1px solid #1a1d2b' : 'none',
-                    opacity: u.is_active ? 1 : 0.5,
-                  }}>
-                    <td style={{ padding: '14px 20px' }}>
-                      <div style={{ fontWeight: 500, fontSize: 14, color: '#e5e7eb' }}>
+                {users.map((u, i) => (
+                  <tr key={u.id} style={{ opacity: u.is_active ? 1 : 0.5, background: i % 2 === 0 ? 'transparent' : '#0d0f1a10' }}>
+                    {/* Name */}
+                    <td style={S.td}>
+                      <div style={{ fontWeight: 500, color: '#e5e7eb', display: 'flex', alignItems: 'center', gap: 6 }}>
                         {u.name || '—'}
-                        {u.id === currentUser.id && (
-                          <span style={{ marginLeft: 8, fontSize: 11, color: '#6366f1' }}>(you)</span>
-                        )}
+                        {u.id === currentUser.id && <span style={{ fontSize: 10, color: '#818cf8' }}>(you)</span>}
                       </div>
-                      <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{u.email}</div>
+                      <div style={{ fontSize: 11, color: '#6b7280', marginTop: 1 }}>{u.email}</div>
                     </td>
-                    <td style={{ padding: '14px 20px' }}>
+
+                    {/* Role */}
+                    <td style={S.td}>
                       {editingUser === u.id ? (
-                        <select
-                          defaultValue={u.role}
-                          onChange={e => updateRole(u.id, e.target.value)}
-                          onBlur={() => setEditingUser(null)}
-                          autoFocus
-                          style={{
-                            background: '#1e2130', color: '#f0f2fa',
-                            border: '1px solid #2a2d3e', borderRadius: 6,
-                            padding: '4px 8px', fontSize: 13,
-                          }}
-                        >
+                        <select defaultValue={u.role} onChange={e => updateField(u.id, { role: e.target.value })} onBlur={() => setEditingUser(null)} autoFocus
+                          style={{ background: '#0d0f1a', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}>
                           <option value="admin">Admin</option>
                           <option value="manager">Manager</option>
                           <option value="employee">Employee</option>
                           <option value="pending">Pending</option>
                         </select>
                       ) : (
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 6,
-                          padding: '3px 10px', borderRadius: 20,
-                          fontSize: 12, fontWeight: 500,
-                          background: `${ROLE_COLORS[u.role]}18`,
-                          color: ROLE_COLORS[u.role] || '#6b7280',
-                          cursor: u.id !== currentUser.id ? 'pointer' : 'default',
-                        }}
-                          onClick={() => u.id !== currentUser.id && setEditingUser(u.id)}
-                          title={u.id !== currentUser.id ? 'Click to change role' : ''}
-                        >
+                        <span onClick={() => u.id !== currentUser.id && setEditingUser(u.id)}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500, background: `${ROLE_COLORS[u.role]}18`, color: ROLE_COLORS[u.role], cursor: u.id !== currentUser.id ? 'pointer' : 'default' }}
+                          title={u.id !== currentUser.id ? 'Click to edit' : ''}>
                           {ROLE_LABELS[u.role] || u.role}
-                          {u.id !== currentUser.id && <span style={{ fontSize: 10 }}>✏️</span>}
+                          {u.id !== currentUser.id && <span style={{ fontSize: 9 }}>✏️</span>}
                         </span>
                       )}
                     </td>
-                    {/* Manager assignment */}
-                    <td style={{ padding: '14px 20px' }}>
+
+                    {/* Manager */}
+                    <td style={S.td}>
                       {editingManager === u.id ? (
-                        <select
-                          defaultValue={u.manager_id ?? ''}
-                          onChange={e => updateManager(u.id, e.target.value || null)}
-                          onBlur={() => setEditingManager(null)}
-                          autoFocus
-                          style={{ background: '#1e2130', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}
-                        >
+                        <select defaultValue={u.manager_id ?? ''} onChange={e => updateField(u.id, { manager_id: e.target.value || null })} onBlur={() => setEditingManager(null)} autoFocus
+                          style={{ background: '#0d0f1a', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}>
                           <option value="">— None —</option>
-                          {managers.filter(m => m.id !== u.id).map(m => (
-                            <option key={m.id} value={m.id}>{m.name || m.email}</option>
-                          ))}
+                          {managers.filter(m => m.id !== u.id).map(m => <option key={m.id} value={m.id}>{m.name || m.email}</option>)}
                         </select>
                       ) : (
-                        <span
-                          onClick={() => u.role === 'employee' && setEditingManager(u.id)}
+                        <span onClick={() => u.role === 'employee' && setEditingManager(u.id)}
                           style={{ fontSize: 12, color: u.manager_id ? '#9ca3af' : '#374151', cursor: u.role === 'employee' ? 'pointer' : 'default' }}
-                          title={u.role === 'employee' ? 'Click to assign manager' : ''}
-                        >
+                          title={u.role === 'employee' ? 'Click to assign manager' : ''}>
                           {u.manager_id ? (users.find(m => m.id === u.manager_id)?.name || users.find(m => m.id === u.manager_id)?.email || '—') : (u.role === 'employee' ? <span style={{ color: '#f59e0b', fontSize: 11 }}>Unassigned ✏️</span> : '—')}
                         </span>
                       )}
                     </td>
 
-                    {/* Self-review status */}
-                    <td style={{ padding: '14px 20px' }}>
-                      {u.role === 'employee' ? (
-                        srMap[u.id] ? (
-                          <span style={{
-                            padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                            background: srMap[u.id].status === 'submitted' ? '#0d2b1f' : '#1e1f3a',
-                            color: srMap[u.id].status === 'submitted' ? '#34d399' : '#818cf8',
-                          }}>
-                            {srMap[u.id].status === 'submitted' ? '✓ Submitted' : 'Draft'}
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: 11, color: '#374151' }}>Not started</span>
-                        )
-                      ) : <span style={{ color: '#2a2d3e', fontSize: 12 }}>—</span>}
+                    {/* Start Date */}
+                    <td style={S.td}>
+                      {editingStartDate === u.id ? (
+                        <input type="date" defaultValue={u.start_date ?? ''} onBlur={e => updateField(u.id, { start_date: e.target.value || null })} autoFocus
+                          style={{ background: '#0d0f1a', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 6, padding: '4px 8px', fontSize: 12 }} />
+                      ) : (
+                        <span onClick={() => setEditingStartDate(u.id)}
+                          style={{ fontSize: 12, cursor: 'pointer', color: u.start_date ? '#9ca3af' : '#374151' }}
+                          title="Click to set start date">
+                          {u.start_date ? new Date(u.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : <span style={{ color: '#f59e0b', fontSize: 11 }}>No date ✏️</span>}
+                        </span>
+                      )}
                     </td>
 
-                    <td style={{ padding: '14px 20px' }}>
-                      <span style={{
-                        padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-                        background: u.is_active ? '#0d2b1f' : '#1f1c0d',
-                        color: u.is_active ? '#34d399' : '#f59e0b',
-                      }}>
+                    {/* Self-Assessment */}
+                    <td style={S.td}>
+                      {u.role === 'employee' ? (
+                        saMap[u.id] ? (
+                          <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: saMap[u.id].status === 'submitted' ? '#0d2b1f' : '#1e1f3a', color: saMap[u.id].status === 'submitted' ? '#34d399' : '#818cf8' }}>
+                            {saMap[u.id].status === 'submitted' ? '✓ Submitted' : 'Draft'}
+                          </span>
+                        ) : <span style={{ fontSize: 11, color: '#374151' }}>Not started</span>
+                      ) : <span style={{ color: '#2a2d3e' }}>—</span>}
+                    </td>
+
+                    {/* Status */}
+                    <td style={S.td}>
+                      <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500, background: u.is_active ? '#0d2b1f' : '#1f1c0d', color: u.is_active ? '#34d399' : '#f59e0b' }}>
                         {u.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td style={{ padding: '14px 20px', fontSize: 13, color: '#6b7280' }}>
-                      {new Date(u.created_at).toLocaleDateString()}
-                    </td>
-                    <td style={{ padding: '14px 20px' }}>
+
+                    {/* Actions */}
+                    <td style={S.td}>
                       {u.id !== currentUser.id && (
-                        <button
-                          onClick={() => toggleActive(u.id, u.is_active)}
-                          style={{
-                            padding: '5px 12px', fontSize: 12,
-                            background: 'transparent',
-                            color: u.is_active ? '#f87171' : '#34d399',
-                            border: `1px solid ${u.is_active ? '#5c2020' : '#0d2b1f'}`,
-                            borderRadius: 6, cursor: 'pointer',
-                          }}
-                        >
+                        <button onClick={() => toggleActive(u.id, u.is_active)} style={{
+                          padding: '4px 10px', fontSize: 11, background: 'transparent',
+                          color: u.is_active ? '#f87171' : '#34d399',
+                          border: `1px solid ${u.is_active ? '#5c2020' : '#0d2b1f'}`,
+                          borderRadius: 6, cursor: 'pointer',
+                        }}>
                           {u.is_active ? 'Deactivate' : 'Reactivate'}
                         </button>
                       )}
@@ -358,45 +364,21 @@ export default function AdminDashboard({ currentUser, users, invites, selfReview
           </div>
         )}
 
-        {/* Pending invites table */}
+        {/* ── Pending Invites tab ── */}
         {activeTab === 'invites' && (
           <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflow: 'hidden' }}>
             {invites.length === 0 ? (
-              <div style={{ padding: '48px', textAlign: 'center', color: '#6b7280', fontSize: 14 }}>
-                No pending invites
-              </div>
+              <div style={{ padding: '48px', textAlign: 'center', color: '#6b7280', fontSize: 14 }}>No pending invites</div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #1e2130' }}>
-                    {['Email', 'Role', 'Invited', 'Expires'].map(h => (
-                      <th key={h} style={{
-                        padding: '12px 20px', textAlign: 'left',
-                        fontSize: 12, fontWeight: 600, color: '#6b7280',
-                        textTransform: 'uppercase', letterSpacing: '0.05em',
-                      }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
+                <thead><tr>{['Email', 'Role', 'Invited', 'Expires'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
                 <tbody>
-                  {invites.map((inv, i) => (
-                    <tr key={inv.id} style={{ borderBottom: i < invites.length - 1 ? '1px solid #1a1d2b' : 'none' }}>
-                      <td style={{ padding: '14px 20px', fontSize: 14, color: '#e5e7eb' }}>{inv.email}</td>
-                      <td style={{ padding: '14px 20px' }}>
-                        <span style={{
-                          padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-                          background: `${ROLE_COLORS[inv.role]}18`,
-                          color: ROLE_COLORS[inv.role] || '#6b7280',
-                        }}>
-                          {ROLE_LABELS[inv.role] || inv.role}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px 20px', fontSize: 13, color: '#6b7280' }}>
-                        {new Date(inv.created_at).toLocaleDateString()}
-                      </td>
-                      <td style={{ padding: '14px 20px', fontSize: 13, color: '#6b7280' }}>
-                        {new Date(inv.expires_at).toLocaleDateString()}
-                      </td>
+                  {invites.map(inv => (
+                    <tr key={inv.id}>
+                      <td style={{ ...S.td, color: '#e5e7eb' }}>{inv.email}</td>
+                      <td style={S.td}><span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500, background: `${ROLE_COLORS[inv.role]}18`, color: ROLE_COLORS[inv.role] }}>{ROLE_LABELS[inv.role]}</span></td>
+                      <td style={{ ...S.td, color: '#6b7280' }}>{new Date(inv.created_at).toLocaleDateString()}</td>
+                      <td style={{ ...S.td, color: '#6b7280' }}>{new Date(inv.expires_at).toLocaleDateString()}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -408,121 +390,42 @@ export default function AdminDashboard({ currentUser, users, invites, selfReview
 
       {/* Invite Modal */}
       {showInviteModal && (
-        <div style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,0.7)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 50,
-        }}
-          onClick={e => { if (e.target === e.currentTarget) setShowInviteModal(false) }}
-        >
-          <div style={{
-            background: '#13151f', border: '1px solid #1e2130',
-            borderRadius: 16, padding: '32px', width: 440,
-          }}>
-            <h2 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: '#f0f2fa' }}>
-              Invite User
-            </h2>
-            <p style={{ margin: '0 0 24px', fontSize: 14, color: '#6b7280' }}>
-              Send an invite link. They&apos;ll get their role automatically when they sign in with Google.
-            </p>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
+          onClick={e => { if (e.target === e.currentTarget) setShowInviteModal(false) }}>
+          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 16, padding: '32px', width: 420 }}>
+            <h2 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: '#f0f2fa' }}>Invite User</h2>
+            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>They&apos;ll receive their role automatically when they sign in with Google.</p>
 
             {inviteLink ? (
               <>
-                <div style={{
-                  background: '#0d1117', border: '1px solid #1e2130',
-                  borderRadius: 8, padding: '12px 16px', marginBottom: 20,
-                  fontSize: 12, color: '#6b7280', wordBreak: 'break-all', lineHeight: 1.6,
-                }}>
-                  <div style={{ color: '#34d399', marginBottom: 8, fontWeight: 600 }}>
-                    ✓ Invite created — share this link:
-                  </div>
+                <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 11, color: '#6b7280', wordBreak: 'break-all', lineHeight: 1.6 }}>
+                  <div style={{ color: '#34d399', marginBottom: 6, fontWeight: 600 }}>✓ Share this link:</div>
                   {inviteLink}
                 </div>
-                <button
-                  onClick={() => { navigator.clipboard.writeText(inviteLink) }}
-                  style={{
-                    width: '100%', padding: '10px',
-                    background: '#1e2130', color: '#f0f2fa',
-                    border: '1px solid #2a2d3e', borderRadius: 8,
-                    fontSize: 14, cursor: 'pointer', marginBottom: 10,
-                  }}
-                >
-                  Copy Link
-                </button>
-                <button
-                  onClick={() => { setShowInviteModal(false); setInviteEmail(''); setInviteLink('') }}
-                  style={{
-                    width: '100%', padding: '10px',
-                    background: 'transparent', color: '#6b7280',
-                    border: 'none', fontSize: 14, cursor: 'pointer',
-                  }}
-                >
-                  Close
-                </button>
+                <button onClick={() => navigator.clipboard.writeText(inviteLink)} style={{ width: '100%', padding: '10px', background: '#1e2130', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, cursor: 'pointer', marginBottom: 8 }}>Copy Link</button>
+                <button onClick={() => { setShowInviteModal(false); setInviteEmail(''); setInviteLink('') }} style={{ width: '100%', padding: '10px', background: 'transparent', color: '#6b7280', border: 'none', fontSize: 13, cursor: 'pointer' }}>Close</button>
               </>
             ) : (
               <>
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', fontSize: 13, color: '#9ca3af', marginBottom: 6 }}>
-                    Email address
-                  </label>
-                  <input
-                    type="email"
-                    value={inviteEmail}
-                    onChange={e => setInviteEmail(e.target.value)}
-                    placeholder="name@company.com"
-                    style={{
-                      width: '100%', padding: '10px 14px',
-                      background: '#0d1117', color: '#f0f2fa',
-                      border: '1px solid #2a2d3e', borderRadius: 8,
-                      fontSize: 14, boxSizing: 'border-box',
-                    }}
-                  />
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: 12, color: '#9ca3af', marginBottom: 6 }}>Email address</label>
+                  <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="name@company.com"
+                    style={{ width: '100%', padding: '10px 12px', background: '#0d1117', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }} />
                 </div>
                 <div style={{ marginBottom: 24 }}>
-                  <label style={{ display: 'block', fontSize: 13, color: '#9ca3af', marginBottom: 6 }}>
-                    Role
-                  </label>
-                  <select
-                    value={inviteRole}
-                    onChange={e => setInviteRole(e.target.value as 'manager' | 'employee')}
-                    style={{
-                      width: '100%', padding: '10px 14px',
-                      background: '#0d1117', color: '#f0f2fa',
-                      border: '1px solid #2a2d3e', borderRadius: 8,
-                      fontSize: 14,
-                    }}
-                  >
+                  <label style={{ display: 'block', fontSize: 12, color: '#9ca3af', marginBottom: 6 }}>Role</label>
+                  <select value={inviteRole} onChange={e => setInviteRole(e.target.value as 'manager' | 'employee')}
+                    style={{ width: '100%', padding: '10px 12px', background: '#0d1117', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13 }}>
                     <option value="employee">Employee</option>
                     <option value="manager">Manager</option>
                     <option value="admin">Admin</option>
                   </select>
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
-                  <button
-                    onClick={() => setShowInviteModal(false)}
-                    style={{
-                      flex: 1, padding: '10px',
-                      background: 'transparent', color: '#6b7280',
-                      border: '1px solid #2a2d3e', borderRadius: 8,
-                      fontSize: 14, cursor: 'pointer',
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={sendInvite}
-                    disabled={!inviteEmail || inviteLoading}
-                    style={{
-                      flex: 2, padding: '10px',
-                      background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                      color: '#fff', border: 'none', borderRadius: 8,
-                      fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                      opacity: !inviteEmail || inviteLoading ? 0.5 : 1,
-                    }}
-                  >
-                    {inviteLoading ? 'Creating...' : 'Create Invite Link'}
+                  <button onClick={() => setShowInviteModal(false)} style={{ flex: 1, padding: '10px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={sendInvite} disabled={!inviteEmail || inviteLoading}
+                    style={{ flex: 2, padding: '10px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: !inviteEmail || inviteLoading ? 0.5 : 1 }}>
+                    {inviteLoading ? 'Creating…' : 'Create Invite Link'}
                   </button>
                 </div>
               </>

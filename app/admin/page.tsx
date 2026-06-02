@@ -19,7 +19,7 @@ export default async function AdminPage() {
 
   const { data: users } = await serviceClient
     .from('profiles')
-    .select('id, name, email, role, is_active, manager_id, created_at')
+    .select('id, name, email, role, is_active, manager_id, start_date, created_at')
     .order('created_at', { ascending: false })
 
   const { data: invites } = await serviceClient
@@ -29,17 +29,19 @@ export default async function AdminPage() {
     .gt('expires_at', new Date().toISOString())
     .order('created_at', { ascending: false })
 
-  // Fetch self-review statuses for all employees
-  const { data: selfReviews } = await serviceClient
+  const { data: selfAssessments } = await serviceClient
     .from('self_reviews')
     .select('employee_id, status, submitted_at')
 
   return (
     <AdminDashboard
       currentUser={{ id: user.id, email: user.email!, role: 'admin' }}
-      users={users ?? []}
+      users={(users ?? []) as {
+        id: string; name: string | null; email: string; role: string;
+        is_active: boolean; manager_id: string | null; start_date: string | null; created_at: string
+      }[]}
       invites={invites ?? []}
-      selfReviews={(selfReviews ?? []) as { employee_id: string; status: string; submitted_at: string | null }[]}
+      selfAssessments={(selfAssessments ?? []) as { employee_id: string; status: string; submitted_at: string | null }[]}
     />
   )
 }
