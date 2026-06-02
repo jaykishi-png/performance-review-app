@@ -1,19 +1,29 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { getRoleHomeRoute } from '@/lib/permissions'
 
 export default async function Home() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // If Supabase isn't configured yet, fall back to the original app
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    redirect('/performance-review')
+  }
 
-  if (!user) redirect('/login')
+  const { createClient } = await import('@/lib/supabase/server')
+  const { getRoleHomeRoute } = await import('@/lib/permissions')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
-  const role = profile?.role ?? 'pending'
-  redirect(getRoleHomeRoute(role))
+    if (!user) redirect('/login')
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    const role = profile?.role ?? 'pending'
+    redirect(getRoleHomeRoute(role))
+  } catch {
+    redirect('/performance-review')
+  }
 }
