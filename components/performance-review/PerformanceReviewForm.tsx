@@ -187,6 +187,8 @@ interface SavedReview {
   maxStep: number   // furthest step ever reached (shown in history)
   savedAt: string   // ISO timestamp
   form: FormData
+  driveUrl?: string  // Google Doc link once generated
+  driveDocId?: string
 }
 
 /** Returns true if a step's required fields are filled — independent of current position. */
@@ -1710,10 +1712,37 @@ Employee Signature`
   ].join('\n')
 }
 
-function StepOutput({ form, driveFolderId }: { form: FormData; driveFolderId?: string }) {
-  const [driveStatus, setDriveStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle')
-  const [driveUrl, setDriveUrl]       = useState('')
-  const [driveError, setDriveError]   = useState('')
+function StepOutput({
+  form, driveFolderId, savedDriveUrl, savedDriveDocId, onDriveSaved,
+}: {
+  form: FormData
+  driveFolderId?: string
+  savedDriveUrl?: string
+  savedDriveDocId?: string
+  onDriveSaved?: (url: string, docId: string) => void
+}) {
+  const [driveStatus, setDriveStatus] = useState<'idle' | 'checking' | 'sending' | 'done' | 'error'>(
+    savedDriveUrl ? 'checking' : 'idle'
+  )
+  const [driveUrl, setDriveUrl] = useState(savedDriveUrl ?? '')
+  const [driveError, setDriveError] = useState('')
+
+  // Validate saved Drive link on mount — reset to idle if doc was deleted
+  useEffect(() => {
+    if (!savedDriveDocId) return
+    fetch(`/api/performance-review/check-doc?id=${savedDriveDocId}`)
+      .then(r => r.json())
+      .then((data: { ok: boolean }) => {
+        if (data.ok) {
+          setDriveStatus('done')
+        } else {
+          setDriveStatus('idle')
+          setDriveUrl('')
+          onDriveSaved?.('', '') // clear the stale link in parent
+        }
+      })
+      .catch(() => setDriveStatus('done')) // network error → assume doc still exists
+  }, [savedDriveDocId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Comparison state ──────────────────────────────────────────────────────
   const [compareInputMode, setCompareInputMode] = useState<'url' | 'text'>('url')
@@ -1749,6 +1778,7 @@ function StepOutput({ form, driveFolderId }: { form: FormData; driveFolderId?: s
       if (!res.ok || data.error) throw new Error(data.error ?? 'Unknown error')
       setDriveUrl(data.docUrl)
       setDriveStatus('done')
+      onDriveSaved?.(data.docUrl, data.docId)
     } catch (err) {
       setDriveError(String(err))
       setDriveStatus('error')
@@ -2020,7 +2050,12 @@ function StepOutput({ form, driveFolderId }: { form: FormData; driveFolderId?: s
             </p>
           </div>
 
-          {driveStatus === 'idle' || driveStatus === 'error' ? (
+          {driveStatus === 'checking' ? (
+            <button disabled className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0d0f1a] border border-[#1e2030] text-gray-600 text-[13px] font-semibold shrink-0 cursor-not-allowed">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Checking link…
+            </button>
+          ) : driveStatus === 'idle' || driveStatus === 'error' ? (
             <button
               onClick={handleSendToDrive}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] font-semibold transition-colors shrink-0"
@@ -2311,6 +2346,17 @@ export function PerformanceReviewForm() {
     setSettings(s)
   }
 
+  function handleDriveSaved(url: string, docId: string) {
+    const existing = getSaves()
+    const idx = existing.findIndex(s => s.id === reviewIdRef.current)
+    if (idx >= 0) {
+      existing[idx].driveUrl   = url || undefined
+      existing[idx].driveDocId = docId || undefined
+      localStorage.setItem(SAVES_KEY, JSON.stringify(existing))
+      setSaves(getSaves())
+    }
+  }
+
   function handleSaveReport(r: DirectReport) {
     const updated = directReports.some(d => d.id === r.id)
       ? directReports.map(d => d.id === r.id ? r : d)
@@ -2532,7 +2578,15 @@ export function PerformanceReviewForm() {
           {step === 5 && <StepCompetency form={form} update={update} index={5} type="either" canToggleType />}
           {step === 6 && <StepGoals form={form} update={update} saves={saves} currentReviewId={reviewIdRef.current} />}
           {step === 7 && <StepNextGoals form={form} update={update} />}
-          {step === 8 && <StepOutput form={form} driveFolderId={parseFolderId(settings.driveFolderUrl)} />}
+          {step === 8 && (
+            <StepOutput
+              form={form}
+              driveFolderId={parseFolderId(settings.driveFolderUrl)}
+              savedDriveUrl={saves.find(s => s.id === reviewIdRef.current)?.driveUrl}
+              savedDriveDocId={saves.find(s => s.id === reviewIdRef.current)?.driveDocId}
+              onDriveSaved={handleDriveSaved}
+            />
+          )}
         </div>
 
         {/* Navigation */}
