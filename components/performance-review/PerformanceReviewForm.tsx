@@ -2687,6 +2687,8 @@ export function PerformanceReviewForm() {
   if (view === 'dashboard') {
     return (
       <div className="min-h-screen bg-[#0b0d14] text-white" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+        {showSettings && <SettingsPanel settings={settings} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} />}
+        {showDirectReports && <DirectReportsPanel reports={directReports} onSave={handleSaveReport} onDelete={handleDeleteReport} onClose={() => setShowDirectReports(false)} />}
         {/* Profile panel */}
         {showProfile && (
           <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={e => { if (e.target === e.currentTarget) setShowProfile(false) }}>
@@ -2746,6 +2748,21 @@ export function PerformanceReviewForm() {
             <span className="font-bold text-base text-gray-100">Performance Review</span>
           </div>
           <div className="flex items-center gap-2">
+            <button onClick={() => setShowSettings(true)}
+              className={`relative flex items-center justify-center w-8 h-8 rounded-lg border text-[11px] transition-all ${settings.driveFolderUrl ? 'border-purple-700/50 bg-purple-900/20 text-purple-400 hover:text-purple-200' : 'border-[#1e2030] bg-[#0d0f1a] text-gray-500 hover:text-gray-200 hover:border-[#2a2d3e]'}`}
+              title="Settings">
+              <Settings size={13} />
+            </button>
+            <button onClick={() => setShowDirectReports(true)}
+              className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e2030] bg-[#0d0f1a] text-[11px] text-gray-500 hover:text-gray-200 hover:border-[#2a2d3e] transition-all">
+              <Users size={12} />
+              My Team
+              {directReports.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-purple-700 text-[9px] font-bold text-white flex items-center justify-center">
+                  {directReports.length > 9 ? '9+' : directReports.length}
+                </span>
+              )}
+            </button>
             <button onClick={() => setShowProfile(true)}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#1e2130] bg-[#0d0f1a] text-[11px] text-gray-400 hover:text-gray-100 hover:border-[#2a2d3e] transition-all">
               <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-[10px] font-bold text-white">
