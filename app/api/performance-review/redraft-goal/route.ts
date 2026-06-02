@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   try {
     const {
       goalIndex, existingGoals, userGuidance,
-      employeeName, role, appraisalPeriod, nextAppraisalPeriod,
+      employeeName, role, pronouns, appraisalPeriod, nextAppraisalPeriod,
       competencies, goals, overallScore, overallSummary,
     } = await req.json() as {
       goalIndex: number
@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
       userGuidance?: string
       employeeName: string
       role: string
+      pronouns?: string
       appraisalPeriod: string
       nextAppraisalPeriod: string
       competencies: Array<{ competency: string; type: string; examples: string[] }>
@@ -46,11 +47,21 @@ export async function POST(req: NextRequest) {
 
     const slotLabel = goalIndex === 0 ? 'primary' : goalIndex === 1 ? 'secondary' : 'third'
 
-    const systemPrompt = `You are an expert HR performance coach. You generate a single specific, measurable SMART goal for an employee's next annual review period. Goals must be rooted in the constructive competency feedback — that is the primary source. Return only valid JSON — no markdown, no explanation.`
+    const p2 = pronouns?.trim().toLowerCase() ?? ''
+    const pg2 = p2.startsWith('he') ? { subject: 'he', object: 'him', possessive: 'his' }
+      : p2.startsWith('she') ? { subject: 'she', object: 'her', possessive: 'her' }
+      : p2.startsWith('they') ? { subject: 'they', object: 'them', possessive: 'their' }
+      : p2 ? { subject: p2, object: p2, possessive: p2 } : null
+
+    const pronounRule2 = pg2
+      ? ` PRONOUN RULE: This employee uses ${pronouns!.trim()} pronouns — always use "${pg2.subject}/${pg2.possessive}/${pg2.object}". Never use other pronouns.`
+      : ''
+
+    const systemPrompt = `You are an expert HR performance coach. You generate a single specific, measurable SMART goal for an employee's next annual review period. Goals must be rooted in the constructive competency feedback — that is the primary source. Return only valid JSON — no markdown, no explanation.${pronounRule2}`
 
     const userPrompt = `Generate ONE alternative SMART goal for goal slot ${goalIndex + 1} (the ${slotLabel} goal).
 
-EMPLOYEE: ${employeeName || 'the employee'} — ${role || 'their role'}
+EMPLOYEE: ${employeeName || 'the employee'} — ${role || 'their role'}${pg2 ? `\nPRONOUNS: ${pronouns!.trim()} — use "${pg2.subject}" / "${pg2.possessive}" / "${pg2.object}" only` : ''}
 REVIEW PERIOD: ${appraisalPeriod || 'not specified'}
 TARGET DATE: ${targetDate}
 

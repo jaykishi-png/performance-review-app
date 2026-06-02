@@ -12,28 +12,40 @@ const DIRECTION: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { goalText, status, employeeName, role } = await req.json() as {
+    const { goalText, status, employeeName, role, pronouns } = await req.json() as {
       goalText: string
       status: 'successful' | 'unsuccessful' | 'ongoing'
       employeeName?: string
       role?: string
+      pronouns?: string
     }
 
     if (!goalText?.trim() || !status) {
       return NextResponse.json({ error: 'goalText and status required' }, { status: 400 })
     }
 
-    const systemPrompt = `You are an expert HR performance review writer. You write clear, professional, and specific explanations for goal outcomes in annual performance reviews. Your explanations are grounded in the goal's content and the stated outcome — not generic filler.`
+    const p = pronouns?.trim().toLowerCase() ?? ''
+    const pg = p.startsWith('he') ? { subject: 'he', object: 'him', possessive: 'his' }
+      : p.startsWith('she') ? { subject: 'she', object: 'her', possessive: 'her' }
+      : p.startsWith('they') ? { subject: 'they', object: 'them', possessive: 'their' }
+      : p ? { subject: p, object: p, possessive: p } : null
 
+    const pronounRule = pg
+      ? ` PRONOUN RULE: This employee uses ${pronouns!.trim()} pronouns — always use "${pg.subject}/${pg.possessive}/${pg.object}". Never use other pronouns.`
+      : ''
+
+    const systemPrompt = `You are an expert HR performance review writer. You write clear, professional, and specific explanations for goal outcomes in annual performance reviews. Your explanations are grounded in the goal's content and the stated outcome — not generic filler.${pronounRule}`
+
+    const name = employeeName?.trim() || 'the employee'
     const userPrompt = `Write a 2–3 sentence explanation for the following performance review goal outcome.
 
-Employee: ${employeeName?.trim() || 'the employee'} (${role?.trim() || 'their role'})
+Employee: ${name} (${role?.trim() || 'their role'})${pg ? `\nPronouns: ${pronouns!.trim()} — use "${pg.subject}" / "${pg.possessive}" / "${pg.object}" only` : ''}
 Goal / Objective: ${goalText.trim()}
 Outcome: ${status.toUpperCase()}
 
 ${DIRECTION[status] ?? ''}
 
-Use professional HR language. Be specific to the goal content. Do not start with "The employee". No bullets, numbers, quotes, or preamble. Return the explanation text only.`
+Use professional HR language. Be specific to the goal content. Use ${name}'s name naturally${pg ? ` and always use the specified pronouns above` : ''}. Do not start with "The employee". No bullets, numbers, quotes, or preamble. Return the explanation text only.`
 
     const messages = [
       { role: 'system' as const, content: systemPrompt },

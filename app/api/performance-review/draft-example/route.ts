@@ -20,20 +20,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'competency and context required' }, { status: 400 })
     }
 
-    // Build pronoun instruction for the AI
-    const pronounInstruction = pronouns?.trim()
-      ? `\nPRONOUNS: Use ${pronouns.trim()} pronouns when referring to this employee throughout the example.`
+    // Derive the explicit pronoun set from shorthand (e.g. "he/him" → he/his/him)
+    const p = pronouns?.trim().toLowerCase() ?? ''
+    const pronounGrammar = p.startsWith('he')
+      ? { subject: 'he', object: 'him', possessive: 'his' }
+      : p.startsWith('she')
+      ? { subject: 'she', object: 'her', possessive: 'her' }
+      : p.startsWith('they')
+      ? { subject: 'they', object: 'them', possessive: 'their' }
+      : p
+      ? { subject: p, object: p, possessive: p }   // custom — use as-is
+      : null
+
+    // Pronoun rule injected into BOTH system and user prompts for maximum compliance
+    const pronounRule = pronounGrammar
+      ? `\n\nPRONOUN RULE — NON-NEGOTIABLE: This employee uses ${pronouns!.trim()} pronouns. You MUST use "${pronounGrammar.subject}/${pronounGrammar.possessive}/${pronounGrammar.object}" exclusively when referring to this person. Do NOT use any other pronouns regardless of the employee's name.`
       : ''
 
-    const systemPrompt = `You are an expert HR performance review writer. Your job is to take a manager's raw notes and expand them into a polished, professional behavioral example for an annual performance review. Use the manager's notes as the foundation and anchor — then flesh out the detail with natural, professional HR language that makes the behavior vivid and credible. You may add reasonable, realistic context that is consistent with what the manager described, as long as it stays true to the spirit of their notes.`
+    const systemPrompt = `You are an expert HR performance review writer. Your job is to take a manager's raw notes and expand them into a polished, professional behavioral example for an annual performance review. Use the manager's notes as the foundation and anchor — then flesh out the detail with natural, professional HR language that makes the behavior vivid and credible. You may add reasonable, realistic context that is consistent with what the manager described, as long as it stays true to the spirit of their notes.${pronounRule}`
 
     const distinctNote = exampleIndex > 0
       ? `\n\nNOTE: This is example ${exampleIndex + 1} of 3. Highlight a different angle or aspect of the manager's notes than you would for example 1 — vary the situation or framing while staying true to the same core feedback.`
       : ''
 
+    const name = employeeName?.trim() || 'the employee'
     const userPrompt = `COMPETENCY: ${competency}
 DIRECTION: ${type === 'positive' ? 'POSITIVE STRENGTH — what they do well' : 'CONSTRUCTIVE AREA — where improvement is needed'}
-EMPLOYEE: ${employeeName?.trim() || 'the employee'} (${role?.trim() || 'their role'})${pronounInstruction}
+EMPLOYEE: ${name} (${role?.trim() || 'their role'})${pronounGrammar ? `\nPRONOUNS: ${pronouns!.trim()} — use "${pronounGrammar.subject}" / "${pronounGrammar.possessive}" / "${pronounGrammar.object}" only` : ''}
 
 MANAGER'S NOTES:
 """
@@ -45,7 +58,7 @@ Write ONE polished behavioral example for the "${competency}" section of a perfo
 Output rules:
 - 2–3 sentences
 - Grounded in the manager's notes, expanded with professional detail
-- Use the employee's name and correct pronouns naturally throughout
+- Use ${name}'s name naturally; use ONLY the specified pronouns above${pronounGrammar ? '' : ' — default to using their name to avoid gendering'}
 - Do NOT start with "The employee"
 - No bullets, numbers, quotes, or preamble
 - Return the example text only`

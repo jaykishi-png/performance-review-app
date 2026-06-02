@@ -1125,11 +1125,13 @@ function GoalExplanationDraft({
   goal,
   employeeName,
   role,
+  pronouns,
   onDraft,
 }: {
   goal: GoalEntry
   employeeName: string
   role: string
+  pronouns?: string
   onDraft: (explanation: string) => void
 }) {
   const [loading, setLoading] = useState(false)
@@ -1143,7 +1145,7 @@ function GoalExplanationDraft({
       const res = await fetch('/api/performance-review/draft-explanation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ goalText: goal.text, status: goal.status, employeeName, role }),
+        body: JSON.stringify({ goalText: goal.text, status: goal.status, employeeName, role, pronouns }),
       })
       const data = await res.json() as { explanation?: string; error?: string }
       if (data.error) { setError(data.error); return }
@@ -1333,6 +1335,7 @@ function StepGoals({
                 goal={goal}
                 employeeName={form.employeeName}
                 role={form.employeePosition}
+                pronouns={form.employeePronouns}
                 onDraft={explanation => updateGoal(i, { explanation })}
               />
             </div>
@@ -1467,6 +1470,7 @@ function StepNextGoals({ form, update }: { form: FormData; update: (p: Partial<F
           existingGoals: form.nextGoals.map(g => ({ text: g.text, targetDate: g.targetDate })),
           employeeName: form.employeeName,
           role: form.employeePosition,
+          pronouns: form.employeePronouns,
           appraisalPeriod: form.appraisalPeriod,
           nextAppraisalPeriod,
           competencies: [

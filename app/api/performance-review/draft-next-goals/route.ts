@@ -48,8 +48,17 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = `You are an expert HR performance coach. You turn an employee's constructive competency feedback directly into specific, actionable SMART goals for their next review period. The constructive areas are your PRIMARY source — each goal should directly address a gap or improvement area identified there. Return only valid JSON — no markdown, no code fences, no explanation.`
 
-    const pronounInstruction = pronouns?.trim()
-      ? `\nPRONOUNS: Use ${pronouns.trim()} pronouns when referring to this employee.`
+    const p = pronouns?.trim().toLowerCase() ?? ''
+    const pg = p.startsWith('he')
+      ? { subject: 'he', object: 'him', possessive: 'his' }
+      : p.startsWith('she')
+      ? { subject: 'she', object: 'her', possessive: 'her' }
+      : p.startsWith('they')
+      ? { subject: 'they', object: 'them', possessive: 'their' }
+      : p ? { subject: p, object: p, possessive: p } : null
+
+    const pronounInstruction = pg
+      ? `\nPRONOUNS — REQUIRED: Use "${pg.subject}/${pg.possessive}/${pg.object}" exclusively when referring to this employee. Do not use any other pronouns.`
       : ''
 
     const userPrompt = `Generate 2–3 SMART goals for the next review period based on this annual performance review.
