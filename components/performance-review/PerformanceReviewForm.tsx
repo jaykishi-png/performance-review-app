@@ -2444,6 +2444,7 @@ export function PerformanceReviewForm() {
   const [settings, setSettings] = useState<AppSettings>({ driveFolderUrl: '' })
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const reviewIdRef = useRef('')
+  const [currentReviewId, setCurrentReviewId] = useState('')
 
   // Init: auto-resume the most recent save, or start fresh if nothing saved yet
   useEffect(() => {
@@ -2452,12 +2453,15 @@ export function PerformanceReviewForm() {
       // Saves are stored newest-first — pick the most recently modified
       const latest = existing[0]
       reviewIdRef.current = latest.id
+      setCurrentReviewId(latest.id)
       setForm(latest.form)
       setStep(latest.step)
       setMaxStep(latest.maxStep ?? latest.step)
       setSaveStatus('saved')
     } else {
-      reviewIdRef.current = crypto.randomUUID()
+      const newId = crypto.randomUUID()
+      reviewIdRef.current = newId
+      setCurrentReviewId(newId)
     }
     setSaves(existing)
     setDirectReports(getReports())
@@ -2491,6 +2495,7 @@ export function PerformanceReviewForm() {
 
   function handleLoad(save: SavedReview) {
     reviewIdRef.current = save.id
+    setCurrentReviewId(save.id)
     setForm(save.form)
     setStep(save.step)
     setMaxStep(save.maxStep ?? save.step)
@@ -2504,7 +2509,9 @@ export function PerformanceReviewForm() {
   }
 
   function handleNewReview() {
-    reviewIdRef.current = crypto.randomUUID()
+    const newId = crypto.randomUUID()
+    reviewIdRef.current = newId
+    setCurrentReviewId(newId)
     setForm(defaultForm())
     setStep(0)
     setMaxStep(0)
@@ -2760,12 +2767,13 @@ export function PerformanceReviewForm() {
           {step === 7 && <StepNextGoals form={form} update={update} />}
           {step === 8 && (
             <StepOutput
+              key={currentReviewId}
               form={form}
               driveFolderId={parseFolderId(settings.driveFolderUrl)}
-              savedDriveUrl={saves.find(s => s.id === reviewIdRef.current)?.driveUrl}
-              savedDriveDocId={saves.find(s => s.id === reviewIdRef.current)?.driveDocId}
+              savedDriveUrl={saves.find(s => s.id === currentReviewId)?.driveUrl}
+              savedDriveDocId={saves.find(s => s.id === currentReviewId)?.driveDocId}
               onDriveSaved={handleDriveSaved}
-              savedComparisonReport={saves.find(s => s.id === reviewIdRef.current)?.comparisonReport}
+              savedComparisonReport={saves.find(s => s.id === currentReviewId)?.comparisonReport}
               onReportSaved={handleReportSaved}
             />
           )}
