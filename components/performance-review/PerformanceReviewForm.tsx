@@ -220,7 +220,7 @@ function getSaves(): SavedReview[] {
 function upsertSave(review: SavedReview): void {
   const saves = getSaves()
   const idx = saves.findIndex(s => s.id === review.id)
-  if (idx >= 0) saves[idx] = review
+  if (idx >= 0) saves[idx] = { ...saves[idx], ...review } // merge to preserve driveUrl, comparisonReport etc.
   else saves.unshift(review)
   localStorage.setItem(SAVES_KEY, JSON.stringify(saves.slice(0, 20)))
 }
