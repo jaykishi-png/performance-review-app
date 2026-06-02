@@ -37,7 +37,9 @@ export async function POST(req: NextRequest) {
       ? `\n\nPRONOUN RULE — NON-NEGOTIABLE: This employee uses ${pronouns!.trim()} pronouns. You MUST use "${pronounGrammar.subject}/${pronounGrammar.possessive}/${pronounGrammar.object}" exclusively when referring to this person. Do NOT use any other pronouns regardless of the employee's name.`
       : ''
 
-    const systemPrompt = `You are an expert HR performance review writer. Your job is to take a manager's raw notes and expand them into a polished, professional behavioral example for an annual performance review. Use the manager's notes as the foundation and anchor — then flesh out the detail with natural, professional HR language that makes the behavior vivid and credible. You may add reasonable, realistic context that is consistent with what the manager described, as long as it stays true to the spirit of their notes.${pronounRule}`
+    const systemPrompt = type === 'positive'
+      ? `You are an expert HR performance review writer specializing in positive strength examples. Your job is to take a manager's raw notes and expand them into a polished, affirming behavioral example that celebrates what the employee does exceptionally well. Highlight the impact of their strength, the consistency of the behavior, and what it contributes to the team or organization. Use confident, recognition-oriented language — this should read like genuine praise backed by specific evidence, not faint praise. You may add reasonable, realistic context that is consistent with what the manager described.${pronounRule}`
+      : `You are an expert HR performance review writer specializing in constructive development feedback. Your job is to take a manager's raw notes and expand them into a professional, growth-oriented example that identifies a specific area where the employee can develop. Frame the feedback as a coaching opportunity — describe the observed gap or behavior, the impact it has, and implicitly point toward what improvement would look like. Use respectful, forward-looking language: this should feel like honest, helpful guidance from a supportive manager, not criticism. Avoid softening so much that the message is lost — be clear about what needs to change while remaining professional and constructive.${pronounRule}`
 
     const distinctNote = exampleIndex > 0
       ? `\n\nNOTE: This is example ${exampleIndex + 1} of 3. Highlight a different angle or aspect of the manager's notes than you would for example 1 — vary the situation or framing while staying true to the same core feedback.`
@@ -45,7 +47,10 @@ export async function POST(req: NextRequest) {
 
     const name = employeeName?.trim() || 'the employee'
     const userPrompt = `COMPETENCY: ${competency}
-DIRECTION: ${type === 'positive' ? 'POSITIVE STRENGTH — what they do well' : 'CONSTRUCTIVE AREA — where improvement is needed'}
+DIRECTION: ${type === 'positive'
+      ? 'POSITIVE STRENGTH — celebrate what this employee does exceptionally well. Be specific about the behavior, its consistency, and its impact on the team or organization. Language should be affirmative and recognition-oriented.'
+      : 'CONSTRUCTIVE AREA FOR GROWTH — identify a specific behavior or gap that needs development. Describe what was observed and its impact, then frame it as a coaching opportunity. Be honest and clear about what needs to change, but keep the tone respectful and forward-looking. Do NOT write this as a positive strength.'
+    }
 EMPLOYEE: ${name} (${role?.trim() || 'their role'})${pronounGrammar ? `\nPRONOUNS: ${pronouns!.trim()} — use "${pronounGrammar.subject}" / "${pronounGrammar.possessive}" / "${pronounGrammar.object}" only` : ''}
 
 MANAGER'S NOTES:
@@ -53,7 +58,7 @@ MANAGER'S NOTES:
 ${context.trim()}
 """${distinctNote}
 
-Write ONE polished behavioral example for the "${competency}" section of a performance review. Expand on the manager's notes with professional language — make the behavior specific, vivid, and credible. Do not just restate the notes verbatim; flesh them out into a complete, natural-sounding review sentence.
+Write ONE polished behavioral example for the "${competency}" section of a performance review. Expand on the manager's notes with professional language — make the behavior specific, vivid, and credible. Do not just restate the notes verbatim; flesh them out into a complete, natural-sounding review sentence. Tone must match the DIRECTION above: ${type === 'positive' ? 'affirmative and celebratory of a strength' : 'honest and coaching-oriented about a growth area'}.
 
 Output rules:
 - 2–3 sentences
