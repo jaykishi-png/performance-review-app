@@ -190,8 +190,9 @@ interface SavedReview {
   maxStep: number   // furthest step ever reached (shown in history)
   savedAt: string   // ISO timestamp
   form: FormData
-  driveUrl?: string  // Google Doc link once generated
+  driveUrl?: string        // Google Doc link once generated
   driveDocId?: string
+  comparisonReport?: string // saved AI comparison report
 }
 
 /** Returns true if a step's required fields are filled — independent of current position. */
@@ -1782,12 +1783,15 @@ Employee Signature`
 
 function StepOutput({
   form, driveFolderId, savedDriveUrl, savedDriveDocId, onDriveSaved,
+  savedComparisonReport, onReportSaved,
 }: {
   form: FormData
   driveFolderId?: string
   savedDriveUrl?: string
   savedDriveDocId?: string
   onDriveSaved?: (url: string, docId: string) => void
+  savedComparisonReport?: string
+  onReportSaved?: (report: string) => void
 }) {
   const [driveStatus, setDriveStatus] = useState<'idle' | 'checking' | 'sending' | 'done' | 'error'>(
     savedDriveUrl ? 'checking' : 'idle'
@@ -1816,10 +1820,13 @@ function StepOutput({
   const [compareInputMode, setCompareInputMode] = useState<'url' | 'text'>('url')
   const [compareUrl, setCompareUrl]             = useState('')
   const [compareText, setCompareText]           = useState('')
-  const [compareStatus, setCompareStatus]       = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
-  const [compareReport, setCompareReport]       = useState('')
+  const [compareStatus, setCompareStatus]       = useState<'idle' | 'loading' | 'done' | 'error'>(
+    savedComparisonReport ? 'done' : 'idle'
+  )
+  const [compareReport, setCompareReport]       = useState(savedComparisonReport ?? '')
   const [compareError, setCompareError]         = useState('')
   const [reportCopied, setReportCopied]         = useState(false)
+  const [reportEditMode, setReportEditMode]     = useState(false)
 
   const scoreInfo = form.overallScore > 0 ? SCORE_LABELS[form.overallScore] : null
 
@@ -1869,19 +1876,36 @@ function StepOutput({
       })
       const data = await res.json() as { report?: string; error?: string }
       if (!res.ok || data.error) throw new Error(data.error ?? 'Analysis failed')
-      setCompareReport(data.report ?? '')
+      const report = data.report ?? ''
+      setCompareReport(report)
       setCompareStatus('done')
+      setReportEditMode(false)
+      onReportSaved?.(report)
     } catch (err) {
       setCompareError(String(err))
       setCompareStatus('error')
     }
   }
 
+  // Strip markdown for clean plain-text copy
+  function stripMarkdown(text: string): string {
+    return text
+      .replace(/^##\s+/gm, '')                     // remove ## headers
+      .replace(/\*\*([^*]+)\*\*/g, '$1')            // remove **bold**
+      .replace(/^[-*]\s+/gm, '• ')                  // - bullets → •
+      .trim()
+  }
+
   function copyReport() {
-    navigator.clipboard.writeText(compareReport).then(() => {
+    navigator.clipboard.writeText(stripMarkdown(compareReport)).then(() => {
       setReportCopied(true)
       setTimeout(() => setReportCopied(false), 2000)
     })
+  }
+
+  function handleReportEdit(val: string) {
+    setCompareReport(val)
+    onReportSaved?.(val)
   }
 
   // Per-competency copy text matching template format
@@ -2232,8 +2256,8 @@ function StepOutput({
           />
         )}
 
-        {/* Analyze button */}
-        <div className="flex items-center gap-3">
+        {/* Analyze / Regenerate button row */}
+        <div className="flex items-center gap-3 flex-wrap">
           <button
             type="button"
             onClick={handleCompare}
@@ -2242,13 +2266,15 @@ function StepOutput({
           >
             {compareStatus === 'loading' ? (
               <><Loader2 size={13} className="animate-spin" /> Analyzing…</>
+            ) : compareStatus === 'done' ? (
+              <><RefreshCw size={13} /> Regenerate Report</>
             ) : (
               <><Sparkles size={13} /> Generate Comparison Report</>
             )}
           </button>
           {compareStatus === 'done' && (
             <span className="text-[11px] text-emerald-400 flex items-center gap-1">
-              <CheckCircle2 size={11} /> Report ready
+              <CheckCircle2 size={11} /> Saved to this review
             </span>
           )}
         </div>
@@ -2262,42 +2288,116 @@ function StepOutput({
         {/* Report output */}
         {compareStatus === 'done' && compareReport && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            {/* Toolbar */}
+            <div className="flex items-center justify-between gap-2">
               <p className="text-[11px] font-semibold text-purple-300 uppercase tracking-wider">Comparison Report</p>
-              <button
-                onClick={copyReport}
-                className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg border border-[#2a2d3a] bg-[#0d0f1a] text-gray-400 hover:text-white hover:border-purple-700/60 transition-all"
-              >
-                {reportCopied ? <CheckCircle2 size={11} className="text-emerald-400" /> : <Copy size={11} />}
-                {reportCopied ? 'Copied!' : 'Copy Report'}
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setReportEditMode(m => !m)}
+                  title={reportEditMode ? 'Back to preview' : 'Edit report'}
+                  className={`flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg border transition-all ${
+                    reportEditMode
+                      ? 'border-purple-600 bg-purple-900/30 text-purple-300'
+                      : 'border-[#2a2d3a] bg-[#0d0f1a] text-gray-400 hover:text-white hover:border-[#3a3d4a]'
+                  }`}
+                >
+                  <Pencil size={11} />
+                  {reportEditMode ? 'Preview' : 'Edit'}
+                </button>
+                <button
+                  onClick={copyReport}
+                  className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg border border-[#2a2d3a] bg-[#0d0f1a] text-gray-400 hover:text-white hover:border-purple-700/60 transition-all"
+                >
+                  {reportCopied ? <CheckCircle2 size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                  {reportCopied ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
             </div>
 
-            {/* Render the report sections */}
-            <div className="bg-[#0b0d14] border border-[#1e2030] rounded-xl p-5 space-y-5 text-[12px] text-gray-300 leading-relaxed
-              [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-thumb]:bg-[#2a2d3a]">
-              {compareReport.split(/\n(?=## )/).map((section, idx) => {
-                const lines = section.trim().split('\n')
-                const heading = lines[0].replace(/^##\s*/, '')
-                const body = lines.slice(1).join('\n').trim()
-                const headingColor =
-                  heading.includes('AGREE') || heading.includes('ALIGN') ? 'text-emerald-400' :
-                  heading.includes('DIFFER') ? 'text-amber-400' :
-                  heading.includes('TALKING') ? 'text-blue-400' :
-                  heading.includes('ACTION') || heading.includes('PLAN') ? 'text-purple-400' :
-                  'text-gray-200'
-                return (
-                  <div key={idx} className="space-y-2">
-                    {heading && (
-                      <p className={`text-[11px] font-bold uppercase tracking-wider ${headingColor}`}>
-                        {heading}
+            {/* Edit mode — raw textarea */}
+            {reportEditMode ? (
+              <textarea
+                value={compareReport}
+                onChange={e => handleReportEdit(e.target.value)}
+                rows={24}
+                className="w-full bg-[#0b0d14] border border-purple-800/40 rounded-xl px-5 py-4 text-[12px] text-gray-300 leading-relaxed font-mono focus:outline-none focus:border-purple-600 transition-colors resize-y
+                  [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-thumb]:bg-[#2a2d3a]"
+              />
+            ) : (
+              /* Preview mode — rendered markdown */
+              <div className="bg-[#0b0d14] border border-[#1e2030] rounded-xl p-5 space-y-5
+                [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-thumb]:bg-[#2a2d3a]">
+                {compareReport.split(/\n(?=## )/).map((section, idx) => {
+                  const lines = section.trim().split('\n')
+                  const rawHeading = lines[0]
+                  const isHeading  = rawHeading.startsWith('## ')
+                  const heading    = isHeading ? rawHeading.replace(/^##\s*/, '') : ''
+                  const bodyLines  = isHeading ? lines.slice(1) : lines
+
+                  const headingColor =
+                    heading.includes('AGREE') || heading.includes('ALIGN') ? 'text-emerald-400 border-emerald-900/40' :
+                    heading.includes('DIFFER')                              ? 'text-amber-400 border-amber-900/40' :
+                    heading.includes('TALKING')                             ? 'text-blue-400 border-blue-900/40' :
+                    heading.includes('ACTION') || heading.includes('PLAN')  ? 'text-purple-400 border-purple-900/40' :
+                    heading.includes('GOAL')                                ? 'text-cyan-400 border-cyan-900/40' :
+                    'text-gray-200 border-[#1e2030]'
+
+                  // Render inline markdown: **bold**
+                  function renderInline(text: string) {
+                    const parts = text.split(/(\*\*[^*]+\*\*)/g)
+                    return parts.map((part, pi) =>
+                      part.startsWith('**') && part.endsWith('**')
+                        ? <strong key={pi} className="text-gray-200 font-semibold">{part.slice(2, -2)}</strong>
+                        : <span key={pi}>{part}</span>
+                    )
+                  }
+
+                  function renderBodyLine(line: string, li: number) {
+                    const trimmed = line.trim()
+                    if (!trimmed) return <div key={li} className="h-1" />
+                    // Bullet
+                    if (/^[-*]\s/.test(trimmed)) {
+                      return (
+                        <div key={li} className="flex gap-2 text-[12px] text-gray-400 leading-relaxed">
+                          <span className="text-purple-500 mt-0.5 flex-shrink-0">•</span>
+                          <span>{renderInline(trimmed.replace(/^[-*]\s+/, ''))}</span>
+                        </div>
+                      )
+                    }
+                    // Numbered list
+                    if (/^\d+\.\s/.test(trimmed)) {
+                      const num   = trimmed.match(/^(\d+)\./)?.[1] ?? ''
+                      const rest  = trimmed.replace(/^\d+\.\s+/, '')
+                      return (
+                        <div key={li} className="flex gap-2 text-[12px] text-gray-400 leading-relaxed">
+                          <span className="text-purple-500 flex-shrink-0 w-4 text-right">{num}.</span>
+                          <span>{renderInline(rest)}</span>
+                        </div>
+                      )
+                    }
+                    // Regular line
+                    return (
+                      <p key={li} className="text-[12px] text-gray-400 leading-relaxed">
+                        {renderInline(trimmed)}
                       </p>
-                    )}
-                    <div className="text-gray-400 space-y-1 whitespace-pre-wrap">{body}</div>
-                  </div>
-                )
-              })}
-            </div>
+                    )
+                  }
+
+                  return (
+                    <div key={idx} className={`space-y-2 pt-4 first:pt-0 border-t first:border-t-0 ${headingColor.split(' ')[1] ?? 'border-[#1e2030]'}`}>
+                      {heading && (
+                        <p className={`text-[10px] font-bold uppercase tracking-widest ${headingColor.split(' ')[0]}`}>
+                          {heading}
+                        </p>
+                      )}
+                      <div className="space-y-1.5">
+                        {bodyLines.map((line, li) => renderBodyLine(line, li))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -2420,6 +2520,16 @@ export function PerformanceReviewForm() {
     if (idx >= 0) {
       existing[idx].driveUrl   = url || undefined
       existing[idx].driveDocId = docId || undefined
+      localStorage.setItem(SAVES_KEY, JSON.stringify(existing))
+      setSaves(getSaves())
+    }
+  }
+
+  function handleReportSaved(report: string) {
+    const existing = getSaves()
+    const idx = existing.findIndex(s => s.id === reviewIdRef.current)
+    if (idx >= 0) {
+      existing[idx].comparisonReport = report || undefined
       localStorage.setItem(SAVES_KEY, JSON.stringify(existing))
       setSaves(getSaves())
     }
@@ -2653,6 +2763,8 @@ export function PerformanceReviewForm() {
               savedDriveUrl={saves.find(s => s.id === reviewIdRef.current)?.driveUrl}
               savedDriveDocId={saves.find(s => s.id === reviewIdRef.current)?.driveDocId}
               onDriveSaved={handleDriveSaved}
+              savedComparisonReport={saves.find(s => s.id === reviewIdRef.current)?.comparisonReport}
+              onReportSaved={handleReportSaved}
             />
           )}
         </div>
