@@ -33,7 +33,10 @@ async function getAccessToken(): Promise<string> {
   console.log('[send-to-drive] token response:', JSON.stringify(data))
 
   if (!res.ok || !data.access_token) {
-    throw new Error(`[v2] Google token error: ${data.error} — ${data.error_description ?? 'no description'}`)
+    throw new Error(
+      `[v2] Google token error: ${data.error} — ${data.error_description ?? 'no description'} | ` +
+      `client_id[0:20]=${clientId.slice(0,20)} secret[0:6]=${clientSecret.slice(0,6)} token[0:12]=${refreshToken.slice(0,12)}`
+    )
   }
   return data.access_token
 }
