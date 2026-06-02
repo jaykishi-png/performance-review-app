@@ -78,6 +78,7 @@ interface FormData {
   employeeName: string
   employeePosition: string
   employeeDivision: string
+  employeePronouns: string
   supervisorName: string
   appraisalPeriod: string
   reviewDate: string
@@ -104,6 +105,7 @@ const defaultForm = (): FormData => ({
   employeeName: '',
   employeePosition: '',
   employeeDivision: '',
+  employeePronouns: '',
   supervisorName: '',
   appraisalPeriod: '',
   reviewDate: '',
@@ -140,6 +142,7 @@ interface DirectReport {
   name: string
   position: string
   division: string
+  pronouns: string   // e.g. "he/him", "she/her", "they/them", or custom
 }
 
 const REPORTS_KEY = 'manager-direct-reports'
@@ -279,20 +282,21 @@ function DirectReportsPanel({
   onDelete: (id: string) => void
   onClose: () => void
 }) {
+  const PRESET_PRONOUNS = ['he/him', 'she/her', 'they/them']
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState({ name: '', position: '', division: '' })
+  const [form, setForm] = useState({ name: '', position: '', division: '', pronouns: '' })
   const [isAdding, setIsAdding] = useState(false)
 
   function startAdd() {
     setEditingId(null)
-    setForm({ name: '', position: '', division: '' })
+    setForm({ name: '', position: '', division: '', pronouns: '' })
     setIsAdding(true)
   }
 
   function startEdit(r: DirectReport) {
     setIsAdding(false)
     setEditingId(r.id)
-    setForm({ name: r.name, position: r.position, division: r.division })
+    setForm({ name: r.name, position: r.position, division: r.division, pronouns: r.pronouns ?? '' })
   }
 
   function handleSave() {
@@ -302,16 +306,17 @@ function DirectReportsPanel({
       name: form.name.trim(),
       position: form.position.trim(),
       division: form.division.trim(),
+      pronouns: form.pronouns.trim(),
     })
     setIsAdding(false)
     setEditingId(null)
-    setForm({ name: '', position: '', division: '' })
+    setForm({ name: '', position: '', division: '', pronouns: '' })
   }
 
   function cancel() {
     setIsAdding(false)
     setEditingId(null)
-    setForm({ name: '', position: '', division: '' })
+    setForm({ name: '', position: '', division: '', pronouns: '' })
   }
 
   const showForm = isAdding || editingId !== null
@@ -373,6 +378,33 @@ function DirectReportsPanel({
                   placeholder="Division / Department"
                   className="w-full bg-[#0d0f1a] border border-[#2a2d3a] rounded-lg px-3 py-2 text-[12px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-600"
                 />
+                {/* Pronouns */}
+                <div className="space-y-1.5 pt-0.5">
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold">Pronouns (used by AI when drafting)</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {PRESET_PRONOUNS.map(p => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, pronouns: f.pronouns === p ? '' : p }))}
+                        className={`px-3 py-1 rounded-lg text-[11px] border transition-all ${
+                          form.pronouns === p
+                            ? 'border-purple-600 bg-purple-900/30 text-purple-200'
+                            : 'border-[#2a2d3a] text-gray-500 hover:text-gray-300 hover:border-[#3a3d4a]'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                    <input
+                      value={PRESET_PRONOUNS.includes(form.pronouns) ? '' : form.pronouns}
+                      onChange={e => setForm(f => ({ ...f, pronouns: e.target.value }))}
+                      onFocus={() => { if (PRESET_PRONOUNS.includes(form.pronouns)) setForm(f => ({ ...f, pronouns: '' })) }}
+                      placeholder="Custom…"
+                      className="flex-1 min-w-[70px] bg-[#0d0f1a] border border-[#2a2d3a] rounded-lg px-2.5 py-1 text-[12px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-600"
+                    />
+                  </div>
+                </div>
               </div>
               <div className="flex gap-2">
                 <button
@@ -410,6 +442,7 @@ function DirectReportsPanel({
                     <p className="text-[13px] font-medium text-gray-200">{r.name}</p>
                     {r.position && <p className="text-[11px] text-gray-500 mt-0.5">{r.position}</p>}
                     {r.division && <p className="text-[11px] text-gray-600 mt-0.5">{r.division}</p>}
+                    {r.pronouns && <p className="text-[10px] text-purple-500/70 mt-0.5">{r.pronouns}</p>}
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button
@@ -754,11 +787,12 @@ async function aiDraftSingleExample(
   role: string,
   context: string,
   exampleIndex: 0 | 1 | 2,
+  pronouns?: string,
 ): Promise<string> {
   const res = await fetch('/api/performance-review/draft-example', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ competency, type, employeeName, role, context, exampleIndex }),
+    body: JSON.stringify({ competency, type, employeeName, role, context, exampleIndex, pronouns }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as { error?: string }
@@ -798,7 +832,7 @@ function StepInfo({
                 <button
                   key={r.id}
                   type="button"
-                  onClick={() => update({ employeeName: r.name, employeePosition: r.position, employeeDivision: r.division })}
+                  onClick={() => update({ employeeName: r.name, employeePosition: r.position, employeeDivision: r.division, employeePronouns: r.pronouns ?? '' })}
                   className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-left transition-all ${
                     isSelected
                       ? 'border-purple-600 bg-purple-900/30 text-purple-200'
@@ -843,6 +877,32 @@ function StepInfo({
           <Label>Review Date</Label>
           <Input value={form.reviewDate} onChange={v => update({ reviewDate: v })} placeholder="e.g. May 28, 2026" />
         </div>
+        <div className="col-span-2">
+          <Label>Pronouns <span className="normal-case font-normal text-gray-600 ml-1">— used by AI when drafting examples &amp; goals</span></Label>
+          <div className="flex items-center gap-2 flex-wrap mt-1">
+            {['he/him', 'she/her', 'they/them'].map(p => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => update({ employeePronouns: form.employeePronouns === p ? '' : p })}
+                className={`px-3 py-1.5 rounded-lg text-[11px] border transition-all ${
+                  form.employeePronouns === p
+                    ? 'border-purple-600 bg-purple-900/30 text-purple-200'
+                    : 'border-[#1e2030] text-gray-500 hover:text-gray-300 hover:border-[#2a2d3a]'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+            <input
+              value={['he/him', 'she/her', 'they/them', ''].includes(form.employeePronouns) ? '' : form.employeePronouns}
+              onChange={e => update({ employeePronouns: e.target.value })}
+              onFocus={() => { if (['he/him', 'she/her', 'they/them'].includes(form.employeePronouns)) update({ employeePronouns: '' }) }}
+              placeholder="Custom…"
+              className="flex-1 min-w-[80px] bg-[#0d0f1a] border border-[#1e2030] rounded-xl px-3 py-2 text-sm text-gray-200 placeholder-gray-700 focus:outline-none focus:border-purple-700/60 transition-colors"
+            />
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -858,6 +918,7 @@ function ExampleRow({
   effectiveType,
   employeeName,
   employeePosition,
+  employeePronouns,
 }: {
   index: 0 | 1 | 2
   value: string
@@ -866,6 +927,7 @@ function ExampleRow({
   effectiveType: 'positive' | 'constructive'
   employeeName: string
   employeePosition: string
+  employeePronouns?: string
 }) {
   const [showPrompt, setShowPrompt] = useState(false)
   const [context, setContext] = useState('')
@@ -878,7 +940,7 @@ function ExampleRow({
     setError('')
     try {
       const example = await aiDraftSingleExample(
-        competency, effectiveType, employeeName, employeePosition, context, index
+        competency, effectiveType, employeeName, employeePosition, context, index, employeePronouns
       )
       if (example) {
         onChange(example)
@@ -1048,6 +1110,7 @@ function StepCompetency({
               effectiveType={effectiveType}
               employeeName={form.employeeName}
               employeePosition={form.employeePosition}
+              employeePronouns={form.employeePronouns}
             />
           ))}
         </div>
@@ -1355,6 +1418,7 @@ function StepNextGoals({ form, update }: { form: FormData; update: (p: Partial<F
       const payload = {
         employeeName: form.employeeName,
         role: form.employeePosition,
+        pronouns: form.employeePronouns,
         appraisalPeriod: form.appraisalPeriod,
         nextAppraisalPeriod,
         competencies: [

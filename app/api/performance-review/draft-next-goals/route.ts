@@ -7,11 +7,12 @@ export const maxDuration = 30
 export async function POST(req: NextRequest) {
   try {
     const {
-      employeeName, role, appraisalPeriod, nextAppraisalPeriod,
+      employeeName, role, pronouns, appraisalPeriod, nextAppraisalPeriod,
       competencies, goals, overallScore, overallSummary,
     } = await req.json() as {
       employeeName: string
       role: string
+      pronouns?: string
       appraisalPeriod: string
       nextAppraisalPeriod: string
       competencies: Array<{ competency: string; type: string; examples: string[] }>
@@ -47,9 +48,13 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = `You are an expert HR performance coach. You turn an employee's constructive competency feedback directly into specific, actionable SMART goals for their next review period. The constructive areas are your PRIMARY source — each goal should directly address a gap or improvement area identified there. Return only valid JSON — no markdown, no code fences, no explanation.`
 
+    const pronounInstruction = pronouns?.trim()
+      ? `\nPRONOUNS: Use ${pronouns.trim()} pronouns when referring to this employee.`
+      : ''
+
     const userPrompt = `Generate 2–3 SMART goals for the next review period based on this annual performance review.
 
-EMPLOYEE: ${employeeName || 'the employee'} — ${role || 'their role'}
+EMPLOYEE: ${employeeName || 'the employee'} — ${role || 'their role'}${pronounInstruction}
 CURRENT PERIOD: ${appraisalPeriod || 'not specified'}
 TARGET DATE: ${targetDate}
 

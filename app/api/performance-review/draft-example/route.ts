@@ -6,18 +6,24 @@ export const maxDuration = 30
 
 export async function POST(req: NextRequest) {
   try {
-    const { competency, type, employeeName, role, context, exampleIndex } = await req.json() as {
+    const { competency, type, employeeName, role, context, exampleIndex, pronouns } = await req.json() as {
       competency: string
       type: 'positive' | 'constructive'
       employeeName?: string
       role?: string
       context: string
       exampleIndex: 0 | 1 | 2
+      pronouns?: string
     }
 
     if (!competency || !context?.trim()) {
       return NextResponse.json({ error: 'competency and context required' }, { status: 400 })
     }
+
+    // Build pronoun instruction for the AI
+    const pronounInstruction = pronouns?.trim()
+      ? `\nPRONOUNS: Use ${pronouns.trim()} pronouns when referring to this employee throughout the example.`
+      : ''
 
     const systemPrompt = `You are an expert HR performance review writer. Your job is to take a manager's raw notes and expand them into a polished, professional behavioral example for an annual performance review. Use the manager's notes as the foundation and anchor — then flesh out the detail with natural, professional HR language that makes the behavior vivid and credible. You may add reasonable, realistic context that is consistent with what the manager described, as long as it stays true to the spirit of their notes.`
 
@@ -27,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     const userPrompt = `COMPETENCY: ${competency}
 DIRECTION: ${type === 'positive' ? 'POSITIVE STRENGTH — what they do well' : 'CONSTRUCTIVE AREA — where improvement is needed'}
-EMPLOYEE: ${employeeName?.trim() || 'the employee'} (${role?.trim() || 'their role'})
+EMPLOYEE: ${employeeName?.trim() || 'the employee'} (${role?.trim() || 'their role'})${pronounInstruction}
 
 MANAGER'S NOTES:
 """
@@ -39,6 +45,7 @@ Write ONE polished behavioral example for the "${competency}" section of a perfo
 Output rules:
 - 2–3 sentences
 - Grounded in the manager's notes, expanded with professional detail
+- Use the employee's name and correct pronouns naturally throughout
 - Do NOT start with "The employee"
 - No bullets, numbers, quotes, or preamble
 - Return the example text only`
