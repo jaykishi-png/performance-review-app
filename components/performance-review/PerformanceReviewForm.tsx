@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft } from 'lucide-react'
+import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft, LogOut } from 'lucide-react'
 
 // ─── Competency glossary ──────────────────────────────────────────────────────
 
@@ -2699,6 +2699,19 @@ export function PerformanceReviewForm() {
                     {saves.length > 9 ? '9+' : saves.length}
                   </span>
                 )}
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const { createClient } = await import('@/lib/supabase/client')
+                  await createClient().auth.signOut()
+                  window.location.href = '/login'
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e2030] bg-[#0d0f1a] text-[11px] text-gray-500 hover:text-red-400 hover:border-red-900/50 transition-all"
+                title="Sign out"
+              >
+                <LogOut size={12} />
+                Sign out
               </button>
             </div>
           </div>
