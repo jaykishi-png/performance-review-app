@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings } from 'lucide-react'
+import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft } from 'lucide-react'
 
 // ─── Competency glossary ──────────────────────────────────────────────────────
 
@@ -1715,6 +1715,15 @@ function StepOutput({ form, driveFolderId }: { form: FormData; driveFolderId?: s
   const [driveUrl, setDriveUrl]       = useState('')
   const [driveError, setDriveError]   = useState('')
 
+  // ── Comparison state ──────────────────────────────────────────────────────
+  const [compareInputMode, setCompareInputMode] = useState<'url' | 'text'>('url')
+  const [compareUrl, setCompareUrl]             = useState('')
+  const [compareText, setCompareText]           = useState('')
+  const [compareStatus, setCompareStatus]       = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [compareReport, setCompareReport]       = useState('')
+  const [compareError, setCompareError]         = useState('')
+  const [reportCopied, setReportCopied]         = useState(false)
+
   const scoreInfo = form.overallScore > 0 ? SCORE_LABELS[form.overallScore] : null
 
   const compEntries = [
@@ -1744,6 +1753,37 @@ function StepOutput({ form, driveFolderId }: { form: FormData; driveFolderId?: s
       setDriveError(String(err))
       setDriveStatus('error')
     }
+  }
+
+  async function handleCompare() {
+    setCompareStatus('loading')
+    setCompareError('')
+    setCompareReport('')
+    try {
+      const body: Record<string, unknown> = { form }
+      if (compareInputMode === 'url') body.employeeDocUrl = compareUrl.trim()
+      else body.employeeText = compareText.trim()
+
+      const res = await fetch('/api/performance-review/compare-reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json() as { report?: string; error?: string }
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Analysis failed')
+      setCompareReport(data.report ?? '')
+      setCompareStatus('done')
+    } catch (err) {
+      setCompareError(String(err))
+      setCompareStatus('error')
+    }
+  }
+
+  function copyReport() {
+    navigator.clipboard.writeText(compareReport).then(() => {
+      setReportCopied(true)
+      setTimeout(() => setReportCopied(false), 2000)
+    })
   }
 
   // Per-competency copy text matching template format
@@ -2025,6 +2065,136 @@ function StepOutput({ form, driveFolderId }: { form: FormData; driveFolderId?: s
         {driveStatus === 'error' && (
           <div className="text-[11px] text-red-400 bg-red-950/30 rounded-lg px-3 py-2">
             <span className="font-semibold">Error: </span>{driveError}
+          </div>
+        )}
+      </div>
+
+      {/* ── Self-Review Comparison ── */}
+      <div className="rounded-xl border border-purple-900/40 bg-purple-950/10 p-5 space-y-4">
+        {/* Header */}
+        <div>
+          <p className="text-[13px] font-semibold text-purple-200 flex items-center gap-2">
+            <FileText size={14} className="text-purple-400" />
+            Compare with Employee Self-Review
+          </p>
+          <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+            Upload the employee&apos;s self-review and get an AI-generated comparison report — including alignment areas, divergence, talking points, and a recommended action plan.
+          </p>
+        </div>
+
+        {/* Input mode toggle */}
+        <div className="flex gap-1 p-1 rounded-lg bg-[#0b0d14] border border-[#1e2030] w-fit">
+          <button
+            type="button"
+            onClick={() => setCompareInputMode('url')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all ${
+              compareInputMode === 'url'
+                ? 'bg-purple-800/70 text-purple-200'
+                : 'text-gray-600 hover:text-gray-300'
+            }`}
+          >
+            <Link size={11} /> Google Doc URL
+          </button>
+          <button
+            type="button"
+            onClick={() => setCompareInputMode('text')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all ${
+              compareInputMode === 'text'
+                ? 'bg-purple-800/70 text-purple-200'
+                : 'text-gray-600 hover:text-gray-300'
+            }`}
+          >
+            <AlignLeft size={11} /> Paste Text
+          </button>
+        </div>
+
+        {/* Input field */}
+        {compareInputMode === 'url' ? (
+          <div className="space-y-2">
+            <input
+              value={compareUrl}
+              onChange={e => setCompareUrl(e.target.value)}
+              placeholder="https://docs.google.com/document/d/..."
+              className="w-full bg-[#0d0f1a] border border-[#2a2d3a] rounded-xl px-4 py-2.5 text-[12px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-600 transition-colors"
+            />
+            <p className="text-[10px] text-gray-600">The document must be shared with the Google account linked to this app.</p>
+          </div>
+        ) : (
+          <textarea
+            value={compareText}
+            onChange={e => setCompareText(e.target.value)}
+            placeholder="Paste the employee's self-review text here…"
+            rows={6}
+            className="w-full bg-[#0d0f1a] border border-[#2a2d3a] rounded-xl px-4 py-2.5 text-[12px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-600 transition-colors resize-none"
+          />
+        )}
+
+        {/* Analyze button */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleCompare}
+            disabled={compareStatus === 'loading' || (compareInputMode === 'url' ? !compareUrl.trim() : !compareText.trim())}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-700 hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[12px] font-semibold transition-colors"
+          >
+            {compareStatus === 'loading' ? (
+              <><Loader2 size={13} className="animate-spin" /> Analyzing…</>
+            ) : (
+              <><Sparkles size={13} /> Generate Comparison Report</>
+            )}
+          </button>
+          {compareStatus === 'done' && (
+            <span className="text-[11px] text-emerald-400 flex items-center gap-1">
+              <CheckCircle2 size={11} /> Report ready
+            </span>
+          )}
+        </div>
+
+        {compareStatus === 'error' && (
+          <div className="text-[11px] text-red-400 bg-red-950/30 rounded-lg px-3 py-2">
+            <span className="font-semibold">Error: </span>{compareError}
+          </div>
+        )}
+
+        {/* Report output */}
+        {compareStatus === 'done' && compareReport && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold text-purple-300 uppercase tracking-wider">Comparison Report</p>
+              <button
+                onClick={copyReport}
+                className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg border border-[#2a2d3a] bg-[#0d0f1a] text-gray-400 hover:text-white hover:border-purple-700/60 transition-all"
+              >
+                {reportCopied ? <CheckCircle2 size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                {reportCopied ? 'Copied!' : 'Copy Report'}
+              </button>
+            </div>
+
+            {/* Render the report sections */}
+            <div className="bg-[#0b0d14] border border-[#1e2030] rounded-xl p-5 space-y-5 text-[12px] text-gray-300 leading-relaxed
+              [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-thumb]:bg-[#2a2d3a]">
+              {compareReport.split(/\n(?=## )/).map((section, idx) => {
+                const lines = section.trim().split('\n')
+                const heading = lines[0].replace(/^##\s*/, '')
+                const body = lines.slice(1).join('\n').trim()
+                const headingColor =
+                  heading.includes('AGREE') || heading.includes('ALIGN') ? 'text-emerald-400' :
+                  heading.includes('DIFFER') ? 'text-amber-400' :
+                  heading.includes('TALKING') ? 'text-blue-400' :
+                  heading.includes('ACTION') || heading.includes('PLAN') ? 'text-purple-400' :
+                  'text-gray-200'
+                return (
+                  <div key={idx} className="space-y-2">
+                    {heading && (
+                      <p className={`text-[11px] font-bold uppercase tracking-wider ${headingColor}`}>
+                        {heading}
+                      </p>
+                    )}
+                    <div className="text-gray-400 space-y-1 whitespace-pre-wrap">{body}</div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>
