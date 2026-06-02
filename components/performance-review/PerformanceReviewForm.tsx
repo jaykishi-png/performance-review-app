@@ -2445,27 +2445,35 @@ export function PerformanceReviewForm() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const reviewIdRef = useRef('')
   const [currentReviewId, setCurrentReviewId] = useState('')
+  const [view, setView] = useState<'dashboard' | 'form'>('dashboard')
+  const [showProfile, setShowProfile] = useState(false)
+  const [profileName, setProfileName] = useState('')
+  const [profileEmail, setProfileEmail] = useState('')
+  const [profileRole, setProfileRole] = useState('')
+  const [profileSaving, setProfileSaving] = useState(false)
 
-  // Init: auto-resume the most recent save, or start fresh if nothing saved yet
+  // Init: always show dashboard first; load saves + profile
   useEffect(() => {
     const existing = getSaves()
-    if (existing.length > 0) {
-      // Saves are stored newest-first — pick the most recently modified
-      const latest = existing[0]
-      reviewIdRef.current = latest.id
-      setCurrentReviewId(latest.id)
-      setForm(latest.form)
-      setStep(latest.step)
-      setMaxStep(latest.maxStep ?? latest.step)
-      setSaveStatus('saved')
-    } else {
-      const newId = crypto.randomUUID()
-      reviewIdRef.current = newId
-      setCurrentReviewId(newId)
-    }
     setSaves(existing)
     setDirectReports(getReports())
     setSettings(s => ({ ...s, ...getSettings() }))
+    // Load profile from Supabase if available
+    ;(async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          setProfileEmail(user.email ?? '')
+          const { data: profile } = await supabase.from('profiles').select('name, role').eq('id', user.id).single()
+          if (profile) {
+            setProfileName(profile.name ?? '')
+            setProfileRole(profile.role ?? '')
+          }
+        }
+      } catch { /* Supabase not configured — skip */ }
+    })()
   }, [])
 
   // Keep maxStep as the high-water mark — never goes backward
@@ -2501,6 +2509,7 @@ export function PerformanceReviewForm() {
     setMaxStep(save.maxStep ?? save.step)
     setShowHistory(false)
     setSaveStatus('saved')
+    setView('form')
   }
 
   function handleDelete(id: string) {
@@ -2516,6 +2525,7 @@ export function PerformanceReviewForm() {
     setStep(0)
     setMaxStep(0)
     setSaveStatus('idle')
+    setView('form')
   }
 
   function handleSaveSettings(s: AppSettings) {
@@ -2603,6 +2613,151 @@ export function PerformanceReviewForm() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [step, showHistory, showDirectReports, allContentStepsComplete]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const ROLE_COLORS: Record<string, string> = { admin: '#818cf8', manager: '#34d399', employee: '#60a5fa' }
+
+  // ── Dashboard view ───────────────────────────────────────────────────────────
+  if (view === 'dashboard') {
+    return (
+      <div className="min-h-screen bg-[#0b0d14] text-white" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+        {/* Profile panel */}
+        {showProfile && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={e => { if (e.target === e.currentTarget) setShowProfile(false) }}>
+            <div className="bg-[#13151f] border border-[#1e2130] rounded-2xl p-8 w-full max-w-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold text-gray-100">My Profile</h2>
+                <button onClick={() => setShowProfile(false)} className="text-gray-500 hover:text-gray-200"><X size={18} /></button>
+              </div>
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-2xl font-bold text-white mb-5 mx-auto">
+                {(profileName || profileEmail).charAt(0).toUpperCase()}
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1.5">Display name</label>
+                  <input value={profileName} onChange={e => setProfileName(e.target.value)}
+                    className="w-full bg-[#0d0f1a] border border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-purple-600" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1.5">Email</label>
+                  <div className="w-full bg-[#0d0f1a] border border-[#1e2130] rounded-lg px-3 py-2 text-sm text-gray-500">{profileEmail || '—'}</div>
+                </div>
+                {profileRole && (
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1.5">Role</label>
+                    <div className="w-full bg-[#0d0f1a] border border-[#1e2130] rounded-lg px-3 py-2 text-sm" style={{ color: ROLE_COLORS[profileRole] || '#9ca3af' }}>
+                      {profileRole.charAt(0).toUpperCase() + profileRole.slice(1)}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button onClick={() => setShowProfile(false)} className="flex-1 py-2 text-sm text-gray-500 border border-[#2a2d3e] rounded-lg hover:text-gray-200 transition-colors">Cancel</button>
+                <button
+                  disabled={profileSaving}
+                  onClick={async () => {
+                    setProfileSaving(true)
+                    try {
+                      const { createClient } = await import('@/lib/supabase/client')
+                      const supabase = createClient()
+                      const { data: { user } } = await supabase.auth.getUser()
+                      if (user) await supabase.from('profiles').update({ name: profileName }).eq('id', user.id)
+                    } catch { /* offline */ }
+                    setProfileSaving(false)
+                    setShowProfile(false)
+                  }}
+                  className="flex-1 py-2 text-sm font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                >{profileSaving ? 'Saving…' : 'Save'}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Top bar */}
+        <div className="border-b border-[#1e2130] bg-[#13151f] px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl">📋</span>
+            <span className="font-bold text-base text-gray-100">Performance Review</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowProfile(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#1e2130] bg-[#0d0f1a] text-[11px] text-gray-400 hover:text-gray-100 hover:border-[#2a2d3e] transition-all">
+              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-[10px] font-bold text-white">
+                {(profileName || profileEmail).charAt(0).toUpperCase() || '?'}
+              </div>
+              {profileName || profileEmail || 'Profile'}
+            </button>
+            <button onClick={async () => { const { createClient } = await import('@/lib/supabase/client'); await createClient().auth.signOut(); window.location.href = '/login' }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e2030] bg-[#0d0f1a] text-[11px] text-gray-500 hover:text-red-400 hover:border-red-900/50 transition-all">
+              <LogOut size={11} /> Sign out
+            </button>
+          </div>
+        </div>
+
+        {/* Dashboard body */}
+        <div className="max-w-3xl mx-auto px-6 py-12">
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-100 tracking-tight">
+                {profileName ? `Welcome back, ${profileName.split(' ')[0]}` : 'Performance Reviews'}
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">Pick up where you left off or start a new review.</p>
+            </div>
+            <button onClick={handleNewReview}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity">
+              <Plus size={14} /> New Review
+            </button>
+          </div>
+
+          {saves.length === 0 ? (
+            <div className="text-center py-20 border border-dashed border-[#1e2130] rounded-2xl">
+              <div className="text-4xl mb-4">📋</div>
+              <p className="text-gray-400 font-medium mb-1">No reviews yet</p>
+              <p className="text-sm text-gray-600 mb-6">Start by creating your first performance review.</p>
+              <button onClick={handleNewReview}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity">
+                <Plus size={14} /> Create First Review
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {saves.map(save => {
+                const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, save.form)).length
+                const pct = Math.round((filled / (STEPS.length - 1)) * 100)
+                const isComplete = filled === STEPS.length - 1
+                return (
+                  <div key={save.id}
+                    className="group flex items-center gap-4 p-5 bg-[#13151f] border border-[#1e2130] rounded-2xl hover:border-purple-700/40 hover:bg-[#15172a] transition-all cursor-pointer"
+                    onClick={() => handleLoad(save)}>
+                    <div className="w-10 h-10 rounded-full bg-[#1e2130] flex items-center justify-center text-lg flex-shrink-0">
+                      {isComplete ? '✅' : '📝'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 truncate">{save.employeeName || 'Untitled Review'}</div>
+                      <div className="text-xs text-gray-500 mt-0.5 truncate">{save.form?.employeePosition || ''}{save.form?.employeeDivision ? ` · ${save.form.employeeDivision}` : ''}</div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="flex-1 h-1 bg-[#1e2130] rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[10px] text-gray-600 flex-shrink-0">{pct}%</span>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-[11px] text-gray-600">{new Date(save.savedAt).toLocaleDateString()}</div>
+                      <div className="text-[10px] text-gray-700 mt-0.5">Step {save.step + 1} of {STEPS.length}</div>
+                    </div>
+                    <button onClick={e => { e.stopPropagation(); if (confirm('Delete this review?')) { handleDelete(save.id); setSaves(getSaves()) } }}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-600 hover:text-red-400 transition-all flex-shrink-0">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[#0b0d14] text-white">
       {showSettings && (
@@ -2632,6 +2787,30 @@ export function PerformanceReviewForm() {
 
       <div className="max-w-2xl mx-auto px-4 py-8">
 
+        {/* Back link */}
+        <div className="mb-4">
+          <button onClick={() => setView('dashboard')} className="flex items-center gap-1.5 text-[11px] text-gray-600 hover:text-gray-300 transition-colors">
+            <ChevronLeft size={13} /> All Reviews
+          </button>
+        </div>
+
+        {/* Sticky employee info bar */}
+        {form.employeeName.trim() && (
+          <div className="mb-5 px-4 py-3 bg-[#13151f] border border-[#1e2130] rounded-xl flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
+              {form.employeeName.trim().charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-gray-100 truncate">{form.employeeName}</div>
+              <div className="text-[11px] text-gray-500 truncate">
+                {[form.employeePosition, form.employeeDivision].filter(Boolean).join(' · ')}
+              </div>
+            </div>
+            {saveStatus === 'saving' && <span className="text-[10px] text-gray-600 flex items-center gap-1 flex-shrink-0"><Loader2 size={10} className="animate-spin" /> Saving…</span>}
+            {saveStatus === 'saved' && <span className="text-[10px] text-emerald-600 flex items-center gap-1 flex-shrink-0"><CheckCircle2 size={10} /> Saved</span>}
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-start justify-between gap-4">
@@ -2643,18 +2822,8 @@ export function PerformanceReviewForm() {
               </div>
             </div>
 
-            {/* Save status + history */}
+            {/* Toolbar */}
             <div className="flex items-center gap-2 flex-shrink-0 pt-1">
-              {saveStatus === 'saving' && (
-                <span className="text-[10px] text-gray-600 flex items-center gap-1">
-                  <Loader2 size={10} className="animate-spin" /> Saving…
-                </span>
-              )}
-              {saveStatus === 'saved' && (
-                <span className="text-[10px] text-emerald-600 flex items-center gap-1">
-                  <CheckCircle2 size={10} /> Saved
-                </span>
-              )}
               <button
                 type="button"
                 onClick={handleNewReview}
