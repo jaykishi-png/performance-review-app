@@ -165,174 +165,134 @@ export async function POST(req: NextRequest) {
     const runs   = flattenRuns(docRes.data.body?.content ?? [])
     const ops: ReplaceOp[] = []
 
-    // Helper: find the first SELECT ONE after a given label string
-    function replaceSelectAfterLabel(label: string, newText: string) {
-      const labelOcc = findOccurrences(runs, label)
-      if (!labelOcc.length) return
-      const after = labelOcc[0].endIndex
-      const target = findOccurrences(runs, 'SELECT ONE').find(r => r.startIndex > after)
-      if (target) ops.push({ ...target, newText })
+    const SCORE_LABELS: Record<number, string> = {
+      1: 'Unsatisfactory', 2: 'Needs Improvement', 3: 'Meets Expectations',
+      4: 'Exceeds Job Requirements', 5: 'Outstanding',
     }
 
-    // Helper: insert text into the empty cell (just \n) after a label
+    // Helper: insert text into the empty \n cell immediately after a label
     function insertAfterLabel(label: string, newText: string) {
       if (!newText) return
-      const labelOcc = findOccurrences(runs, label)
-      if (!labelOcc.length) return
-      const after = labelOcc[0].endIndex
-      const emptyRun = runs.find(r => r.startIndex >= after && r.text === '\n')
-      if (emptyRun) ops.push({ startIndex: emptyRun.startIndex, endIndex: emptyRun.startIndex, newText })
+      const occ = findOccurrences(runs, label)
+      if (!occ.length) return
+      const after = occ[0].endIndex
+      const slot = runs.find(r => r.startIndex >= after && r.text === '\n')
+      if (slot) ops.push({ startIndex: slot.startIndex, endIndex: slot.startIndex, newText })
+    }
+
+    // Helper: replace a dropdown chip (empty-string run) or empty cell after a label
+    function replaceChipOrEmptyAfterLabel(label: string, newText: string) {
+      if (!newText) return
+      const occ = findOccurrences(runs, label)
+      if (!occ.length) return
+      const after = occ[0].endIndex
+      // Dropdown chips appear as empty-string runs; empty cells appear as '\n' runs
+      const chip      = runs.find(r => r.startIndex >= after && r.text === '')
+      const emptyCell = runs.find(r => r.startIndex >= after && r.text === '\n')
+      if (chip && chip.startIndex <= (emptyCell?.startIndex ?? Infinity)) {
+        ops.push({ startIndex: chip.startIndex, endIndex: chip.endIndex, newText })
+      } else if (emptyCell) {
+        ops.push({ startIndex: emptyCell.startIndex, endIndex: emptyCell.startIndex, newText })
+      }
     }
 
     // ── 4a. Header fields ─────────────────────────────────────────────────────
-    // Employee Name is an empty cell; the others use "SELECT ONE" dropdowns
-    insertAfterLabel('Employee Name:\n',     form.employeeName)
-    replaceSelectAfterLabel('Employee Position:\n', form.employeePosition || '')
-    replaceSelectAfterLabel('Employee Division:\n', form.employeeDivision || '')
-    replaceSelectAfterLabel('Supervisor Name:\n',   form.supervisorName   || '')
+    insertAfterLabel('Employee Name:\n',              form.employeeName)
+    replaceChipOrEmptyAfterLabel('Employee Position:\n', form.employeePosition || '')
+    replaceChipOrEmptyAfterLabel('Employee Division:\n', form.employeeDivision || '')
+    replaceChipOrEmptyAfterLabel('Supervisor Name:\n',   form.supervisorName   || '')
 
-    // ── 4b. Competency names — only "SELECT ONE" occurrences inside PART ONE ──
-    // Find the start of PART ONE to avoid matching header SELECT ONEs
-    const partOneStart = findOccurrences(runs, 'PART ONE')[0]?.endIndex ?? 0
+    // ── 4b. Appraisal Period & Review Date ────────────────────────────────────
+    insertAfterLabel('Appraisal Period:\n', form.appraisalPeriod)
+    insertAfterLabel('Review Date:\n',      form.reviewDate)
+
+    // ── 5. Competency names — insert before the \n at end of each header line ─
+    // Template structure: "COMPETENCY ONE (positive): ↵" → insert name before ↵
     const compNames = [
       form.competencyOne.competency,   form.competencyTwo.competency,
       form.competencyThree.competency, form.competencyFour.competency,
       form.competencyFive.competency,
     ]
-    const selectOnes = findOccurrences(runs, 'SELECT ONE').filter(r => r.startIndex > partOneStart)
-    selectOnes.slice(0, 5).forEach((range, i) => {
-      ops.push({ ...range, newText: compNames[i] || '' })
+    const compHeaders = ['COMPETENCY ONE', 'COMPETENCY TWO', 'COMPETENCY THREE', 'COMPETENCY FOUR', 'COMPETENCY FIVE']
+    compHeaders.forEach((header, i) => {
+      if (!compNames[i]) return
+      const headerOcc = findOccurrences(runs, header)
+      if (!headerOcc.length) return
+      const after = headerOcc[0].endIndex
+      // "EXPLANATION:" marks the end of the header area
+      const explLabel = findOccurrences(runs, 'EXPLANATION:').find(r => r.startIndex > after)
+      const nlRun = runs.find(r =>
+        r.startIndex >= after &&
+        r.startIndex < (explLabel?.startIndex ?? Infinity) &&
+        r.text === '\n'
+      )
+      if (nlRun) ops.push({ startIndex: nlRun.startIndex, endIndex: nlRun.startIndex, newText: compNames[i] })
     })
 
-    // ── 5. Examples — "[INSERT EXAMPLE]" appears 15 times in order ────────────
+    // ── 6. Examples — "[INSERT EXAMPLE]" appears 15 times in order ────────────
     const allExamples = [
       ...form.competencyOne.examples,   ...form.competencyTwo.examples,
       ...form.competencyThree.examples, ...form.competencyFour.examples,
       ...form.competencyFive.examples,
     ]
-    const insertExamples = findOccurrences(runs, '[INSERT EXAMPLE]')
-    insertExamples.slice(0, 15).forEach((range, i) => {
+    findOccurrences(runs, '[INSERT EXAMPLE]').slice(0, 15).forEach((range, i) => {
       ops.push({ ...range, newText: allExamples[i]?.trim() || '' })
     })
 
-    // ── 6. Overall score — template has "4" in the score table cell ───────────
-    // Find "OVERALL SCORE" label, then find the first isolated digit after it
+    // ── 7. Goals — insert after numbered markers "1.\n" … "5.\n" ─────────────
+    // Template: "1.↵" is the goal slot; insert text just before the ↵
+    const goalsLabelEnd  = findOccurrences(runs, 'Goals/Objectives/Accomplishments:')[0]?.endIndex ?? 0
+    const overallSummaryStart = findOccurrences(runs, 'OVERALL PERFORMANCE EVALUATION SUMMARY:')[0]?.startIndex ?? Infinity
+
+    form.goals.filter(g => g.text.trim()).forEach((goal, i) => {
+      const marker = `${i + 1}.\n`
+      const markerOcc = findOccurrences(runs, marker)
+        .filter(r => r.startIndex > goalsLabelEnd && r.startIndex < overallSummaryStart)
+      if (!markerOcc.length) return
+      const insertAt = markerOcc[0].endIndex - 1 // just before the trailing \n
+      const statusTag  = goal.status ? ` (${goal.status.toUpperCase()})` : ''
+      const explanation = goal.explanation.trim() ? `\n${goal.explanation.trim()}` : ''
+      ops.push({ startIndex: insertAt, endIndex: insertAt, newText: ` ${goal.text.trim()}${statusTag}${explanation}` })
+    })
+
+    // ── 8. Overall score & summary ────────────────────────────────────────────
     if (form.overallScore > 0) {
-      const overallScoreLabel = findOccurrences(runs, 'OVERALL SCORE')
-      if (overallScoreLabel.length > 0) {
-        const afterScore = overallScoreLabel[overallScoreLabel.length - 1].endIndex
-        // The score cell contains just "4" (or similar single digit)
-        const fourOcc = findOccurrences(runs, '\n4\n')
-          .filter(r => r.startIndex > afterScore)
-        if (fourOcc.length > 0) {
-          // Replace the "4" part (skip the surrounding \n)
-          ops.push({
-            startIndex: fourOcc[0].startIndex + 1,
-            endIndex:   fourOcc[0].endIndex   - 1,
-            newText:    String(form.overallScore),
-          })
-          // Append summary on the next line if provided
-          if (form.overallSummary.trim()) {
-            ops.push({
-              startIndex: fourOcc[0].endIndex - 1,
-              endIndex:   fourOcc[0].endIndex - 1,
-              newText:    '\n' + form.overallSummary.trim(),
-            })
-          }
-        }
+      const scoreLabelEnd = findOccurrences(runs, 'OVERALL SCORE')[0]?.endIndex ?? 0
+      const emptyAfterScore = runs.filter(r => r.startIndex > scoreLabelEnd && /^\s*\n$/.test(r.text))
+      if (emptyAfterScore[0]) {
+        ops.push({
+          startIndex: emptyAfterScore[0].startIndex,
+          endIndex:   emptyAfterScore[0].startIndex,
+          newText: `${form.overallScore} — ${SCORE_LABELS[form.overallScore] || ''}`,
+        })
+      }
+      if (form.overallSummary.trim() && emptyAfterScore[1]) {
+        ops.push({
+          startIndex: emptyAfterScore[1].startIndex,
+          endIndex:   emptyAfterScore[1].startIndex,
+          newText: form.overallSummary.trim(),
+        })
       }
     }
 
-    // ── 7. Appraisal Period — empty cell after "Appraisal Period:\n" ──────────
-    //    In the template this cell is blank; find the \n immediately after the label cell
-    if (form.appraisalPeriod) {
-      const apLabel = findOccurrences(runs, 'Appraisal Period:\n')
-      if (apLabel.length > 0) {
-        const afterLabel = apLabel[0].endIndex
-        // The next table cell starts here — it will have a \n (empty paragraph)
-        const nextEmptyRun = runs.find(r => r.startIndex >= afterLabel && r.text === '\n')
-        if (nextEmptyRun) {
-          ops.push({ startIndex: nextEmptyRun.startIndex, endIndex: nextEmptyRun.startIndex, newText: form.appraisalPeriod })
-        }
-      }
-    }
+    // ── 9. Next Year's Goals — insert in empty \n run AFTER each "1.\n" marker ─
+    const ngLabelEnd = findOccurrences(runs, "Next Year's Goals").at(-1)?.endIndex ?? 0
+    const sigStart   = findOccurrences(runs, 'Employee Signature')[0]?.startIndex ?? Infinity
 
-    // ── 8. Review Date ────────────────────────────────────────────────────────
-    if (form.reviewDate) {
-      const rvLabel = findOccurrences(runs, 'Review Date:\n')
-      if (rvLabel.length > 0) {
-        const afterLabel = rvLabel[0].endIndex
-        const nextEmptyRun = runs.find(r => r.startIndex >= afterLabel && r.text === '\n')
-        if (nextEmptyRun) {
-          ops.push({ startIndex: nextEmptyRun.startIndex, endIndex: nextEmptyRun.startIndex, newText: form.reviewDate })
-        }
-      }
-    }
+    form.nextGoals.filter(g => g.text.trim()).forEach((goal, i) => {
+      const marker = `${i + 1}.\n`
+      const markerOcc = findOccurrences(runs, marker)
+        .filter(r => r.startIndex > ngLabelEnd && r.startIndex < sigStart)
+      if (!markerOcc.length) return
+      // The empty \n paragraph comes right AFTER the marker
+      const afterMarker = markerOcc[0].endIndex
+      const slot = runs.find(r => r.startIndex >= afterMarker && r.startIndex < sigStart && r.text === '\n')
+      if (!slot) return
+      const dateStr = goal.targetDate.trim() ? `\nTarget Date: ${goal.targetDate.trim()}` : ''
+      ops.push({ startIndex: slot.startIndex, endIndex: slot.startIndex, newText: `${goal.text.trim()}${dateStr}` })
+    })
 
-    // ── 9. Goals 1–5 ──────────────────────────────────────────────────────────
-    // The template goals section has numbered blank lines after the goals heading.
-    // Find "Goals/Objectives/Accomplishments:" then locate each goal slot.
-    // Each goal slot in the template is an empty paragraph (just \n) that follows
-    // the numbered marker paragraph.
-    const goalsSectionLabel = findOccurrences(runs, 'Goals/Objectives/Accomplishments:')
-    if (goalsSectionLabel.length > 0) {
-      const goalsStart = goalsSectionLabel[0].endIndex
-      // Find "OVERALL SCORE" or "OVERALL PERFORMANCE" to know where goals section ends
-      const goalsSectionEnd = findOccurrences(runs, 'OVERALL SCORE')
-        .find(r => r.startIndex > goalsStart)?.startIndex ?? Infinity
-
-      // Collect empty-ish paragraphs in the goals section (content = just \n or whitespace\n)
-      // These are the blank goal cells following numbered markers
-      const goalSlotRuns = runs.filter(r =>
-        r.startIndex > goalsStart &&
-        r.startIndex < goalsSectionEnd &&
-        /^\s*\n$/.test(r.text)
-      )
-
-      const filledGoals = form.goals.filter(g => g.text.trim())
-      filledGoals.forEach((goal, i) => {
-        if (i < goalSlotRuns.length) {
-          const slot = goalSlotRuns[i]
-          const statusTag = goal.status ? ` (${goal.status.toUpperCase()})` : ''
-          const explanation = goal.explanation.trim() ? `\n${goal.explanation.trim()}` : ''
-          ops.push({
-            startIndex: slot.startIndex,
-            endIndex: slot.endIndex - 1, // keep the trailing \n
-            newText: `${goal.text.trim()}${statusTag}${explanation}`,
-          })
-        }
-      })
-    }
-
-    // ── 10. Next Year's Goals 1–3 ─────────────────────────────────────────────
-    const nextGoalsSectionLabel = findOccurrences(runs, "Next Year's Goals")
-    if (nextGoalsSectionLabel.length > 0) {
-      const ngStart = nextGoalsSectionLabel[nextGoalsSectionLabel.length - 1].endIndex
-      // Find signature area to bound our search
-      const sigEnd = findOccurrences(runs, 'Employee Signature')
-        .find(r => r.startIndex > ngStart)?.startIndex ?? Infinity
-
-      const nextGoalSlotRuns = runs.filter(r =>
-        r.startIndex > ngStart &&
-        r.startIndex < sigEnd &&
-        /^\s*\n$/.test(r.text)
-      )
-
-      const filledNextGoals = form.nextGoals.filter(g => g.text.trim())
-      filledNextGoals.forEach((goal, i) => {
-        if (i < nextGoalSlotRuns.length) {
-          const slot = nextGoalSlotRuns[i]
-          const dateStr = goal.targetDate.trim() ? `\nTarget Date: ${goal.targetDate.trim()}` : ''
-          ops.push({
-            startIndex: slot.startIndex,
-            endIndex: slot.endIndex - 1,
-            newText: `${goal.text.trim()}${dateStr}`,
-          })
-        }
-      })
-    }
-
-    // ── 11. Apply all position-based changes ──────────────────────────────────
+    // ── 10. Apply all position-based changes ──────────────────────────────────
     if (ops.length > 0) {
       await docs.documents.batchUpdate({
         documentId: docId,
