@@ -32,20 +32,54 @@ function extractDocId(urlOrId: string): string | null {
 // ─── Fetch plain text from a Google Doc ──────────────────────────────────────
 async function fetchGoogleDocText(docId: string): Promise<string> {
   const token = await getGoogleAccessToken()
-  const res = await fetch(
+
+  // 1. Try the native Google Docs API (works for native .gdoc files)
+  const docsRes = await fetch(
     `https://docs.googleapis.com/v1/documents/${docId}`,
     { headers: { Authorization: `Bearer ${token}` } }
   )
-  if (!res.ok) throw new Error(`Could not fetch Google Doc (${res.status})`)
-  const doc = await res.json() as { body?: { content?: Array<{ paragraph?: { elements?: Array<{ textRun?: { content?: string } }> } }> } }
 
-  const lines: string[] = []
-  for (const el of doc.body?.content ?? []) {
-    if (!el.paragraph?.elements) continue
-    const line = el.paragraph.elements.map(pe => pe.textRun?.content ?? '').join('')
-    if (line.trim()) lines.push(line.trimEnd())
+  if (docsRes.ok) {
+    const doc = await docsRes.json() as { body?: { content?: Array<{ paragraph?: { elements?: Array<{ textRun?: { content?: string } }> } }> } }
+    const lines: string[] = []
+    for (const el of doc.body?.content ?? []) {
+      if (!el.paragraph?.elements) continue
+      const line = el.paragraph.elements.map(pe => pe.textRun?.content ?? '').join('')
+      if (line.trim()) lines.push(line.trimEnd())
+    }
+    return lines.join('\n')
   }
-  return lines.join('')
+
+  // 2. Fallback: Drive export API (handles Word docs, converted files, etc.)
+  const exportRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=text%2Fplain`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  )
+
+  if (exportRes.ok) {
+    return await exportRes.text()
+  }
+
+  // 3. Fallback: Drive download (for plain text files stored in Drive)
+  const downloadRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${docId}?alt=media`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  )
+
+  if (downloadRes.ok) {
+    return await downloadRes.text()
+  }
+
+  // All methods failed — give a helpful error
+  const status = docsRes.status
+  if (status === 403) {
+    throw new Error(
+      'Access denied (403). Make sure the document is shared with the Google account linked to this app, or change the sharing to "Anyone with the link can view".'
+    )
+  }
+  throw new Error(
+    `Could not read the Google Doc (${status}). Make sure the document is shared with "Anyone with the link" or with the linked Google account, then try again.`
+  )
 }
 
 // ─── Build a structured summary of the manager's review ──────────────────────
