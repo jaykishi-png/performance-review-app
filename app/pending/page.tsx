@@ -1,9 +1,22 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getRoleHomeRoute } from '@/lib/permissions'
 
 export default async function PendingPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  // Re-check role with service client — if it changed since login, redirect immediately
+  const serviceClient = await createServiceClient()
+  const { data: profile } = await serviceClient
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = profile?.role ?? 'pending'
+  if (role !== 'pending') redirect(getRoleHomeRoute(role))
 
   async function signOut() {
     'use server'
