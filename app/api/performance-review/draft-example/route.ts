@@ -74,6 +74,7 @@ Output rules:
     ]
 
     let example = ''
+    const providerErrors: string[] = []
 
     // 1. Try Gemini Flash (cheapest, reliable)
     if (process.env.GEMINI_API_KEY) {
@@ -89,9 +90,12 @@ Output rules:
         })
         example = res.choices[0]?.message?.content?.trim() ?? ''
         if (example) return NextResponse.json({ example })
-      } catch {
-        // fall through to next provider
+        providerErrors.push('Gemini: empty response')
+      } catch (e) {
+        providerErrors.push(`Gemini: ${e instanceof Error ? e.message : String(e)}`)
       }
+    } else {
+      providerErrors.push('Gemini: no API key')
     }
 
     // 2. Try Anthropic Haiku
@@ -106,9 +110,12 @@ Output rules:
         })
         example = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : ''
         if (example) return NextResponse.json({ example })
-      } catch {
-        // fall through to next provider
+        providerErrors.push('Anthropic: empty response')
+      } catch (e) {
+        providerErrors.push(`Anthropic: ${e instanceof Error ? e.message : String(e)}`)
       }
+    } else {
+      providerErrors.push('Anthropic: no API key')
     }
 
     // 3. Try OpenAI
@@ -123,13 +130,19 @@ Output rules:
         })
         example = res.choices[0]?.message?.content?.trim() ?? ''
         if (example) return NextResponse.json({ example })
-      } catch {
-        // fall through
+        providerErrors.push('OpenAI: empty response')
+      } catch (e) {
+        providerErrors.push(`OpenAI: ${e instanceof Error ? e.message : String(e)}`)
       }
+    } else {
+      providerErrors.push('OpenAI: no API key')
     }
 
     if (!example) {
-      return NextResponse.json({ error: 'No AI provider available or all providers failed' }, { status: 503 })
+      return NextResponse.json(
+        { error: `All AI providers failed — ${providerErrors.join(' | ')}` },
+        { status: 503 }
+      )
     }
 
     return NextResponse.json({ example })

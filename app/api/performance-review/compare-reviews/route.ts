@@ -202,6 +202,8 @@ Keep the tone professional, constructive, and forward-looking throughout.`
     { role: 'user', content: prompt }
   ]
 
+  const providerErrors: string[] = []
+
   // 1. Try Gemini
   if (process.env.GEMINI_API_KEY) {
     try {
@@ -216,7 +218,12 @@ Keep the tone professional, constructive, and forward-looking throughout.`
       })
       const text = res.choices[0]?.message?.content?.trim()
       if (text) return text
-    } catch { /* fall through */ }
+      providerErrors.push('Gemini: empty response')
+    } catch (e) {
+      providerErrors.push(`Gemini: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  } else {
+    providerErrors.push('Gemini: no API key')
   }
 
   // 2. Try Anthropic
@@ -231,7 +238,12 @@ Keep the tone professional, constructive, and forward-looking throughout.`
       })
       const text = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : ''
       if (text) return text
-    } catch { /* fall through */ }
+      providerErrors.push('Anthropic: empty response')
+    } catch (e) {
+      providerErrors.push(`Anthropic: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  } else {
+    providerErrors.push('Anthropic: no API key')
   }
 
   // 3. Try OpenAI
@@ -245,10 +257,15 @@ Keep the tone professional, constructive, and forward-looking throughout.`
       })
       const text = res.choices[0]?.message?.content?.trim()
       if (text) return text
-    } catch { /* fall through */ }
+      providerErrors.push('OpenAI: empty response')
+    } catch (e) {
+      providerErrors.push(`OpenAI: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  } else {
+    providerErrors.push('OpenAI: no API key')
   }
 
-  throw new Error('No AI provider available or all providers failed')
+  throw new Error(`All AI providers failed — ${providerErrors.join(' | ')}`)
 }
 
 // ─── POST ─────────────────────────────────────────────────────────────────────
