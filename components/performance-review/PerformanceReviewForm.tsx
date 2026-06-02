@@ -2437,7 +2437,7 @@ export function PerformanceReviewForm() {
   const [maxStep, setMaxStep] = useState(0)
   const [form, setForm] = useState<FormData>(defaultForm())
   const [saves, setSaves] = useState<SavedReview[]>([])
-  const [showHistory, setShowHistory] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [showDirectReports, setShowDirectReports] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [directReports, setDirectReports] = useState<DirectReport[]>([])
@@ -2445,7 +2445,6 @@ export function PerformanceReviewForm() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const reviewIdRef = useRef('')
   const [currentReviewId, setCurrentReviewId] = useState('')
-  const [view, setView] = useState<'dashboard' | 'form'>('dashboard')
   const [showProfile, setShowProfile] = useState(false)
   const [profileName, setProfileName] = useState('')
   const [profileEmail, setProfileEmail] = useState('')
@@ -2572,9 +2571,7 @@ export function PerformanceReviewForm() {
     setForm(save.form)
     setStep(save.step)
     setMaxStep(save.maxStep ?? save.step)
-    setShowHistory(false)
     setSaveStatus('saved')
-    setView('form')
   }
 
   function handleDelete(id: string) {
@@ -2591,7 +2588,6 @@ export function PerformanceReviewForm() {
     setStep(0)
     setMaxStep(0)
     setSaveStatus('idle')
-    setView('form')
   }
 
   function handleSaveSettings(s: AppSettings) {
@@ -2669,7 +2665,7 @@ export function PerformanceReviewForm() {
       if (e.key !== 'Enter') return
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'TEXTAREA' || tag === 'SELECT') return
-      if (showHistory || showDirectReports) return
+      if (showDirectReports) return
       if (step >= STEPS.length - 1) return
       const isLastContent = step === STEPS.length - 2
       const canGo = isLastContent ? allContentStepsComplete : canProceed()
@@ -2679,297 +2675,273 @@ export function PerformanceReviewForm() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [step, showHistory, showDirectReports, allContentStepsComplete]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [step, showDirectReports, allContentStepsComplete]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const ROLE_COLORS: Record<string, string> = { admin: '#818cf8', manager: '#34d399', employee: '#60a5fa' }
 
-  // ── Dashboard view ───────────────────────────────────────────────────────────
-  if (view === 'dashboard') {
-    return (
-      <div className="min-h-screen bg-[#0b0d14] text-white" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
-        {showSettings && <SettingsPanel settings={settings} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} />}
-        {showDirectReports && <DirectReportsPanel reports={directReports} onSave={handleSaveReport} onDelete={handleDeleteReport} onClose={() => setShowDirectReports(false)} />}
-        {/* Profile panel */}
-        {showProfile && (
-          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={e => { if (e.target === e.currentTarget) setShowProfile(false) }}>
-            <div className="bg-[#13151f] border border-[#1e2130] rounded-2xl p-8 w-full max-w-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-bold text-gray-100">My Profile</h2>
-                <button onClick={() => setShowProfile(false)} className="text-gray-500 hover:text-gray-200"><X size={18} /></button>
-              </div>
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-2xl font-bold text-white mb-5 mx-auto">
-                {(profileName || profileEmail).charAt(0).toUpperCase()}
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1.5">Display name</label>
-                  <input value={profileName} onChange={e => setProfileName(e.target.value)}
-                    className="w-full bg-[#0d0f1a] border border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-purple-600" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1.5">Email</label>
-                  <div className="w-full bg-[#0d0f1a] border border-[#1e2130] rounded-lg px-3 py-2 text-sm text-gray-500">{profileEmail || '—'}</div>
-                </div>
-                {profileRole && (
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1.5">Role</label>
-                    <div className="w-full bg-[#0d0f1a] border border-[#1e2130] rounded-lg px-3 py-2 text-sm" style={{ color: ROLE_COLORS[profileRole] || '#9ca3af' }}>
-                      {profileRole.charAt(0).toUpperCase() + profileRole.slice(1)}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button onClick={() => setShowProfile(false)} className="flex-1 py-2 text-sm text-gray-500 border border-[#2a2d3e] rounded-lg hover:text-gray-200 transition-colors">Cancel</button>
-                <button
-                  disabled={profileSaving}
-                  onClick={async () => {
-                    setProfileSaving(true)
-                    try {
-                      const { createClient } = await import('@/lib/supabase/client')
-                      const supabase = createClient()
-                      const { data: { user } } = await supabase.auth.getUser()
-                      if (user) await supabase.from('profiles').update({ name: profileName }).eq('id', user.id)
-                    } catch { /* offline */ }
-                    setProfileSaving(false)
-                    setShowProfile(false)
-                  }}
-                  className="flex-1 py-2 text-sm font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-                >{profileSaving ? 'Saving…' : 'Save'}</button>
-              </div>
+  return (
+    <div style={{ display: 'flex', height: '100vh', background: '#0b0d14', color: 'white', overflow: 'hidden', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+      {/* Overlay panels */}
+      {showSettings && <SettingsPanel settings={settings} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} />}
+      {showDirectReports && <DirectReportsPanel reports={directReports} onSave={handleSaveReport} onDelete={handleDeleteReport} onClose={() => setShowDirectReports(false)} />}
+      {/* Profile modal */}
+      {showProfile && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={e => { if (e.target === e.currentTarget) setShowProfile(false) }}>
+          <div className="bg-[#13151f] border border-[#1e2130] rounded-2xl p-8 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-gray-100">My Profile</h2>
+              <button onClick={() => setShowProfile(false)} className="text-gray-500 hover:text-gray-200"><X size={18} /></button>
             </div>
-          </div>
-        )}
-
-        {/* Top bar */}
-        <div className="border-b border-[#1e2130] bg-[#13151f] px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="text-xl">📋</span>
-            <span className="font-bold text-base text-gray-100">Performance Review</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setShowSettings(true)}
-              className={`relative flex items-center justify-center w-8 h-8 rounded-lg border text-[11px] transition-all ${settings.driveFolderUrl ? 'border-purple-700/50 bg-purple-900/20 text-purple-400 hover:text-purple-200' : 'border-[#1e2030] bg-[#0d0f1a] text-gray-500 hover:text-gray-200 hover:border-[#2a2d3e]'}`}
-              title="Settings">
-              <Settings size={13} />
-            </button>
-            <button onClick={() => setShowDirectReports(true)}
-              className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e2030] bg-[#0d0f1a] text-[11px] text-gray-500 hover:text-gray-200 hover:border-[#2a2d3e] transition-all">
-              <Users size={12} />
-              My Team
-              {directReports.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-purple-700 text-[9px] font-bold text-white flex items-center justify-center">
-                  {directReports.length > 9 ? '9+' : directReports.length}
-                </span>
-              )}
-            </button>
-            <button onClick={() => setShowProfile(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#1e2130] bg-[#0d0f1a] text-[11px] text-gray-400 hover:text-gray-100 hover:border-[#2a2d3e] transition-all">
-              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-[10px] font-bold text-white">
-                {(profileName || profileEmail).charAt(0).toUpperCase() || '?'}
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-2xl font-bold text-white mb-5 mx-auto">
+              {(profileName || profileEmail).charAt(0).toUpperCase()}
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1.5">Display name</label>
+                <input value={profileName} onChange={e => setProfileName(e.target.value)}
+                  className="w-full bg-[#0d0f1a] border border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-purple-600" />
               </div>
-              {profileName || profileEmail || 'Profile'}
-            </button>
-            <button onClick={async () => { const { createClient } = await import('@/lib/supabase/client'); await createClient().auth.signOut(); window.location.href = '/login' }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e2030] bg-[#0d0f1a] text-[11px] text-gray-500 hover:text-red-400 hover:border-red-900/50 transition-all">
-              <LogOut size={11} /> Sign out
-            </button>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1.5">Email</label>
+                <div className="w-full bg-[#0d0f1a] border border-[#1e2130] rounded-lg px-3 py-2 text-sm text-gray-500">{profileEmail || '—'}</div>
+              </div>
+              {profileRole && (
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1.5">Role</label>
+                  <div className="w-full bg-[#0d0f1a] border border-[#1e2130] rounded-lg px-3 py-2 text-sm" style={{ color: ROLE_COLORS[profileRole] || '#9ca3af' }}>
+                    {profileRole.charAt(0).toUpperCase() + profileRole.slice(1)}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowProfile(false)} className="flex-1 py-2 text-sm text-gray-500 border border-[#2a2d3e] rounded-lg hover:text-gray-200 transition-colors">Cancel</button>
+              <button
+                disabled={profileSaving}
+                onClick={async () => {
+                  setProfileSaving(true)
+                  try {
+                    const { createClient } = await import('@/lib/supabase/client')
+                    const supabase = createClient()
+                    const { data: { user } } = await supabase.auth.getUser()
+                    if (user) await supabase.from('profiles').update({ name: profileName }).eq('id', user.id)
+                  } catch { /* offline */ }
+                  setProfileSaving(false)
+                  setShowProfile(false)
+                }}
+                className="flex-1 py-2 text-sm font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+              >{profileSaving ? 'Saving…' : 'Save'}</button>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Dashboard body */}
-        <div className="max-w-3xl mx-auto px-6 py-12">
-          <div className="flex items-end justify-between mb-8">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-100 tracking-tight">
-                {profileName ? `Welcome back, ${profileName.split(' ')[0]}` : 'Performance Reviews'}
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">Pick up where you left off or start a new review.</p>
-            </div>
-            <button onClick={handleNewReview}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity">
-              <Plus size={14} /> New Review
-            </button>
-          </div>
-
-          {saves.length === 0 ? (
-            <div className="text-center py-20 border border-dashed border-[#1e2130] rounded-2xl">
-              <div className="text-4xl mb-4">📋</div>
-              <p className="text-gray-400 font-medium mb-1">No reviews yet</p>
-              <p className="text-sm text-gray-600 mb-6">Start by creating your first performance review.</p>
-              <button onClick={handleNewReview}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity">
-                <Plus size={14} /> Create First Review
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {saves.map(save => {
-                const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, save.form)).length
-                const pct = Math.round((filled / (STEPS.length - 1)) * 100)
-                const isComplete = filled === STEPS.length - 1
-                return (
-                  <div key={save.id}
-                    className="group flex items-center gap-4 p-5 bg-[#13151f] border border-[#1e2130] rounded-2xl hover:border-purple-700/40 hover:bg-[#15172a] transition-all cursor-pointer"
-                    onClick={() => handleLoad(save)}>
-                    <div className="w-10 h-10 rounded-full bg-[#1e2130] flex items-center justify-center text-lg flex-shrink-0">
-                      {isComplete ? '✅' : '📝'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-100 truncate">{save.employeeName || 'Untitled Review'}</div>
-                      <div className="text-xs text-gray-500 mt-0.5 truncate">{save.form?.employeePosition || ''}{save.form?.employeeDivision ? ` · ${save.form.employeeDivision}` : ''}</div>
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="flex-1 h-1 bg-[#1e2130] rounded-full overflow-hidden">
-                          <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="text-[10px] text-gray-600 flex-shrink-0">{pct}%</span>
-                      </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-[11px] text-gray-600">{new Date(save.savedAt).toLocaleDateString()}</div>
-                      <div className="text-[10px] text-gray-700 mt-0.5">Step {save.step + 1} of {STEPS.length}</div>
-                    </div>
-                    <button onClick={e => { e.stopPropagation(); if (confirm('Delete this review?')) { handleDelete(save.id); setSaves(getSaves()) } }}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-600 hover:text-red-400 transition-all flex-shrink-0">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                )
-              })}
+      {/* ── Sidebar ── */}
+      <aside style={{
+        width: sidebarCollapsed ? 56 : 240,
+        flexShrink: 0,
+        background: '#0d0f1a',
+        borderRight: '1px solid #1e2130',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'width 0.2s ease',
+        overflow: 'hidden',
+      }}>
+        {/* Logo row + collapse toggle */}
+        <div style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: sidebarCollapsed ? '0 12px' : '0 16px', borderBottom: '1px solid #1e2130', flexShrink: 0 }}>
+          {!sidebarCollapsed && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 18 }}>📋</span>
+              <span style={{ fontWeight: 700, fontSize: 14, color: '#f0f2fa', whiteSpace: 'nowrap' }}>Performance Review</span>
             </div>
           )}
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-[#0b0d14] text-white">
-      {showSettings && (
-        <SettingsPanel
-          settings={settings}
-          onSave={handleSaveSettings}
-          onClose={() => setShowSettings(false)}
-        />
-      )}
-      {showDirectReports && (
-        <DirectReportsPanel
-          reports={directReports}
-          onSave={handleSaveReport}
-          onDelete={handleDeleteReport}
-          onClose={() => setShowDirectReports(false)}
-        />
-      )}
-      {showHistory && (
-        <HistoryPanel
-          saves={saves}
-          currentId={reviewIdRef.current}
-          onLoad={handleLoad}
-          onDelete={handleDelete}
-          onClose={() => setShowHistory(false)}
-        />
-      )}
-
-      <div className="max-w-2xl mx-auto px-4 py-8">
-
-        {/* Back link */}
-        <div className="mb-4">
-          <button onClick={() => setView('dashboard')} className="flex items-center gap-1.5 text-[11px] text-gray-600 hover:text-gray-300 transition-colors">
-            <ChevronLeft size={13} /> All Reviews
+          {sidebarCollapsed && <span style={{ fontSize: 18 }}>📋</span>}
+          <button onClick={() => setSidebarCollapsed(c => !c)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
         </div>
 
-        {/* Sticky employee info bar */}
-        {form.employeeName.trim() && (
-          <div className="mb-5 px-4 py-3 bg-[#13151f] border border-[#1e2130] rounded-xl flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
-              {form.employeeName.trim().charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-gray-100 truncate">{form.employeeName}</div>
-              <div className="text-[11px] text-gray-500 truncate">
-                {[form.employeePosition, form.employeeDivision].filter(Boolean).join(' · ')}
-              </div>
-            </div>
-            {saveStatus === 'saving' && <span className="text-[10px] text-gray-600 flex items-center gap-1 flex-shrink-0"><Loader2 size={10} className="animate-spin" /> Saving…</span>}
-            {saveStatus === 'saved' && <span className="text-[10px] text-emerald-600 flex items-center gap-1 flex-shrink-0"><CheckCircle2 size={10} /> Saved</span>}
-          </div>
-        )}
-
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">📋</span>
-              <div>
-                <h1 className="text-xl font-bold text-gray-100">Manager Performance Review</h1>
-                <p className="text-[12px] text-gray-500 mt-0.5">Fill out each section — copy individual parts or the full review at the end.</p>
-              </div>
-            </div>
-
-            {/* Toolbar */}
-            <div className="flex items-center gap-2 flex-shrink-0 pt-1">
-              <button
-                type="button"
-                onClick={handleNewReview}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-800/80 hover:bg-purple-700 text-[11px] text-white font-medium transition-colors"
-              >
-                + Create New
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowSettings(true)}
-                title="Settings"
-                className={`relative flex items-center justify-center w-8 h-8 rounded-lg border text-[11px] transition-all ${
-                  settings.driveFolderUrl
-                    ? 'border-purple-700/50 bg-purple-900/20 text-purple-400 hover:text-purple-200'
-                    : 'border-[#1e2030] bg-[#0d0f1a] text-gray-500 hover:text-gray-200 hover:border-[#2a2d3a]'
-                }`}
-              >
-                <Settings size={13} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowDirectReports(true)}
-                className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e2030] bg-[#0d0f1a] text-[11px] text-gray-500 hover:text-gray-200 hover:border-[#2a2d3a] transition-all"
-              >
-                <Users size={12} />
-                My Team
-                {directReports.length > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-purple-700 text-[9px] font-bold text-white flex items-center justify-center">
-                    {directReports.length > 9 ? '9+' : directReports.length}
-                  </span>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowHistory(true)}
-                className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e2030] bg-[#0d0f1a] text-[11px] text-gray-500 hover:text-gray-200 hover:border-[#2a2d3a] transition-all"
-              >
-                <History size={12} />
-                History
-                {saves.length > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-purple-700 text-[9px] font-bold text-white flex items-center justify-center">
-                    {saves.length > 9 ? '9+' : saves.length}
-                  </span>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  const { createClient } = await import('@/lib/supabase/client')
-                  await createClient().auth.signOut()
-                  window.location.href = '/login'
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e2030] bg-[#0d0f1a] text-[11px] text-gray-500 hover:text-red-400 hover:border-red-900/50 transition-all"
-                title="Sign out"
-              >
-                <LogOut size={12} />
-                Sign out
-              </button>
-            </div>
-          </div>
+        {/* New Review button */}
+        <div style={{ padding: sidebarCollapsed ? '12px 8px' : '12px 12px', flexShrink: 0 }}>
+          <button onClick={handleNewReview} style={{
+            width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+            gap: 8, padding: sidebarCollapsed ? '8px' : '8px 12px',
+            background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white',
+            border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+          }} title={sidebarCollapsed ? 'New Review' : undefined}>
+            <Plus size={14} />
+            {!sidebarCollapsed && 'New Review'}
+          </button>
         </div>
+
+        {/* Review list — scrollable */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: sidebarCollapsed ? '0 8px' : '0 8px' }}>
+          {!sidebarCollapsed && saves.length > 0 && (
+            <div style={{ fontSize: 10, fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '4px 8px 6px', marginBottom: 2 }}>
+              Reviews
+            </div>
+          )}
+          {saves.map(save => {
+            const isActive = save.id === currentReviewId
+            const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, save.form)).length
+            const pct = Math.round((filled / (STEPS.length - 1)) * 100)
+            return (
+              <div key={save.id}
+                onClick={() => handleLoad(save)}
+                title={sidebarCollapsed ? save.employeeName || 'Untitled' : undefined}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px',
+                  borderRadius: 8, cursor: 'pointer', marginBottom: 2,
+                  background: isActive ? '#1e1f3a' : 'transparent',
+                  border: isActive ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent',
+                  justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                }}
+                onMouseOver={e => { if (!isActive) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
+              >
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                  background: isActive ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 700, color: isActive ? 'white' : '#6b7280',
+                }}>
+                  {pct === 100 ? '✓' : (save.employeeName?.charAt(0).toUpperCase() || '?')}
+                </div>
+                {!sidebarCollapsed && (
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: isActive ? '#e0e7ff' : '#c4c9d4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {save.employeeName || 'Untitled'}
+                    </div>
+                    <div style={{ fontSize: 10, color: '#4b5563', marginTop: 1 }}>{pct}% complete</div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+          {saves.length === 0 && !sidebarCollapsed && (
+            <div style={{ padding: '16px 8px', fontSize: 11, color: '#374151', textAlign: 'center', lineHeight: 1.5 }}>
+              No reviews yet.<br />Create your first one.
+            </div>
+          )}
+        </div>
+
+        {/* Sidebar footer */}
+        <div style={{ borderTop: '1px solid #1e2130', padding: '8px', flexShrink: 0 }}>
+          {/* My Team */}
+          <button onClick={() => setShowDirectReports(true)}
+            title={sidebarCollapsed ? 'My Team' : undefined}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px', borderRadius: 8, border: 'none', background: 'transparent',
+              color: '#6b7280', cursor: 'pointer', fontSize: 12, fontWeight: 500,
+              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+            }}
+            onMouseOver={e => { e.currentTarget.style.background = '#13151f'; e.currentTarget.style.color = '#c4c9d4' }}
+            onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6b7280' }}
+          >
+            <Users size={15} />
+            {!sidebarCollapsed && 'My Team'}
+            {directReports.length > 0 && !sidebarCollapsed && (
+              <span style={{ marginLeft: 'auto', background: '#4f46e5', color: 'white', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>
+                {directReports.length}
+              </span>
+            )}
+          </button>
+          {/* Settings */}
+          <button onClick={() => setShowSettings(true)}
+            title={sidebarCollapsed ? 'Settings' : undefined}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px', borderRadius: 8, border: 'none', background: 'transparent',
+              color: settings.driveFolderUrl ? '#818cf8' : '#6b7280', cursor: 'pointer', fontSize: 12, fontWeight: 500,
+              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+            }}
+            onMouseOver={e => { e.currentTarget.style.background = '#13151f' }}
+            onMouseOut={e => { e.currentTarget.style.background = 'transparent' }}
+          >
+            <Settings size={15} />
+            {!sidebarCollapsed && 'Settings'}
+          </button>
+          {/* Profile */}
+          <button onClick={() => setShowProfile(true)}
+            title={sidebarCollapsed ? (profileName || profileEmail || 'Profile') : undefined}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px', borderRadius: 8, border: 'none', background: 'transparent',
+              color: '#6b7280', cursor: 'pointer', fontSize: 12, fontWeight: 500,
+              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+            }}
+            onMouseOver={e => { e.currentTarget.style.background = '#13151f' }}
+            onMouseOut={e => { e.currentTarget.style.background = 'transparent' }}
+          >
+            <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+              {(profileName || profileEmail).charAt(0).toUpperCase() || '?'}
+            </div>
+            {!sidebarCollapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profileName || profileEmail || 'Profile'}</span>}
+          </button>
+          {/* Sign out */}
+          <button
+            onClick={async () => { const { createClient } = await import('@/lib/supabase/client'); await createClient().auth.signOut(); window.location.href = '/login' }}
+            title={sidebarCollapsed ? 'Sign out' : undefined}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px', borderRadius: 8, border: 'none', background: 'transparent',
+              color: '#6b7280', cursor: 'pointer', fontSize: 12, fontWeight: 500,
+              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+            }}
+            onMouseOver={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.background = '#1a1010' }}
+            onMouseOut={e => { e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent' }}
+          >
+            <LogOut size={15} />
+            {!sidebarCollapsed && 'Sign out'}
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Main content ── */}
+      <main style={{ flex: 1, overflow: 'auto', background: '#0b0d14' }}>
+        {!currentReviewId ? (
+          /* Empty state */
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 16, padding: 32 }}>
+            <div style={{ fontSize: 48 }}>📋</div>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: 18, fontWeight: 700, color: '#e5e7eb', margin: '0 0 8px' }}>No review open</p>
+              <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 24px' }}>Select a review from the sidebar or create a new one.</p>
+              <button onClick={handleNewReview} style={{ padding: '10px 24px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                + New Review
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="max-w-2xl mx-auto px-6 py-8">
+            {/* Sticky employee info bar */}
+            {form.employeeName.trim() && (
+              <div className="mb-5 px-4 py-3 bg-[#13151f] border border-[#1e2130] rounded-xl flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
+                  {form.employeeName.trim().charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-gray-100 truncate">{form.employeeName}</div>
+                  <div className="text-[11px] text-gray-500 truncate">
+                    {[form.employeePosition, form.employeeDivision].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+                {saveStatus === 'saving' && <span className="text-[10px] text-gray-600 flex items-center gap-1 flex-shrink-0"><Loader2 size={10} className="animate-spin" /> Saving…</span>}
+                {saveStatus === 'saved' && <span className="text-[10px] text-emerald-600 flex items-center gap-1 flex-shrink-0"><CheckCircle2 size={10} /> Saved</span>}
+              </div>
+            )}
+
+            {/* Header — simplified */}
+            <div className="mb-8">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">📋</span>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-100">Manager Performance Review</h1>
+                  <p className="text-[12px] text-gray-500 mt-0.5">Fill out each section — copy individual parts or the full review at the end.</p>
+                </div>
+              </div>
+            </div>
 
         {/* Step progress */}
         <div className="mb-8">
@@ -3095,7 +3067,9 @@ export function PerformanceReviewForm() {
             </button>
           </div>
         )}
-      </div>
+          </div>
+        )}
+      </main>
     </div>
   )
 }
