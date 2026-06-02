@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       )
       const { data: invite } = await serviceClient
         .from('invites')
-        .select('role, id')
+        .select('role, id, manager_id')
         .eq('email', user.email)
         .is('accepted_at', null)
         .gt('expires_at', new Date().toISOString())
@@ -52,14 +52,19 @@ export async function GET(request: NextRequest) {
         .single()
 
       if (invite) {
+        const inv = invite as { role: string; id: string; manager_id: string | null }
+        // Apply role and manager from invite
         await serviceClient
           .from('profiles')
-          .update({ role: (invite as { role: string; id: string }).role })
+          .update({
+            role: inv.role,
+            ...(inv.manager_id ? { manager_id: inv.manager_id } : {}),
+          })
           .eq('id', user.id)
         await serviceClient
           .from('invites')
           .update({ accepted_at: new Date().toISOString() })
-          .eq('id', (invite as { role: string; id: string }).id)
+          .eq('id', inv.id)
       }
     }
   } catch { /* invite check is best-effort */ }

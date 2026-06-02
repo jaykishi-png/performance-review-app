@@ -62,9 +62,11 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [activeTab, setActiveTab] = useState<'users' | 'invites' | 'upcoming'>('upcoming')
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole, setInviteRole] = useState<'manager' | 'employee'>('employee')
+  const [inviteRole, setInviteRole] = useState<'admin' | 'manager' | 'employee'>('employee')
+  const [inviteManagerId, setInviteManagerId] = useState('')
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteLink, setInviteLink] = useState('')
+  const [inviteEmailSent, setInviteEmailSent] = useState(false)
   const [editingUser, setEditingUser] = useState<string | null>(null)
   const [editingManager, setEditingManager] = useState<string | null>(null)
   const [editingStartDate, setEditingStartDate] = useState<string | null>(null)
@@ -97,10 +99,17 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     try {
       const res = await fetch('/api/admin/invite', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+        body: JSON.stringify({
+          email: inviteEmail,
+          role: inviteRole,
+          managerId: inviteRole === 'employee' ? inviteManagerId || null : null,
+        }),
       })
       const data = await res.json()
-      if (data.inviteLink) setInviteLink(data.inviteLink)
+      if (data.inviteLink) {
+        setInviteLink(data.inviteLink)
+        setInviteEmailSent(!!data.emailSent)
+      }
       router.refresh()
     } finally { setInviteLoading(false) }
   }
@@ -393,39 +402,96 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
           onClick={e => { if (e.target === e.currentTarget) setShowInviteModal(false) }}>
           <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 16, padding: '32px', width: 420 }}>
-            <h2 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: '#f0f2fa' }}>Invite User</h2>
-            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>They&apos;ll receive their role automatically when they sign in with Google.</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#f0f2fa' }}>Invite User</h2>
+            </div>
+            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>
+              An invitation email will be sent. They sign in with their Google account.
+            </p>
 
             {inviteLink ? (
               <>
-                <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 11, color: '#6b7280', wordBreak: 'break-all', lineHeight: 1.6 }}>
-                  <div style={{ color: '#34d399', marginBottom: 6, fontWeight: 600 }}>✓ Share this link:</div>
-                  {inviteLink}
+                {/* Success state */}
+                <div style={{ background: inviteEmailSent ? '#0d2b1f' : '#1e1f3a', border: `1px solid ${inviteEmailSent ? '#1a4a35' : '#2d2f5e'}`, borderRadius: 10, padding: '16px', marginBottom: 16 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: inviteEmailSent ? '#34d399' : '#818cf8', marginBottom: 6 }}>
+                    {inviteEmailSent ? '✓ Invitation email sent!' : '✓ Invite created'}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
+                    {inviteEmailSent
+                      ? `An email was sent to ${inviteEmail} with their invite link.`
+                      : 'Copy and share this link manually:'}
+                  </div>
+                  {!inviteEmailSent && (
+                    <div style={{ marginTop: 10, background: '#0d0f1a', borderRadius: 6, padding: '8px 10px', fontSize: 11, color: '#6b7280', wordBreak: 'break-all', lineHeight: 1.6 }}>
+                      {inviteLink}
+                    </div>
+                  )}
                 </div>
-                <button onClick={() => navigator.clipboard.writeText(inviteLink)} style={{ width: '100%', padding: '10px', background: '#1e2130', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, cursor: 'pointer', marginBottom: 8 }}>Copy Link</button>
-                <button onClick={() => { setShowInviteModal(false); setInviteEmail(''); setInviteLink('') }} style={{ width: '100%', padding: '10px', background: 'transparent', color: '#6b7280', border: 'none', fontSize: 13, cursor: 'pointer' }}>Close</button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {!inviteEmailSent && (
+                    <button onClick={() => navigator.clipboard.writeText(inviteLink)}
+                      style={{ flex: 1, padding: '10px', background: '#1e2130', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>
+                      Copy Link
+                    </button>
+                  )}
+                  <button onClick={() => { setShowInviteModal(false); setInviteEmail(''); setInviteLink(''); setInviteManagerId(''); setInviteEmailSent(false) }}
+                    style={{ flex: 1, padding: '10px', background: inviteEmailSent ? 'linear-gradient(135deg,#4f46e5,#7c3aed)' : 'transparent', color: inviteEmailSent ? '#fff' : '#6b7280', border: inviteEmailSent ? 'none' : '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, fontWeight: inviteEmailSent ? 600 : 400, cursor: 'pointer' }}>
+                    Done
+                  </button>
+                </div>
               </>
             ) : (
               <>
+                {/* Email */}
                 <div style={{ marginBottom: 14 }}>
-                  <label style={{ display: 'block', fontSize: 12, color: '#9ca3af', marginBottom: 6 }}>Email address</label>
-                  <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="name@company.com"
-                    style={{ width: '100%', padding: '10px 12px', background: '#0d1117', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }} />
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Email address</label>
+                  <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+                    placeholder="name@company.com" autoFocus
+                    style={{ width: '100%', padding: '10px 12px', background: '#0d1117', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' as const, outline: 'none' }} />
                 </div>
-                <div style={{ marginBottom: 24 }}>
-                  <label style={{ display: 'block', fontSize: 12, color: '#9ca3af', marginBottom: 6 }}>Role</label>
-                  <select value={inviteRole} onChange={e => setInviteRole(e.target.value as 'manager' | 'employee')}
-                    style={{ width: '100%', padding: '10px 12px', background: '#0d1117', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13 }}>
-                    <option value="employee">Employee</option>
-                    <option value="manager">Manager</option>
-                    <option value="admin">Admin</option>
-                  </select>
+
+                {/* Role */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Role</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {(['employee', 'manager', 'admin'] as const).map(r => (
+                      <button key={r} onClick={() => { setInviteRole(r); if (r !== 'employee') setInviteManagerId('') }}
+                        style={{
+                          flex: 1, padding: '10px 8px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                          background: inviteRole === r ? `${ROLE_COLORS[r]}20` : '#0d1117',
+                          color: inviteRole === r ? ROLE_COLORS[r] : '#6b7280',
+                          outline: inviteRole === r ? `1.5px solid ${ROLE_COLORS[r]}` : '1px solid #2a2d3e',
+                        }}>
+                        {ROLE_LABELS[r]}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button onClick={() => setShowInviteModal(false)} style={{ flex: 1, padding: '10px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+
+                {/* Manager selection — only for employees */}
+                {inviteRole === 'employee' && (
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Assign Manager <span style={{ color: '#374151', fontWeight: 400, textTransform: 'none' }}>(optional)</span>
+                    </label>
+                    <select value={inviteManagerId} onChange={e => setInviteManagerId(e.target.value)}
+                      style={{ width: '100%', padding: '10px 12px', background: '#0d1117', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13 }}>
+                      <option value="">— Assign later —</option>
+                      {managers.map(m => (
+                        <option key={m.id} value={m.id}>{m.name || m.email}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+                  <button onClick={() => { setShowInviteModal(false); setInviteEmail(''); setInviteManagerId('') }}
+                    style={{ flex: 1, padding: '11px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>
+                    Cancel
+                  </button>
                   <button onClick={sendInvite} disabled={!inviteEmail || inviteLoading}
-                    style={{ flex: 2, padding: '10px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: !inviteEmail || inviteLoading ? 0.5 : 1 }}>
-                    {inviteLoading ? 'Creating…' : 'Create Invite Link'}
+                    style={{ flex: 2, padding: '11px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: !inviteEmail || inviteLoading ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                    {inviteLoading ? 'Sending…' : '✉️ Send Invitation'}
                   </button>
                 </div>
               </>
