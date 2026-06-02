@@ -147,44 +147,59 @@ export async function POST(req: NextRequest) {
     const docId = copyRes.data.id
     if (!docId) throw new Error('Failed to copy template — no doc ID returned.')
 
-    // ── 2. replaceAllText for UNIQUE header fields ─────────────────────────────
-    // The template has sample data: "Vittorio Zenezini", "Video Editor", "Creative", "Jay Kishi"
-    // and placeholder text: "SELECT ONE", "[INSERT EXAMPLE]", "positive or constructive"
-    const SCORE_LABELS: Record<number, string> = {
-      1: 'Unsatisfactory', 2: 'Needs Improvement', 3: 'Meets Expectations',
-      4: 'Exceeds Job Requirements', 5: 'Outstanding',
-    }
-
-    const uniqueReplacements = [
-      { from: 'Vittorio Zenezini',       to: form.employeeName     || '' },
-      { from: 'Video Editor',            to: form.employeePosition || '' },
-      { from: 'Creative',                to: form.employeeDivision || '' },
-      { from: 'Jay Kishi',               to: form.supervisorName   || '' },
-      // Competency 5 direction label
-      { from: 'positive or constructive', to: form.competencyFiveType === 'positive' ? 'positive' : 'constructive' },
-    ]
-
+    // ── 2. replaceAllText for the one truly unique string ──────────────────────
     await docs.documents.batchUpdate({
       documentId: docId,
       requestBody: {
-        requests: uniqueReplacements.map(r => ({
-          replaceAllText: { containsText: { text: r.from, matchCase: true }, replaceText: r.to },
-        })),
+        requests: [{
+          replaceAllText: {
+            containsText: { text: 'positive or constructive', matchCase: true },
+            replaceText: form.competencyFiveType === 'positive' ? 'positive' : 'constructive',
+          },
+        }],
       },
     })
 
-    // ── 3. Read updated document for position-based replacements ──────────────
+    // ── 3. Read document for all position-based replacements ──────────────────
     const docRes = await docs.documents.get({ documentId: docId })
     const runs   = flattenRuns(docRes.data.body?.content ?? [])
     const ops: ReplaceOp[] = []
 
-    // ── 4. Competency names — "SELECT ONE" appears 5 times in order ───────────
+    // Helper: find the first SELECT ONE after a given label string
+    function replaceSelectAfterLabel(label: string, newText: string) {
+      const labelOcc = findOccurrences(runs, label)
+      if (!labelOcc.length) return
+      const after = labelOcc[0].endIndex
+      const target = findOccurrences(runs, 'SELECT ONE').find(r => r.startIndex > after)
+      if (target) ops.push({ ...target, newText })
+    }
+
+    // Helper: insert text into the empty cell (just \n) after a label
+    function insertAfterLabel(label: string, newText: string) {
+      if (!newText) return
+      const labelOcc = findOccurrences(runs, label)
+      if (!labelOcc.length) return
+      const after = labelOcc[0].endIndex
+      const emptyRun = runs.find(r => r.startIndex >= after && r.text === '\n')
+      if (emptyRun) ops.push({ startIndex: emptyRun.startIndex, endIndex: emptyRun.startIndex, newText })
+    }
+
+    // ── 4a. Header fields ─────────────────────────────────────────────────────
+    // Employee Name is an empty cell; the others use "SELECT ONE" dropdowns
+    insertAfterLabel('Employee Name:\n',     form.employeeName)
+    replaceSelectAfterLabel('Employee Position:\n', form.employeePosition || '')
+    replaceSelectAfterLabel('Employee Division:\n', form.employeeDivision || '')
+    replaceSelectAfterLabel('Supervisor Name:\n',   form.supervisorName   || '')
+
+    // ── 4b. Competency names — only "SELECT ONE" occurrences inside PART ONE ──
+    // Find the start of PART ONE to avoid matching header SELECT ONEs
+    const partOneStart = findOccurrences(runs, 'PART ONE')[0]?.endIndex ?? 0
     const compNames = [
       form.competencyOne.competency,   form.competencyTwo.competency,
       form.competencyThree.competency, form.competencyFour.competency,
       form.competencyFive.competency,
     ]
-    const selectOnes = findOccurrences(runs, 'SELECT ONE')
+    const selectOnes = findOccurrences(runs, 'SELECT ONE').filter(r => r.startIndex > partOneStart)
     selectOnes.slice(0, 5).forEach((range, i) => {
       ops.push({ ...range, newText: compNames[i] || '' })
     })
