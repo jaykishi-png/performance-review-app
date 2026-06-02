@@ -9,18 +9,38 @@ const TEMPLATE_DOC_ID    = '1iEf-HdeKnYUTmHMvRtcQygDEh87dOWycSwQzrfZvC8E'
 const PERF_REVIEW_FOLDER = '1vj8HSp0QnBlfwCoLvtzz-z3uJkh_84hg'
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
-function getAuth() {
-  // Use a hardcoded redirect URI — the redirect_uri in the constructor is only
-  // needed for generating auth URLs, not for refresh-token operations, but some
-  // versions of the library still validate it. Use the standard postmessage value.
-  const auth = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    'postmessage',
-  )
-  auth.setCredentials({ refresh_token: process.env.GOOGLE_DRIVE_REFRESH_TOKEN })
-  console.log('[send-to-drive] auth init — client_id prefix:', process.env.GOOGLE_CLIENT_ID?.slice(0, 20))
-  console.log('[send-to-drive] refresh_token prefix:', process.env.GOOGLE_DRIVE_REFRESH_TOKEN?.slice(0, 10))
+async function getAccessToken(): Promise<string> {
+  const clientId     = (process.env.GOOGLE_CLIENT_ID     ?? '').trim()
+  const clientSecret = (process.env.GOOGLE_CLIENT_SECRET ?? '').trim()
+  const refreshToken = (process.env.GOOGLE_DRIVE_REFRESH_TOKEN ?? '').trim()
+
+  console.log('[send-to-drive] client_id prefix    :', clientId.slice(0, 20))
+  console.log('[send-to-drive] client_secret prefix:', clientSecret.slice(0, 6))
+  console.log('[send-to-drive] refresh_token prefix :', refreshToken.slice(0, 10))
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id:     clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type:    'refresh_token',
+    }),
+  })
+
+  const data = await res.json() as { access_token?: string; error?: string; error_description?: string }
+  console.log('[send-to-drive] token response:', JSON.stringify(data))
+
+  if (!res.ok || !data.access_token) {
+    throw new Error(`Google token error: ${data.error} — ${data.error_description}`)
+  }
+  return data.access_token
+}
+
+function getAuth(accessToken: string) {
+  const auth = new google.auth.OAuth2()
+  auth.setCredentials({ access_token: accessToken })
   return auth
 }
 
@@ -106,7 +126,8 @@ export async function POST(req: NextRequest) {
     // Use caller-supplied folder ID if provided, otherwise fall back to default
     const targetFolder = form.driveFolderId?.trim() || PERF_REVIEW_FOLDER
 
-    const auth  = getAuth()
+    const accessToken = await getAccessToken()
+    const auth  = getAuth(accessToken)
     const drive = google.drive({ version: 'v3', auth })
     const docs  = google.docs({ version: 'v1', auth })
 
