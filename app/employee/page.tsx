@@ -42,15 +42,23 @@ export default async function EmployeePage() {
     .limit(1)
     .single()
 
-  const selfReview = srRow ? {
-    id: (srRow as Record<string, unknown>).id as string,
-    strengths: (srRow as Record<string, unknown>).strengths as string ?? '',
-    growth_areas: (srRow as Record<string, unknown>).growth_areas as string ?? '',
-    goal_reflections: ((srRow as Record<string, unknown>).goal_reflections as { goal: string; reflection: string }[]) ?? [],
-    overall_rating: (srRow as Record<string, unknown>).overall_rating as number | null,
-    overall_comments: (srRow as Record<string, unknown>).overall_comments as string ?? '',
-    status: (srRow as Record<string, unknown>).status as 'draft' | 'submitted',
-    submitted_at: (srRow as Record<string, unknown>).submitted_at as string | null,
+  const r = srRow as Record<string, unknown> | null
+  const selfReview = r ? {
+    id: r.id as string,
+    // New template fields
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    competencies: (r.competencies ?? []) as any[],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    goals_objectives: (r.goals_objectives ?? []) as any[],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    next_year_goals: (r.next_year_goals ?? []) as any[],
+    overall_rating: r.overall_rating as number | null,
+    status: r.status as 'draft' | 'submitted',
+    submitted_at: r.submitted_at as string | null,
+    // Legacy
+    strengths: r.strengths as string ?? '',
+    growth_areas: r.growth_areas as string ?? '',
+    overall_comments: r.overall_comments as string ?? '',
   } : null
 
   return <EmployeePortal profile={p} manager={manager} initialSelfReview={selfReview} />

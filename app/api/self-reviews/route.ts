@@ -85,17 +85,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Submitted review cannot be edited' }, { status: 400 })
     }
 
+    const now = new Date().toISOString()
     const payload = {
       employee_id: user.id,
       manager_id: (profile as { manager_id: string | null } | null)?.manager_id ?? null,
+      // New template fields
+      competencies: body.competencies ?? [],
+      goals_objectives: body.goalsObjectives ?? [],
+      next_year_goals: body.nextYearGoals ?? [],
+      overall_rating: body.overallRating ?? null,
+      // Legacy fields kept for backward compat
       strengths: body.strengths ?? '',
       growth_areas: body.growthAreas ?? '',
       goal_reflections: body.goalReflections ?? [],
-      overall_rating: body.overallRating ?? null,
       overall_comments: body.overallComments ?? '',
       status: body.status ?? 'draft',
-      submitted_at: body.status === 'submitted' ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString(),
+      submitted_at: body.status === 'submitted' ? now : null,
+      updated_at: now,
     }
 
     if (existing) {
