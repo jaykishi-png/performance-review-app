@@ -1,14 +1,16 @@
 import { redirect } from 'next/navigation'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { getRoleHomeRoute } from '@/lib/permissions'
+import type { Role } from '@/lib/permissions'
 
 export default async function Home() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     redirect('/performance-review')
   }
 
-  try {
-    const { createClient, createServiceClient } = await import('@/lib/supabase/server')
-    const { getRoleHomeRoute } = await import('@/lib/permissions')
+  let role: Role = 'pending'
 
+  try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
@@ -20,9 +22,11 @@ export default async function Home() {
       .eq('id', user.id)
       .single()
 
-    const role = (profile as { role: string } | null)?.role ?? 'pending'
-    redirect(getRoleHomeRoute(role as Parameters<typeof getRoleHomeRoute>[0]))
+    role = ((profile as { role: string } | null)?.role ?? 'pending') as Role
   } catch {
     redirect('/login')
   }
+
+  // redirect() is outside try/catch so Next.js's internal redirect throw propagates correctly
+  redirect(getRoleHomeRoute(role))
 }
