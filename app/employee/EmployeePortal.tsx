@@ -495,7 +495,7 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
             {(manager?.name || manager?.email || '?').charAt(0).toUpperCase()}
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>Your Supervisor</div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>Your Manager</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e7eb' }}>{manager?.name || manager?.email || 'Not assigned'}</div>
             {manager?.name && manager?.email && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 1 }}>{manager.email}</div>}
           </div>
