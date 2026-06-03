@@ -1209,6 +1209,33 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
             </div>
           )}
 
+          {/* Supervisor — always visible */}
+          {!collapsed && (
+            <div style={{ padding: '7px 8px', marginBottom: 2 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Supervisor</div>
+              {manager ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                    {(manager.name || manager.email).charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#c4c9d4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{manager.name || manager.email}</div>
+                    {manager.name && <div style={{ fontSize: 10, color: '#4b5563', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{manager.email}</div>}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: '#374151', fontStyle: 'italic' }}>Not assigned</div>
+              )}
+            </div>
+          )}
+          {collapsed && manager && (
+            <div title={manager.name || manager.email} style={{ display: 'flex', justifyContent: 'center', padding: '6px 0', marginBottom: 2 }}>
+              <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff' }}>
+                {(manager.name || manager.email).charAt(0).toUpperCase()}
+              </div>
+            </div>
+          )}
+
           {/* Profile — clickable */}
           <button onClick={() => setShowProfileEdit(true)} title={collapsed ? displayName : undefined}
             style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '8px' : '8px 8px', borderRadius: 8, border: '1px solid transparent', background: 'transparent', cursor: 'pointer', justifyContent: collapsed ? 'center' : 'flex-start', transition: 'all 0.15s' }}
