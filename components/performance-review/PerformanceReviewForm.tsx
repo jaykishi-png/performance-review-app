@@ -1868,6 +1868,24 @@ function StepOutput({
   )
   const [driveUrl, setDriveUrl] = useState(savedDriveUrl ?? '')
   const [driveError, setDriveError] = useState('')
+  const [showManualLink, setShowManualLink] = useState(false)
+  const [manualLinkValue, setManualLinkValue] = useState('')
+  const [manualLinkError, setManualLinkError] = useState('')
+
+  function handleSaveManualLink() {
+    const val = manualLinkValue.trim()
+    if (!val) { setManualLinkError('Please enter a URL.'); return }
+    if (!val.startsWith('https://docs.google.com/') && !val.startsWith('https://drive.google.com/')) {
+      setManualLinkError('Must be a Google Docs or Drive URL.')
+      return
+    }
+    setDriveUrl(val)
+    setDriveStatus('done')
+    setManualLinkError('')
+    setShowManualLink(false)
+    setManualLinkValue('')
+    onDriveSaved?.(val, '')
+  }
 
   // Validate saved Drive link on mount — reset to idle if doc was deleted
   useEffect(() => {
@@ -2277,14 +2295,58 @@ function StepOutput({
         {driveStatus === 'done' && (
           <div className="flex items-center gap-2 text-[11px] text-emerald-400 bg-emerald-950/40 rounded-lg px-3 py-2">
             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-            <span>Document saved to your Performance Reviews folder.</span>
-            <a href={driveUrl} target="_blank" rel="noopener noreferrer" className="ml-auto underline hover:text-emerald-300 shrink-0">View →</a>
+            <span className="truncate">{driveUrl}</span>
+            <a href={driveUrl} target="_blank" rel="noopener noreferrer" className="ml-auto underline hover:text-emerald-300 shrink-0">Open →</a>
           </div>
         )}
 
         {driveStatus === 'error' && (
           <div className="text-[11px] text-red-400 bg-red-950/30 rounded-lg px-3 py-2">
             <span className="font-semibold">Error: </span>{driveError}
+          </div>
+        )}
+
+        {/* Manual link entry */}
+        {(driveStatus === 'idle' || driveStatus === 'error' || driveStatus === 'done') && (
+          <div>
+            {!showManualLink ? (
+              <button
+                type="button"
+                onClick={() => { setShowManualLink(true); setManualLinkValue(driveUrl || '') }}
+                className="text-[11px] text-gray-600 hover:text-gray-400 transition-colors underline-offset-2 hover:underline"
+              >
+                {driveStatus === 'done' ? 'Replace with a different link' : 'Already have a doc? Paste the link manually'}
+              </button>
+            ) : (
+              <div className="space-y-2 pt-1">
+                <p className="text-[11px] text-gray-500">Paste a Google Docs or Drive URL:</p>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={manualLinkValue}
+                    onChange={e => { setManualLinkValue(e.target.value); setManualLinkError('') }}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSaveManualLink() }}
+                    placeholder="https://docs.google.com/document/d/..."
+                    className="flex-1 bg-[#0a0c14] border border-[#2a2d3a] rounded-lg px-3 py-2 text-[12px] text-gray-200 placeholder-gray-700 focus:outline-none focus:border-emerald-700/60 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveManualLink}
+                    className="px-3 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[12px] font-semibold transition-colors shrink-0"
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowManualLink(false); setManualLinkError('') }}
+                    className="px-3 py-2 rounded-lg border border-[#1e2030] text-gray-500 hover:text-gray-300 text-[12px] transition-colors shrink-0"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {manualLinkError && <p className="text-[11px] text-red-400">{manualLinkError}</p>}
+              </div>
+            )}
           </div>
         )}
       </div>
