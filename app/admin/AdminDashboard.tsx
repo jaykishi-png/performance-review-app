@@ -22,17 +22,17 @@ type InviteRecord = {
 type SelfAssessmentStatus = { employee_id: string; status: string; submitted_at: string | null }
 
 type Props = {
-  currentUser: { id: string; email: string; role: string }
+  currentUser: { id: string; email: string; role: 'admin' | 'dev_admin' }
   users: UserRecord[]
   invites: InviteRecord[]
   selfAssessments: SelfAssessmentStatus[]
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  admin: '#818cf8', manager: '#34d399', employee: '#60a5fa', pending: '#f59e0b',
+  admin: '#818cf8', dev_admin: '#f472b6', manager: '#34d399', employee: '#60a5fa', pending: '#f59e0b',
 }
 const ROLE_LABELS: Record<string, string> = {
-  admin: 'Admin', manager: 'Manager', employee: 'Employee', pending: 'Pending',
+  admin: 'Admin', dev_admin: 'Dev Admin', manager: 'Manager', employee: 'Employee', pending: 'Pending',
 }
 
 function daysUntilAnniversary(startDate: string): number {
@@ -59,6 +59,8 @@ function yearsOfService(startDate: string): number {
 
 export default function AdminDashboard({ currentUser, users, invites, selfAssessments }: Props) {
   const router = useRouter()
+  const isDevAdmin = currentUser.role === 'dev_admin'
+
   const [activeTab, setActiveTab] = useState<'users' | 'invites' | 'upcoming'>('upcoming')
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -76,7 +78,16 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const saMap = Object.fromEntries(selfAssessments.map(s => [s.employee_id, s]))
   const activeUsers = users.filter(u => u.is_active)
 
-  // Upcoming reviews — employees/managers with start_date and anniversary within 90 days
+  // Invite roles available depend on actor role
+  const inviteRoleOptions = isDevAdmin
+    ? (['employee', 'manager'] as const)
+    : (['employee', 'manager', 'admin'] as const)
+
+  // Role options in user edit dropdown depend on actor role
+  const editRoleOptions = isDevAdmin
+    ? ['manager', 'employee', 'pending']
+    : ['admin', 'dev_admin', 'manager', 'employee', 'pending']
+
   const upcomingReviews = useMemo(() => {
     return users
       .filter(u => u.start_date && u.is_active && u.role !== 'pending')
@@ -88,13 +99,14 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const urgentCount = upcomingReviews.filter(u => u.daysUntil <= 30).length
 
   async function signOut() {
-    const { createClient } = await import('@/lib/supabase/client')
-    await createClient().auth.signOut()
+    await fetch('/api/auth/signout', { method: 'POST' })
     router.push('/login')
   }
 
   async function sendInvite() {
     if (!inviteEmail) return
+    // Guard: dev admin cannot send admin/dev_admin invites
+    if (isDevAdmin && inviteRole === 'admin') return
     setInviteLoading(true)
     try {
       const res = await fetch('/api/admin/invite', {
@@ -115,6 +127,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   }
 
   async function updateField(userId: string, fields: Record<string, unknown>) {
+    // Guard: dev admin cannot set admin/dev_admin roles
+    if (isDevAdmin && fields.role && ['admin', 'dev_admin'].includes(fields.role as string)) return
     await fetch('/api/admin/users', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, ...fields }),
@@ -148,17 +162,35 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 18 }}>📋</span>
           <span style={{ fontWeight: 700, fontSize: 15, color: '#f0f2fa' }}>Performance Review</span>
-          <span style={{ background: '#1e2130', padding: '3px 10px', borderRadius: 20, fontSize: 11, color: '#818cf8', fontWeight: 600 }}>Admin</span>
+          <span style={{ background: '#1e2130', padding: '3px 10px', borderRadius: 20, fontSize: 11, color: isDevAdmin ? '#f472b6' : '#818cf8', fontWeight: 600 }}>
+            {isDevAdmin ? 'Dev Admin' : 'Admin'}
+          </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Switch to Manager View */}
-          <a href="/performance-review" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#1e2130', color: '#9ca3af', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 12, fontWeight: 500, textDecoration: 'none', cursor: 'pointer' }}>
-            ↗ Manager View
-          </a>
+          {isDevAdmin && (
+            <a href="/dev" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#1e1a2e', color: '#f472b6', border: '1px solid #4a2060', borderRadius: 8, fontSize: 12, fontWeight: 500, textDecoration: 'none' }}>
+              ↗ Dev Console
+            </a>
+          )}
+          {!isDevAdmin && (
+            <a href="/performance-review" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#1e2130', color: '#9ca3af', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 12, fontWeight: 500, textDecoration: 'none' }}>
+              ↗ Manager View
+            </a>
+          )}
           <span style={{ fontSize: 12, color: '#6b7280' }}>{currentUser.email}</span>
           <button onClick={signOut} style={{ padding: '5px 12px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3e', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Sign out</button>
         </div>
       </div>
+
+      {/* Dev Admin notice banner */}
+      {isDevAdmin && (
+        <div style={{ background: '#1e1a2e', borderBottom: '1px solid #4a2060', padding: '10px 28px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: '#f472b6', fontSize: 14 }}>🔒</span>
+          <span style={{ color: '#c084fc', fontSize: 13 }}>
+            <strong>Dev Admin view</strong> — Sensitive review document content is hidden for this role. You can manage users, org chart, and system settings.
+          </span>
+        </div>
+      )}
 
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 28px' }}>
 
@@ -289,17 +321,21 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       {editingUser === u.id ? (
                         <select defaultValue={u.role} onChange={e => updateField(u.id, { role: e.target.value })} onBlur={() => setEditingUser(null)} autoFocus
                           style={{ background: '#0d0f1a', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}>
-                          <option value="admin">Admin</option>
-                          <option value="manager">Manager</option>
-                          <option value="employee">Employee</option>
-                          <option value="pending">Pending</option>
+                          {editRoleOptions.map(r => (
+                            <option key={r} value={r}>{ROLE_LABELS[r] ?? r}</option>
+                          ))}
                         </select>
                       ) : (
-                        <span onClick={() => u.id !== currentUser.id && setEditingUser(u.id)}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500, background: `${ROLE_COLORS[u.role]}18`, color: ROLE_COLORS[u.role], cursor: u.id !== currentUser.id ? 'pointer' : 'default' }}
+                        <span
+                          onClick={() => {
+                            // Cannot edit own role, admin/dev_admin roles if dev_admin
+                            const cantEdit = u.id === currentUser.id || (isDevAdmin && (u.role === 'admin' || u.role === 'dev_admin'))
+                            if (!cantEdit) setEditingUser(u.id)
+                          }}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500, background: `${ROLE_COLORS[u.role] ?? '#64748b'}18`, color: ROLE_COLORS[u.role] ?? '#64748b', cursor: u.id !== currentUser.id ? 'pointer' : 'default' }}
                           title={u.id !== currentUser.id ? 'Click to edit' : ''}>
                           {ROLE_LABELS[u.role] || u.role}
-                          {u.id !== currentUser.id && <span style={{ fontSize: 9 }}>✏️</span>}
+                          {u.id !== currentUser.id && !(isDevAdmin && (u.role === 'admin' || u.role === 'dev_admin')) && <span style={{ fontSize: 9 }}>✏️</span>}
                         </span>
                       )}
                     </td>
@@ -385,7 +421,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   {invites.map(inv => (
                     <tr key={inv.id}>
                       <td style={{ ...S.td, color: '#e5e7eb' }}>{inv.email}</td>
-                      <td style={S.td}><span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500, background: `${ROLE_COLORS[inv.role]}18`, color: ROLE_COLORS[inv.role] }}>{ROLE_LABELS[inv.role]}</span></td>
+                      <td style={S.td}><span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500, background: `${ROLE_COLORS[inv.role] ?? '#64748b'}18`, color: ROLE_COLORS[inv.role] ?? '#64748b' }}>{ROLE_LABELS[inv.role] ?? inv.role}</span></td>
                       <td style={{ ...S.td, color: '#6b7280' }}>{new Date(inv.created_at).toLocaleDateString()}</td>
                       <td style={{ ...S.td, color: '#6b7280' }}>{new Date(inv.expires_at).toLocaleDateString()}</td>
                     </tr>
@@ -411,7 +447,6 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
             {inviteLink ? (
               <>
-                {/* Success state */}
                 <div style={{ background: inviteEmailSent ? '#0d2b1f' : '#1e1f3a', border: `1px solid ${inviteEmailSent ? '#1a4a35' : '#2d2f5e'}`, borderRadius: 10, padding: '16px', marginBottom: 16 }}>
                   <div style={{ fontWeight: 600, fontSize: 14, color: inviteEmailSent ? '#34d399' : '#818cf8', marginBottom: 6 }}>
                     {inviteEmailSent ? '✓ Invitation email sent!' : '✓ Invite created'}
@@ -442,7 +477,6 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               </>
             ) : (
               <>
-                {/* Email */}
                 <div style={{ marginBottom: 14 }}>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Email address</label>
                   <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
@@ -450,11 +484,10 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                     style={{ width: '100%', padding: '10px 12px', background: '#0d1117', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' as const, outline: 'none' }} />
                 </div>
 
-                {/* Role */}
                 <div style={{ marginBottom: 14 }}>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Role</label>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    {(['employee', 'manager', 'admin'] as const).map(r => (
+                    {inviteRoleOptions.map(r => (
                       <button key={r} onClick={() => { setInviteRole(r); if (r !== 'employee') setInviteManagerId('') }}
                         style={{
                           flex: 1, padding: '10px 8px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
@@ -468,7 +501,6 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   </div>
                 </div>
 
-                {/* Manager selection — only for employees */}
                 {inviteRole === 'employee' && (
                   <div style={{ marginBottom: 14 }}>
                     <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>

@@ -1,20 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 
-// GET — load all reviews for the logged-in user
+async function getActorRole(userId: string): Promise<string> {
+  const serviceClient = await createServiceClient()
+  const { data } = await serviceClient.from('profiles').select('role').eq('id', userId).single()
+  return (data as { role: string } | null)?.role ?? 'pending'
+}
+
+// GET — load reviews scoped by role
 export async function GET() {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const role = await getActorRole(user.id)
     const serviceClient = await createServiceClient()
+
+    if (role === 'admin') {
+      const { data, error } = await serviceClient.from('reviews').select('*').order('saved_at', { ascending: false })
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ reviews: data ?? [] })
+    }
+
+    // Dev admin: metadata only, content redacted
+    if (role === 'dev_admin') {
+      const { data, error } = await serviceClient
+        .from('reviews')
+        .select('id, user_id, employee_name, employee_position, step, max_step, saved_at, updated_at, drive_doc_id')
+        .order('saved_at', { ascending: false })
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({
+        reviews: (data ?? []).map(r => ({ ...r, form_data: null, comparison_report: null, _contentRedacted: true })),
+      })
+    }
+
+    // Manager/employee: own reviews only
     const { data, error } = await serviceClient
       .from('reviews')
       .select('*')
       .eq('user_id', user.id)
       .order('saved_at', { ascending: false })
-
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ reviews: data ?? [] })
   } catch {
@@ -22,12 +48,17 @@ export async function GET() {
   }
 }
 
-// POST — upsert a review
+// POST — create/upsert a review
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const role = await getActorRole(user.id)
+    if (role === 'dev_admin' || role === 'employee' || role === 'pending') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     const body = await req.json()
     const serviceClient = await createServiceClient()
@@ -43,9 +74,8 @@ export async function POST(req: NextRequest) {
       drive_url: body.driveUrl ?? null,
       drive_doc_id: body.driveDocId ?? null,
       comparison_report: body.comparisonReport ?? null,
-      updated_at: new Date().toISOString(),
+      updated_at: body.savedAt,
     })
-
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })
   } catch {
@@ -60,14 +90,16 @@ export async function DELETE(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const role = await getActorRole(user.id)
+    if (role === 'dev_admin' || role === 'employee') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const { id } = await req.json()
     const serviceClient = await createServiceClient()
-    const { error } = await serviceClient
-      .from('reviews')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id)
-
+    const query = serviceClient.from('reviews').delete().eq('id', id)
+    if (role !== 'admin') query.eq('user_id', user.id)
+    const { error } = await query
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })
   } catch {
@@ -75,21 +107,23 @@ export async function DELETE(req: NextRequest) {
   }
 }
 
-// PATCH — update specific fields (driveUrl, comparisonReport)
+// PATCH — update specific fields
 export async function PATCH(req: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const role = await getActorRole(user.id)
+    if (role === 'dev_admin' || role === 'employee') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const { id, ...fields } = await req.json()
     const serviceClient = await createServiceClient()
-    const { error } = await serviceClient
-      .from('reviews')
-      .update({ ...fields, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .eq('user_id', user.id)
-
+    const query = serviceClient.from('reviews').update({ ...fields }).eq('id', id)
+    if (role !== 'admin') query.eq('user_id', user.id)
+    const { error } = await query
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })
   } catch {
