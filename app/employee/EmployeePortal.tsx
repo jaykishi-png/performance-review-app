@@ -462,9 +462,26 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
   function renderSAStep() {
     if (step === 0) return (
       <div>
+        {/* Manager card */}
+        <div style={{ ...card, borderLeft: '3px solid #4f46e5', display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+            {(manager?.name || manager?.email || '?').charAt(0).toUpperCase()}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>Your Supervisor</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e7eb' }}>{manager?.name || manager?.email || 'Not assigned'}</div>
+            {manager?.name && manager?.email && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 1 }}>{manager.email}</div>}
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>Status</div>
+            <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: isSubmitted ? '#0d1a13' : '#1f1a0d', color: isSubmitted ? '#34d399' : '#f59e0b', border: `1px solid ${isSubmitted ? '#1a4a35' : '#92400e'}` }}>
+              {isSubmitted ? '✓ Submitted' : 'Draft'}
+            </span>
+          </div>
+        </div>
         <div style={card}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            {[['Your Name', profileName || profile.email], ['Email', profile.email], ['Supervisor', manager?.name || manager?.email || 'Not assigned'], ['Status', isSubmitted ? '✓ Submitted' : 'Draft in progress']].map(([l, v]) => (
+            {[['Your Name', profileName || profile.email], ['Email', profile.email]].map(([l, v]) => (
               <div key={l}><div style={lbl}>{l}</div><div style={{ fontSize: 14, color: '#e5e7eb' }}>{v}</div></div>
             ))}
           </div>
@@ -483,9 +500,12 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
       const def = COMPETENCY_TERMS.find(t => t.term === comp?.term)
       return (
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <span style={{ padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: cfg.accent + '20', color: cfg.accent }}>{cfg.sublabel}</span>
-            <span style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>Select a competency and provide 1–3 specific examples. <button onClick={() => setPage('glossary')} style={{ color: '#818cf8', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, padding: 0, textDecoration: 'underline' }}>Browse Glossary →</button></span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ padding: '3px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: cfg.accent + '20', color: cfg.accent, border: `1px solid ${cfg.accent}40` }}>{cfg.sublabel}</span>
+              <span style={{ fontSize: 12, color: '#6b7280' }}>Select a competency and provide 1–3 specific examples.</span>
+            </div>
+            <button onClick={() => setPage('glossary')} style={{ fontSize: 11, color: '#818cf8', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', flexShrink: 0 }}>Browse Glossary →</button>
           </div>
           <div style={{ ...card, borderLeft: `3px solid ${cfg.accent}` }}>
             <div style={lbl}>Competency Term</div>
@@ -496,7 +516,10 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
             {def && <div style={{ marginTop: 10, padding: '10px 12px', background: '#0d1117', borderRadius: 8, fontSize: 12, color: '#9ca3af', lineHeight: 1.6, fontStyle: 'italic' }}><strong style={{ color: '#6b7280', fontStyle: 'normal' }}>Definition: </strong>{def.definition}</div>}
           </div>
           <div style={card}>
-            <div style={lbl}>Examples (1–3 specific situations)</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={lbl}>Examples (1–3 specific situations)</div>
+              {!isSubmitted && <span style={{ fontSize: 11, color: '#818cf8' }}>Use ✨ AI Draft on any example for help</span>}
+            </div>
             {[0, 1, 2].map(ei => {
               const aiState = getCompAI(ci, ei)
               const canDraft = !!(comp?.term)
@@ -507,33 +530,38 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
                     <div style={{ flex: 1 }}>
                       <textarea value={comp?.examples[ei] || ''} onChange={e => updateExample(ci, ei, e.target.value)} disabled={isSubmitted} placeholder={ei === 0 ? 'Required — describe a specific situation, your actions, and the result' : 'Optional — add another example'} rows={2} style={{ ...inp, resize: 'vertical' }} />
                       {!isSubmitted && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 5 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                          {aiState.error && <span style={{ fontSize: 10, color: '#f87171' }}>{aiState.error}</span>}
                           <button
                             onClick={() => setCompAIKey(ci, ei, { showPrompt: !aiState.showPrompt, error: '' })}
                             disabled={!canDraft}
-                            title={!canDraft ? 'Select a competency first' : 'AI-draft this example'}
-                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', background: aiState.showPrompt ? '#1e1f3a' : 'transparent', color: aiState.showPrompt ? '#818cf8' : '#6b7280', border: `1px solid ${aiState.showPrompt ? 'rgba(129,140,248,0.4)' : '#2a2d3a'}`, borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: canDraft ? 'pointer' : 'not-allowed', opacity: canDraft ? 1 : 0.4 }}>
-                            <Sparkles size={10} /> {aiState.showPrompt ? 'Cancel' : '✨ AI Draft'}
+                            title={!canDraft ? 'Select a competency first' : undefined}
+                            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: canDraft ? 'pointer' : 'not-allowed', color: aiState.showPrompt ? '#a78bfa' : '#818cf8', fontSize: 11, fontWeight: 600, padding: 0, opacity: canDraft ? 1 : 0.3 }}>
+                            <Sparkles size={11} />
+                            {aiState.showPrompt ? 'Cancel' : 'AI Draft'}
                           </button>
                         </div>
                       )}
                       {!isSubmitted && aiState.showPrompt && (
-                        <div style={{ marginTop: 8, padding: '10px 12px', background: '#0d1117', border: '1px solid rgba(129,140,248,0.25)', borderRadius: 8 }}>
-                          <div style={{ fontSize: 10, fontWeight: 600, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Your notes → AI expands into a polished example</div>
+                        <div style={{ marginTop: 8, padding: '12px 14px', background: 'rgba(79,70,229,0.08)', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 10 }}>
+                          <p style={{ margin: '0 0 8px', fontSize: 11, color: '#a78bfa' }}>Describe what happened — AI will write the example.</p>
                           <textarea
                             value={aiState.context}
                             onChange={e => setCompAIKey(ci, ei, { context: e.target.value })}
+                            onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) draftCompExample(ci, ei) }}
                             placeholder={ei === 0 ? 'e.g. "handled the Q3 client escalation, stayed calm, resolved it in 2 days"' : 'e.g. "still working on replying faster to Slack messages"'}
                             rows={2}
-                            style={{ ...inp, fontSize: 12, resize: 'vertical', marginBottom: 8 }}
+                            style={{ ...inp, fontSize: 12, resize: 'vertical', marginBottom: 8, border: '1px solid rgba(129,140,248,0.3)', background: '#0a0c14' }}
                           />
-                          {aiState.error && <div style={{ fontSize: 11, color: '#f87171', marginBottom: 6 }}>{aiState.error}</div>}
-                          <button
-                            onClick={() => draftCompExample(ci, ei)}
-                            disabled={aiState.loading || !aiState.context.trim()}
-                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: aiState.loading || !aiState.context.trim() ? 'not-allowed' : 'pointer', opacity: aiState.loading || !aiState.context.trim() ? 0.6 : 1 }}>
-                            {aiState.loading ? <><Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> Drafting…</> : <><Sparkles size={11} /> Generate Example</>}
-                          </button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <button
+                              onClick={() => draftCompExample(ci, ei)}
+                              disabled={aiState.loading || !aiState.context.trim()}
+                              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: 'rgba(126,105,228,0.8)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: aiState.loading || !aiState.context.trim() ? 'not-allowed' : 'pointer', opacity: aiState.loading || !aiState.context.trim() ? 0.5 : 1 }}>
+                              {aiState.loading ? <><Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> Drafting…</> : <><Sparkles size={11} /> Draft Example {ei + 1}</>}
+                            </button>
+                            <span style={{ fontSize: 10, color: '#4b5563' }}>⌘↵ to submit</span>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -558,20 +586,20 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10 }}>
                 <div><div style={lbl}>Outcome</div><select value={g.outcome} onChange={e => updateGoal(i, 'outcome', e.target.value)} disabled={isSubmitted} style={{ ...inp, appearance: 'none' }}><option value="">— Select —</option><option value="successful">✓ Successful</option><option value="unsuccessful">✗ Unsuccessful</option></select></div>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                    <div style={lbl}>Reason / Explanation</div>
-                    {!isSubmitted && (
+                  <div style={lbl}>Reason / Explanation</div>
+                  <input value={g.reasoning} onChange={e => updateGoal(i, 'reasoning', e.target.value)} disabled={isSubmitted} placeholder="Why successful or unsuccessful?" style={inp} />
+                  {!isSubmitted && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                      {goalAI[i]?.error && <span style={{ fontSize: 10, color: '#f87171' }}>{goalAI[i].error}</span>}
                       <button
                         onClick={() => draftGoalExplanation(i)}
                         disabled={!g.description.trim() || !g.outcome || !!goalAI[i]?.loading}
-                        title={!g.description.trim() || !g.outcome ? 'Fill in goal description and outcome first' : 'AI-draft this explanation'}
-                        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', background: 'transparent', color: '#818cf8', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: (!g.description.trim() || !g.outcome || !!goalAI[i]?.loading) ? 'not-allowed' : 'pointer', opacity: (!g.description.trim() || !g.outcome) ? 0.4 : 1, marginBottom: 2 }}>
-                        {goalAI[i]?.loading ? <><Loader2 size={9} style={{ animation: 'spin 1s linear infinite' }} /> Drafting…</> : <><Sparkles size={9} /> AI Draft</>}
+                        title={!g.description.trim() || !g.outcome ? 'Fill in description and outcome first' : undefined}
+                        style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: (!g.description.trim() || !g.outcome) ? 'not-allowed' : 'pointer', color: '#818cf8', fontSize: 11, fontWeight: 600, padding: 0, opacity: (!g.description.trim() || !g.outcome) ? 0.3 : 1 }}>
+                        {goalAI[i]?.loading ? <><Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> Drafting…</> : <><Sparkles size={11} /> AI Draft</>}
                       </button>
-                    )}
-                  </div>
-                  <input value={g.reasoning} onChange={e => updateGoal(i, 'reasoning', e.target.value)} disabled={isSubmitted} placeholder="Why successful or unsuccessful?" style={inp} />
-                  {goalAI[i]?.error && <div style={{ fontSize: 11, color: '#f87171', marginTop: 4 }}>{goalAI[i].error}</div>}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -611,10 +639,10 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
                 onClick={draftNextYearGoals}
                 disabled={nextYearAI.loading || !hasConstructive}
                 title={!hasConstructive ? 'Fill in your constructive competencies (steps 3–4) first' : 'Generate SMART goals based on your constructive competency areas'}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: (nextYearAI.loading || !hasConstructive) ? 'not-allowed' : 'pointer', opacity: (nextYearAI.loading || !hasConstructive) ? 0.5 : 1 }}>
-                {nextYearAI.loading ? <><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Generating…</> : <><Sparkles size={12} /> Generate with AI</>}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', background: hasConstructive ? 'rgba(126,105,228,0.8)' : '#1e2130', color: hasConstructive ? '#fff' : '#4b5563', border: `1px solid ${hasConstructive ? 'rgba(129,140,248,0.4)' : '#2a2d3a'}`, borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: (nextYearAI.loading || !hasConstructive) ? 'not-allowed' : 'pointer' }}>
+                {nextYearAI.loading ? <><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Generating…</> : <><Sparkles size={12} /> AI Draft Goals</>}
               </button>
-              {!hasConstructive && <div style={{ fontSize: 10, color: '#6b7280', marginTop: 4, textAlign: 'right' }}>Requires constructive competencies</div>}
+              {!hasConstructive && <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4, textAlign: 'right' }}>Fill constructive competencies first</div>}
             </div>
           )}
         </div>
@@ -1155,6 +1183,18 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
         {/* Self Assessment: step tabs + progress */}
         {page === 'self-assessment' && (
           <>
+            {/* Manager strip */}
+            <div style={{ height: 40, background: '#0d0f1a', borderBottom: '1px solid #1e2130', padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#f0f2fa' }}>Self Assessment</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 11, color: '#4b5563' }}>Supervisor:</span>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff' }}>
+                  {(manager?.name || manager?.email || '?').charAt(0).toUpperCase()}
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#c4c9d4' }}>{manager?.name || manager?.email || 'Not assigned'}</span>
+                <NotificationBell />
+              </div>
+            </div>
             {renderStepTabs()}
             <div style={{ height: 3, background: '#1e2130', flexShrink: 0 }}>
               <div style={{ height: '100%', background: 'linear-gradient(90deg, #4f46e5, #7c3aed)', width: `${(step / (SA_STEPS.length - 1)) * 100}%`, transition: 'width 0.3s ease' }} />
@@ -1170,10 +1210,6 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
           </div>
         )}
 
-        {/* SA notification bell sits over the tab bar */}
-        {page === 'self-assessment' && (
-          <div style={{ position: 'absolute', top: 8, right: 12, zIndex: 20 }}><NotificationBell /></div>
-        )}
 
         {/* Content */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
