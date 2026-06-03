@@ -3380,7 +3380,11 @@ export function PerformanceReviewForm() {
               const pct = Math.round((filled / (STEPS.length - 1)) * 100)
               const isConfirming = confirmDeleteId === save.id
               return (
-                <div key={save.id} style={{ background: '#13151f', border: `1px solid ${isConfirming ? '#5c2020' : '#1e2130'}`, borderRadius: 12, padding: '16px 20px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 16, transition: 'border-color 0.15s' }}>
+                <div key={save.id}
+                  onClick={() => { if (!isConfirming) { handleLoad(save); setActivePage('reviews') } }}
+                  style={{ background: '#13151f', border: `1px solid ${isConfirming ? '#5c2020' : '#1e2130'}`, borderRadius: 12, padding: '16px 20px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 16, transition: 'border-color 0.15s, background 0.15s', cursor: isConfirming ? 'default' : 'pointer' }}
+                  onMouseEnter={e => { if (!isConfirming) e.currentTarget.style.background = '#1a1c2e' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#13151f' }}>
                   <div style={{ width: 40, height: 40, borderRadius: '50%', background: pct === 100 ? '#0d1a13' : 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: pct === 100 ? '2px solid #34d399' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: pct === 100 ? '#34d399' : 'white', flexShrink: 0 }}>
                     {pct === 100 ? '✓' : save.employeeName?.charAt(0).toUpperCase() || '?'}
                   </div>
@@ -3388,7 +3392,7 @@ export function PerformanceReviewForm() {
                     <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e7eb' }}>{save.employeeName || 'Untitled'}</div>
                     <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{save.employeePosition || 'No position'} · {pct}% complete · {save.savedAt ? new Date(save.savedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }} onClick={e => e.stopPropagation()}>
                     {isConfirming ? (
                       <>
                         <span style={{ fontSize: 12, color: '#f87171' }}>Delete this review?</span>
@@ -3404,7 +3408,6 @@ export function PerformanceReviewForm() {
                     ) : (
                       <>
                         {save.driveUrl && <a href={save.driveUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '5px 12px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}>Drive</a>}
-                        <button onClick={() => { handleLoad(save); setActivePage('reviews') }} style={{ padding: '5px 12px', background: '#1e1f3a', color: '#818cf8', border: '1px solid rgba(79,70,229,0.3)', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Open</button>
                         <button onClick={() => setConfirmDeleteId(save.id)}
                           style={{ padding: '5px 8px', background: 'transparent', color: '#4b5563', border: '1px solid #2a2d3a', borderRadius: 6, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                           title="Delete review">
