@@ -2604,6 +2604,9 @@ export function PerformanceReviewForm() {
     if (!form.employeeName.trim()) return
     setSaveStatus('saving')
     const timer = setTimeout(async () => {
+      // Preserve driveUrl, driveDocId, comparisonReport from the existing saved record
+      // so auto-save never overwrites them with undefined/null
+      const existing = getSaves().find(s => s.id === reviewIdRef.current)
       const save: SavedReview = {
         id: reviewIdRef.current,
         employeeName: form.employeeName,
@@ -2612,6 +2615,9 @@ export function PerformanceReviewForm() {
         maxStep,
         savedAt: new Date().toISOString(),
         form,
+        driveUrl: existing?.driveUrl,
+        driveDocId: existing?.driveDocId,
+        comparisonReport: existing?.comparisonReport,
       }
       upsertSave(save)
       setSaves(getSaves())
