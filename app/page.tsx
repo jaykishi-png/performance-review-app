@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { getRoleHomeRoute } from '@/lib/permissions'
 import type { Role } from '@/lib/permissions'
 
@@ -10,24 +10,37 @@ export default async function Home() {
     redirect('/performance-review')
   }
 
-  // Verify session — redirect() must be outside try/catch in Next.js
   const supabase = await createClient()
+
+  // Verify session
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Look up role with service client (bypasses RLS)
-  let role: Role = 'pending'
-  try {
-    const serviceClient = await createServiceClient()
-    const { data: profile } = await serviceClient
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-    role = ((profile as { role: string } | null)?.role ?? 'pending') as Role
-  } catch {
-    // If profile lookup fails, fall through to /pending
+  // Read role using the authenticated client — profiles_read_own RLS policy allows this
+  // Avoids service client cookie timing issues after OAuth redirect
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (error || !profile) {
+    // Fallback: try service client
+    try {
+      const { createServiceClient } = await import('@/lib/supabase/server')
+      const serviceClient = await createServiceClient()
+      const { data: svcProfile } = await serviceClient
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      const role = ((svcProfile as { role: string } | null)?.role ?? 'pending') as Role
+      redirect(getRoleHomeRoute(role))
+    } catch {
+      redirect('/pending')
+    }
   }
 
+  const role = ((profile as { role: string } | null)?.role ?? 'pending') as Role
   redirect(getRoleHomeRoute(role))
 }
