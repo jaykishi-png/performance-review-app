@@ -20,6 +20,9 @@ export default async function PendingPage() {
 
   async function signOut() {
     'use server'
+    const { cookies } = await import('next/headers')
+    const cookieStore = await cookies()
+    cookieStore.delete('user_role')
     const supabase = await createClient()
     await supabase.auth.signOut()
     redirect('/login')
