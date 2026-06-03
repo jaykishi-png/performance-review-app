@@ -2602,6 +2602,10 @@ export function PerformanceReviewForm() {
   const [directReports, setDirectReports] = useState<DirectReport[]>([])
   const [selfAssessments, setSelfAssessments] = useState<{ employee_id: string; status: string; submitted_at: string | null }[]>([])
   const selfAssessmentMap = Object.fromEntries(selfAssessments.map(s => [s.employee_id, s]))
+  // DB-backed team (from profiles where manager_id = user.id)
+  type DbTeamMember = { id: string; name: string | null; email: string; role: string; is_active: boolean; start_date: string | null }
+  const [dbTeam, setDbTeam] = useState<DbTeamMember[]>([])
+  const [dbTeamSaMap, setDbTeamSaMap] = useState<Record<string, { employee_id: string; status: string; submitted_at: string | null }>>({})
   const [managerGlossarySearch, setManagerGlossarySearch] = useState('')
   const [settings, setSettings] = useState<AppSettings>({ driveFolderUrl: '' })
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -2697,12 +2701,19 @@ export function PerformanceReviewForm() {
         setSaves(getSaves())
       }
 
-      // Load team self-assessments
+      // Load DB-backed team (profiles where manager_id = user.id)
       try {
-        const saRes = await fetch('/api/self-reviews/team')
-        if (saRes.ok) {
-          const saData = await saRes.json() as { selfAssessments?: { employee_id: string; status: string; submitted_at: string | null }[] }
-          if (saData.selfAssessments) setSelfAssessments(saData.selfAssessments)
+        const teamRes = await fetch('/api/team')
+        if (teamRes.ok) {
+          const teamData = await teamRes.json() as {
+            reports?: { id: string; name: string | null; email: string; role: string; is_active: boolean; start_date: string | null }[]
+            selfAssessments?: { employee_id: string; status: string; submitted_at: string | null }[]
+          }
+          if (teamData.reports) setDbTeam(teamData.reports)
+          if (teamData.selfAssessments) {
+            setSelfAssessments(teamData.selfAssessments)
+            setDbTeamSaMap(Object.fromEntries(teamData.selfAssessments.map(s => [s.employee_id, s])))
+          }
         }
       } catch { /* non-critical */ }
     })()
@@ -3213,10 +3224,7 @@ export function PerformanceReviewForm() {
           {/* Team */}
           {(() => {
             const active = activePage === 'team'
-            const pending = directReports.filter(r => {
-              const sa = selfAssessmentMap?.[r.id]
-              return sa?.status === 'submitted'
-            }).length
+            const pending = dbTeam.filter(r => dbTeamSaMap[r.id]?.status === 'submitted').length
             return (
               <button onClick={() => setActivePage('team')} title={sidebarCollapsed ? 'Team' : undefined}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
@@ -3366,25 +3374,31 @@ export function PerformanceReviewForm() {
           <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
             <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Team</h1>
             <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Your direct reports and their self-assessment status.</p>
-            {directReports.length === 0 ? (
+            {dbTeam.length === 0 ? (
               <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '40px', textAlign: 'center' }}>
                 <div style={{ fontSize: 36, marginBottom: 10 }}>👥</div>
                 <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 6 }}>No direct reports assigned yet.</div>
-                <div style={{ fontSize: 12, color: '#4b5563' }}>Ask your admin to assign employees to your team.</div>
+                <div style={{ fontSize: 12, color: '#4b5563' }}>Ask your admin to assign employees to your team in the admin portal.</div>
               </div>
-            ) : directReports.map(r => {
-              const sa = selfAssessmentMap[r.id]
-              const hasReview = saves.some(s => s.employeeName === r.name)
+            ) : dbTeam.map(r => {
+              const sa = dbTeamSaMap[r.id]
+              const displayName = r.name || r.email
+              const hasReview = saves.some(s => s.employeeName === displayName || s.employeeName === r.name)
               return (
                 <div key={r.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '16px 20px', marginBottom: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                     <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'white', flexShrink: 0 }}>
-                      {r.name.charAt(0).toUpperCase()}
+                      {displayName.charAt(0).toUpperCase()}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e7eb' }}>{r.name}</div>
-                      <div style={{ fontSize: 11, color: '#6b7280' }}>{r.division || r.position || 'Direct report'}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e7eb' }}>{displayName}</div>
+                      <div style={{ fontSize: 11, color: '#6b7280' }}>{r.email}</div>
                     </div>
+                    {sa?.status === 'submitted' && (
+                      <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: '#1e1f3a', color: '#818cf8', border: '1px solid rgba(129,140,248,0.4)' }}>
+                        ✓ Self-assessment submitted
+                      </span>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
                     <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: '#0d1a13', color: '#34d399', border: '1px solid #1a4a35' }}>Active</span>
@@ -3452,10 +3466,10 @@ export function PerformanceReviewForm() {
             {(() => {
               const items: { icon: string; color: string; label: string; detail: string; action?: () => void }[] = []
               // Submitted self-assessments waiting on a review
-              directReports.forEach(r => {
-                const sa = selfAssessmentMap[r.id]
+              dbTeam.forEach(r => {
+                const sa = dbTeamSaMap[r.id]
                 if (sa?.status === 'submitted') {
-                  items.push({ icon: '📋', color: '#818cf8', label: `${r.name} submitted their self-assessment`, detail: `Submitted ${sa.submitted_at ? new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'recently'}. Start their review when ready.`, action: () => { handleNewReview(); setActivePage('reviews') } })
+                  items.push({ icon: '📋', color: '#818cf8', label: `${r.name || r.email} submitted their self-assessment`, detail: `Submitted ${sa.submitted_at ? new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'recently'}. Start their review when ready.`, action: () => { handleNewReview(); setActivePage('reviews') } })
                 }
               })
               // In-progress reviews
