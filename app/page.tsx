@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
 
 export default async function Home() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -22,11 +21,6 @@ export default async function Home() {
       .single()
 
     const role = (profile as { role: string } | null)?.role ?? 'pending'
-
-    // Set role cookie for optimistic middleware route-family checks
-    const cookieStore = await cookies()
-    cookieStore.set('user_role', role, { httpOnly: false, sameSite: 'lax', path: '/' })
-
     redirect(getRoleHomeRoute(role as Parameters<typeof getRoleHomeRoute>[0]))
   } catch {
     redirect('/login')

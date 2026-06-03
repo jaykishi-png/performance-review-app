@@ -69,6 +69,26 @@ export async function GET(request: NextRequest) {
     }
   } catch { /* invite check is best-effort */ }
 
-  // Always redirect to / — app/page.tsx handles role-based routing via service key
-  return NextResponse.redirect(`${origin}/`)
+  // Look up role and set cookie so middleware can do optimistic route-family checks
+  let roleCookieValue = 'pending'
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const serviceClient = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { cookies: { getAll: () => [], setAll: () => {} } }
+      )
+      const { data: profile } = await serviceClient
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      roleCookieValue = (profile as { role: string } | null)?.role ?? 'pending'
+    }
+  } catch { /* best-effort */ }
+
+  const response = NextResponse.redirect(`${origin}/`)
+  response.cookies.set('user_role', roleCookieValue, { httpOnly: false, sameSite: 'lax', path: '/' })
+  return response
 }
