@@ -3,3 +3,8 @@ ALTER TABLE self_reviews
   ADD COLUMN IF NOT EXISTS competencies jsonb DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS goals_objectives jsonb DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS next_year_goals jsonb DEFAULT '[]'::jsonb;
+
+-- Add Drive export fields
+ALTER TABLE self_reviews
+  ADD COLUMN IF NOT EXISTS drive_doc_id text,
+  ADD COLUMN IF NOT EXISTS drive_url text;

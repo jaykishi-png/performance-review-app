@@ -76,6 +76,11 @@ const STAR_LABELS: Record<number, { label: string; description: string; color: s
   1: { label: 'Unsatisfactory (1 ★)', description: 'Demonstrates an unacceptable level of skills and competencies.', color: '#ef4444' },
 }
 
+const ORDINALS = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE']
+const TYPE_LABELS: Record<string, string> = {
+  positive: 'Positive', constructive: 'Constructive', choice: 'Your Choice',
+}
+
 const COMPETENCY_CONFIG: { type: CompetencyType; label: string; color: string }[] = [
   { type: 'positive', label: 'Competency One — Positive', color: '#10b981' },
   { type: 'positive', label: 'Competency Two — Positive', color: '#10b981' },
@@ -117,18 +122,64 @@ type Props = {
   profile: Profile
   manager: Manager
   initialSelfReview: Partial<SelfReview> | null
+  initialDriveUrl?: string | null
+  selfReviewId?: string | null
 }
 
-export default function EmployeePortal({ profile, manager, initialSelfReview }: Props) {
+export default function EmployeePortal({ profile, manager, initialSelfReview, initialDriveUrl, selfReviewId }: Props) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'form' | 'guide' | 'glossary'>('form')
+  const [activeTab, setActiveTab] = useState<'form' | 'guide' | 'glossary' | 'export'>('form')
   const [review, setReview] = useState<SelfReview>(() => mergeReview(initialSelfReview))
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [submitConfirm, setSubmitConfirm] = useState(false)
   const [glossarySearch, setGlossarySearch] = useState('')
+  const [driveUrl, setDriveUrl] = useState<string | null>(initialDriveUrl ?? null)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const [approved, setApproved] = useState(false)
 
   const isSubmitted = review.status === 'submitted'
+
+  async function sendToDrive() {
+    setExporting(true)
+    setExportError(null)
+    try {
+      const today = new Date()
+      const dateStr = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      const currentYear = today.getFullYear()
+
+      const competenciesWithDefs = review.competencies.map(c => ({
+        ...c,
+        definition: COMPETENCY_TERMS.find(t => t.term === c.term)?.definition ?? '',
+        examples: c.examples as string[],
+      }))
+
+      const res = await fetch('/api/self-reviews/send-to-drive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          selfReviewId: selfReviewId ?? review.id,
+          employeeName: profile.name || profile.email,
+          employeePosition: '',
+          supervisorName: manager?.name || manager?.email || '',
+          appraisalPeriod: `${currentYear - 1} - ${currentYear}`,
+          dateCompleted: dateStr,
+          competencies: competenciesWithDefs,
+          goalsObjectives: review.goals_objectives,
+          overallRating: review.overall_rating,
+          nextYearGoals: review.next_year_goals,
+        }),
+      })
+      const data = await res.json() as { docUrl?: string; error?: string }
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Export failed')
+      setDriveUrl(data.docUrl ?? null)
+    } catch (e) {
+      setExportError(String(e))
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const save = useCallback(async (status: 'draft' | 'submitted' = 'draft') => {
     setSaving(true)
@@ -247,10 +298,18 @@ export default function EmployeePortal({ profile, manager, initialSelfReview }: 
       </div>
 
       {/* Tabs */}
-      <div style={{ background: '#0d0f1a', borderBottom: '1px solid #1e2130', padding: '0 32px', display: 'flex', gap: 4 }}>
+      <div style={{ background: '#0d0f1a', borderBottom: '1px solid #1e2130', padding: '0 32px', display: 'flex', gap: 4, alignItems: 'center' }}>
         <button style={S.tab(activeTab === 'form')} onClick={() => setActiveTab('form')}>📝 Self-Assessment</button>
         <button style={S.tab(activeTab === 'guide')} onClick={() => setActiveTab('guide')}>📖 Employee Guide</button>
         <button style={S.tab(activeTab === 'glossary')} onClick={() => setActiveTab('glossary')}>📚 Competency Glossary</button>
+        {isSubmitted && (
+          <button
+            style={{ ...S.tab(activeTab === 'export'), marginLeft: 8, background: activeTab === 'export' ? '#065f46' : 'transparent', color: activeTab === 'export' ? '#34d399' : driveUrl ? '#34d399' : '#6b7280', border: driveUrl ? '1px solid #1a4a35' : 'none', borderRadius: 8 }}
+            onClick={() => setActiveTab('export')}
+          >
+            {driveUrl ? '✓ Google Drive' : '📤 Send to Drive'}
+          </button>
+        )}
       </div>
 
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '32px 24px' }}>
@@ -583,7 +642,136 @@ export default function EmployeePortal({ profile, manager, initialSelfReview }: 
             )}
           </div>
         )}
-      </div>
+
+        {/* ── EXPORT TAB ───────────────────────────────────────────────── */}
+        {activeTab === 'export' && isSubmitted && (
+          <div>
+            <h1 style={{ ...S.sectionTitle, fontSize: 22, marginBottom: 8 }}>Send to Google Drive</h1>
+            <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
+              Review your completed self-assessment below, then approve and export it to Google Drive as a formatted document.
+            </p>
+
+            {/* Review summary */}
+            <div style={S.card}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: '#f0f2fa', marginBottom: 16 }}>Self-Assessment Summary</div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+                {[
+                  ['Employee', profile.name || profile.email],
+                  ['Supervisor', manager?.name || manager?.email || '—'],
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <div style={S.label}>{label}</div>
+                    <div style={{ fontSize: 14, color: '#e5e7eb' }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Competencies */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontWeight: 700, color: '#818cf8', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Part One — Competency Evaluation</div>
+                {review.competencies.filter(c => c.term).map((comp, i) => (
+                  <div key={i} style={{ padding: '10px 14px', background: '#0d1117', borderRadius: 8, marginBottom: 8, borderLeft: `3px solid ${COMPETENCY_CONFIG[i]?.color ?? '#818cf8'}` }}>
+                    <div style={{ fontWeight: 700, color: '#e5e7eb', fontSize: 13 }}>
+                      Competency {ORDINALS[i]}{' '}
+                      <span style={{ color: '#6b7280', fontWeight: 400 }}>({TYPE_LABELS[comp.type] || comp.type})</span>
+                      {' — '}{comp.term}
+                    </div>
+                    {comp.examples.filter(e => e).map((ex, j) => (
+                      <div key={j} style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>{j + 1}. {ex}</div>
+                    ))}
+                  </div>
+                ))}
+                {!review.competencies.some(c => c.term) && (
+                  <div style={{ color: '#374151', fontSize: 13 }}>No competencies recorded.</div>
+                )}
+              </div>
+
+              {/* Goals */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontWeight: 700, color: '#34d399', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Part Two — Goals, Objectives & Accomplishments</div>
+                {review.goals_objectives.filter(g => g.description).map((goal, i) => (
+                  <div key={i} style={{ padding: '10px 14px', background: '#0d1117', borderRadius: 8, marginBottom: 8, borderLeft: '3px solid #34d399' }}>
+                    <div style={{ fontWeight: 600, color: '#e5e7eb', fontSize: 13 }}>{i + 1}. {goal.description}</div>
+                    {goal.outcome && <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>Outcome: {goal.outcome}</div>}
+                    {goal.reasoning && <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>Reason: {goal.reasoning}</div>}
+                  </div>
+                ))}
+                {review.overall_rating && (
+                  <div style={{ padding: '10px 14px', background: '#0d1117', borderRadius: 8, marginBottom: 8 }}>
+                    <div style={{ fontWeight: 700, color: '#f59e0b', fontSize: 13 }}>
+                      Overall Rating: {'★'.repeat(review.overall_rating)}{'☆'.repeat(5 - review.overall_rating)}{' '}
+                      {STAR_LABELS[review.overall_rating]?.label}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Next year goals */}
+              <div>
+                <div style={{ fontWeight: 700, color: '#f59e0b', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Part Three — Next Year&apos;s Goals</div>
+                {review.next_year_goals.filter(g => g.goal).map((goal, i) => (
+                  <div key={i} style={{ padding: '10px 14px', background: '#0d1117', borderRadius: 8, marginBottom: 8, borderLeft: '3px solid #f59e0b' }}>
+                    <div style={{ fontWeight: 600, color: '#e5e7eb', fontSize: 13 }}>{i + 1}. {goal.goal}</div>
+                    {goal.objective && <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>Objective: {goal.objective}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Drive export card */}
+            {driveUrl ? (
+              <div style={{ background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 12, padding: '24px 28px', textAlign: 'center' }}>
+                <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
+                <div style={{ fontWeight: 700, color: '#34d399', fontSize: 16, marginBottom: 8 }}>Exported to Google Drive</div>
+                <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 20 }}>
+                  Your self-assessment has been saved as a Google Doc. You can open it, share it with your manager, or download it as a PDF.
+                </p>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                  <a href={driveUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ padding: '10px 24px', background: '#1a4a35', color: '#34d399', borderRadius: 8, fontWeight: 700, fontSize: 14, textDecoration: 'none', border: '1px solid #2a6b4a' }}>
+                    Open in Google Docs ↗
+                  </a>
+                  <button onClick={sendToDrive} disabled={exporting}
+                    style={{ padding: '10px 24px', background: 'transparent', color: '#6b7280', borderRadius: 8, fontWeight: 600, fontSize: 14, border: '1px solid #2a2d3e', cursor: 'pointer' }}>
+                    Re-export
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={S.card}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#f0f2fa', marginBottom: 8 }}>Approve & Export</div>
+                <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 20, lineHeight: 1.6 }}>
+                  By approving, you confirm that the self-assessment above is accurate and ready to be exported as a formatted Google Doc.
+                </p>
+
+                {!approved ? (
+                  <button onClick={() => setApproved(true)}
+                    style={{ width: '100%', padding: '12px', background: '#1e2130', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                    ✓ I confirm this self-assessment is accurate — Approve for Export
+                  </button>
+                ) : (
+                  <div>
+                    <div style={{ padding: '10px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8, color: '#34d399', fontSize: 13, marginBottom: 16 }}>
+                      ✓ Approved — ready to send to Google Drive
+                    </div>
+                    {exportError && (
+                      <div style={{ padding: '10px 14px', background: '#2d1515', border: '1px solid #5c2020', borderRadius: 8, color: '#f87171', fontSize: 13, marginBottom: 16 }}>
+                        Export failed: {exportError}
+                      </div>
+                    )}
+                    <button onClick={sendToDrive} disabled={exporting}
+                      style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, #059669, #10b981)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: exporting ? 'wait' : 'pointer', opacity: exporting ? 0.7 : 1 }}>
+                      {exporting ? '⏳ Creating Google Doc…' : '📤 Send to Google Drive'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>{/* end main content */}
 
       {/* Submit confirmation modal */}
       {submitConfirm && (

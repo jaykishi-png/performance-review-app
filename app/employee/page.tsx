@@ -36,7 +36,7 @@ export default async function EmployeePage() {
   // Fetch existing self-review
   const { data: srRow } = await serviceClient
     .from('self_reviews')
-    .select('*')
+    .select('id, competencies, goals_objectives, next_year_goals, overall_rating, status, submitted_at, drive_url, drive_doc_id, strengths, growth_areas, overall_comments')
     .eq('employee_id', user.id)
     .order('updated_at', { ascending: false })
     .limit(1)
@@ -61,5 +61,13 @@ export default async function EmployeePage() {
     overall_comments: r.overall_comments as string ?? '',
   } : null
 
-  return <EmployeePortal profile={p} manager={manager} initialSelfReview={selfReview} />
+  return (
+    <EmployeePortal
+      profile={p}
+      manager={manager}
+      initialSelfReview={selfReview}
+      selfReviewId={r?.id as string ?? null}
+      initialDriveUrl={r?.drive_url as string ?? null}
+    />
+  )
 }
