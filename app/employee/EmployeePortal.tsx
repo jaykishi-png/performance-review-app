@@ -1,16 +1,17 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
-  FileText, BookOpen, BookMarked, Send, LogOut,
-  CheckCircle2, Star, Plus, X, Loader2, ExternalLink,
-  User, Users, RefreshCw,
+  ChevronLeft, ChevronRight, FileText, BookOpen, BookMarked,
+  Send, LogOut, CheckCircle2, Star, Plus, X, Loader2,
+  ExternalLink, Clock, Bell, Target, User, ChevronDown,
+  BarChart2, History, Pencil, Check,
 } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+type Page = 'self-assessment' | 'reviews' | 'history' | 'guide' | 'glossary'
 type CompetencyType = 'positive' | 'constructive' | 'choice'
 type Competency = { type: CompetencyType; term: string; examples: [string, string, string] }
 type GoalItem = { description: string; outcome: 'successful' | 'unsuccessful' | ''; reasoning: string }
@@ -32,7 +33,7 @@ type SelfReview = {
 type Profile = { id: string; name: string | null; email: string; role: string; manager_id: string | null }
 type Manager = { name: string | null; email: string } | null
 
-// ── Glossary ──────────────────────────────────────────────────────────────────
+// ── Static data ───────────────────────────────────────────────────────────────
 
 const COMPETENCY_TERMS: { term: string; definition: string }[] = [
   { term: 'Accountability and Dependability', definition: 'Takes personal responsibility for the quality and timeliness of work; achieves qualitative results with little oversight.' },
@@ -76,12 +77,12 @@ const COMPETENCY_TERMS: { term: string; definition: string }[] = [
   { term: 'Writing', definition: 'Conveys ideas and facts in writing using language the reader and audience will best understand.' },
 ]
 
-const STAR_LABELS: Record<number, { label: string; description: string }> = {
-  5: { label: 'Outstanding', description: 'Consistently exceeds performance requirements.' },
-  4: { label: 'Exceeds Job Requirements', description: 'Meets and at times exceeds performance requirements (above average).' },
-  3: { label: 'Meets Expectations', description: 'Job requirements are being met at a satisfactory level.' },
-  2: { label: 'Needs Improvement', description: 'Does not consistently meet the expected job requirements.' },
-  1: { label: 'Unsatisfactory', description: 'Demonstrates an unacceptable level of skills and competencies.' },
+const STAR_LABELS: Record<number, { label: string; description: string; color: string }> = {
+  5: { label: 'Outstanding',              description: 'Consistently exceeds performance requirements.',                               color: '#a78bfa' },
+  4: { label: 'Exceeds Job Requirements', description: 'Meets and at times exceeds performance requirements (above average).',          color: '#34d399' },
+  3: { label: 'Meets Expectations',       description: 'Job requirements are being met at a satisfactory level.',                      color: '#fbbf24' },
+  2: { label: 'Needs Improvement',        description: 'Does not consistently meet the expected job requirements.',                    color: '#fb923c' },
+  1: { label: 'Unsatisfactory',           description: 'Demonstrates an unacceptable level of skills and competencies.',               color: '#f87171' },
 }
 
 const COMP_CONFIG: { type: CompetencyType; label: string; sublabel: string; accent: string }[] = [
@@ -92,19 +93,27 @@ const COMP_CONFIG: { type: CompetencyType; label: string; sublabel: string; acce
   { type: 'choice',       label: 'Competency 5', sublabel: 'Your Choice',  accent: '#818cf8' },
 ]
 
-const STEPS = [
-  { id: 'info',   label: 'Employee Info',     icon: User,       part: null        },
-  { id: 'comp1',  label: 'Competency 1',      icon: Star,       part: 'PART ONE'  },
-  { id: 'comp2',  label: 'Competency 2',      icon: Star,       part: 'PART ONE'  },
-  { id: 'comp3',  label: 'Competency 3',      icon: Star,       part: 'PART ONE'  },
-  { id: 'comp4',  label: 'Competency 4',      icon: Star,       part: 'PART ONE'  },
-  { id: 'comp5',  label: 'Competency 5',      icon: Star,       part: 'PART ONE'  },
-  { id: 'goals',  label: 'Goals & Rating',    icon: CheckCircle2, part: 'PART TWO'  },
-  { id: 'next',   label: "Next Year's Goals", icon: RefreshCw,  part: 'PART THREE' },
-  { id: 'output', label: 'Review & Export',   icon: Send,       part: null        },
+const SA_STEPS = [
+  { id: 'info',   label: 'Info',         short: 'Info'   },
+  { id: 'comp1',  label: 'Competency 1', short: 'C1'     },
+  { id: 'comp2',  label: 'Competency 2', short: 'C2'     },
+  { id: 'comp3',  label: 'Competency 3', short: 'C3'     },
+  { id: 'comp4',  label: 'Competency 4', short: 'C4'     },
+  { id: 'comp5',  label: 'Competency 5', short: 'C5'     },
+  { id: 'goals',  label: 'Goals',        short: 'Goals'  },
+  { id: 'next',   label: 'Next Year',    short: 'Next'   },
+  { id: 'export', label: 'Export',       short: 'Export' },
 ]
 
-// ── Defaults ──────────────────────────────────────────────────────────────────
+const NAV_ITEMS: { id: Page; label: string; icon: React.FC<{ size: number; color?: string }> }[] = [
+  { id: 'self-assessment', label: 'Self Assessment',      icon: FileText  },
+  { id: 'reviews',         label: 'Performance Reviews',  icon: BarChart2 },
+  { id: 'history',         label: 'History',              icon: History   },
+  { id: 'guide',           label: 'Employee Guide',       icon: BookOpen  },
+  { id: 'glossary',        label: 'Competency Glossary',  icon: BookMarked },
+]
+
+// ── Default state ─────────────────────────────────────────────────────────────
 
 function makeDefault(): SelfReview {
   return {
@@ -125,22 +134,19 @@ function mergeReview(saved: Partial<SelfReview> | null): SelfReview {
   if (!saved) return d
   return {
     ...d, ...saved,
-    competencies: saved.competencies?.length ? saved.competencies : d.competencies,
+    competencies:    saved.competencies?.length    ? saved.competencies    : d.competencies,
     goals_objectives: saved.goals_objectives?.length ? saved.goals_objectives : d.goals_objectives,
-    next_year_goals: saved.next_year_goals?.length ? saved.next_year_goals : d.next_year_goals,
+    next_year_goals:  saved.next_year_goals?.length  ? saved.next_year_goals  : d.next_year_goals,
   }
 }
 
-function isStepComplete(stepIdx: number, review: SelfReview): boolean {
+function isStepComplete(stepIdx: number, r: SelfReview): boolean {
   switch (stepIdx) {
     case 0: return true
-    case 1: return !!(review.competencies[0]?.term && review.competencies[0]?.examples[0]?.trim())
-    case 2: return !!(review.competencies[1]?.term && review.competencies[1]?.examples[0]?.trim())
-    case 3: return !!(review.competencies[2]?.term && review.competencies[2]?.examples[0]?.trim())
-    case 4: return !!(review.competencies[3]?.term && review.competencies[3]?.examples[0]?.trim())
-    case 5: return !!(review.competencies[4]?.term && review.competencies[4]?.examples[0]?.trim())
-    case 6: return !!(review.goals_objectives.some(g => g.description.trim()) && review.overall_rating)
-    case 7: return review.next_year_goals.some(g => g.goal.trim())
+    case 1: case 2: case 3: case 4: case 5:
+      return !!(r.competencies[stepIdx - 1]?.term && r.competencies[stepIdx - 1]?.examples[0]?.trim())
+    case 6: return !!(r.goals_objectives.some(g => g.description.trim()) && r.overall_rating)
+    case 7: return r.next_year_goals.some(g => g.goal.trim())
     default: return false
   }
 }
@@ -159,9 +165,9 @@ type Props = {
 
 export default function EmployeePortal({ profile, manager, initialSelfReview, initialDriveUrl, selfReviewId }: Props) {
   const router = useRouter()
-  const [step, setStep] = useState(0)
-  const [maxStep, setMaxStep] = useState(0)
+  const [page, setPage] = useState<Page>('self-assessment')
   const [collapsed, setCollapsed] = useState(false)
+  const [step, setStep] = useState(0)
   const [review, setReview] = useState<SelfReview>(() => mergeReview(initialSelfReview))
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -170,64 +176,54 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [approved, setApproved] = useState(false)
-  const [showGuide, setShowGuide] = useState(false)
-  const [showGlossary, setShowGlossary] = useState(false)
   const [glossarySearch, setGlossarySearch] = useState('')
+  const [showProfileEdit, setShowProfileEdit] = useState(false)
+  const [profileName, setProfileName] = useState(profile.name || '')
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileSaved, setProfileSaved] = useState(false)
 
   const isSubmitted = review.status === 'submitted'
 
   // Auto-save debounce
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   useEffect(() => {
     if (isSubmitted) return
-    const t = setTimeout(() => { saveDraft() }, 1500)
-    return () => clearTimeout(t)
+    clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => saveDraft(), 1800)
+    return () => clearTimeout(saveTimer.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [review])
 
-  function goTo(s: number) {
-    setStep(s)
-    setMaxStep(m => Math.max(m, s))
-  }
-  function next() { goTo(Math.min(step + 1, STEPS.length - 1)) }
-  function back() { goTo(Math.max(step - 1, 0)) }
+  function goStep(s: number) { setStep(Math.max(0, Math.min(s, SA_STEPS.length - 1))) }
 
   async function saveDraft() {
     setSaving(true)
     try {
       await fetch('/api/self-reviews', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          competencies: review.competencies,
-          goalsObjectives: review.goals_objectives,
-          nextYearGoals: review.next_year_goals,
-          overallRating: review.overall_rating,
-          status: 'draft',
-          strengths: '', growthAreas: '', goalReflections: [], overallComments: '',
+          competencies: review.competencies, goalsObjectives: review.goals_objectives,
+          nextYearGoals: review.next_year_goals, overallRating: review.overall_rating,
+          status: 'draft', strengths: '', growthAreas: '', goalReflections: [], overallComments: '',
         }),
       })
       setSaved(true); setTimeout(() => setSaved(false), 2000)
     } finally { setSaving(false) }
   }
 
-  async function submit() {
+  async function submitReview() {
     setSaving(true)
     try {
       await fetch('/api/self-reviews', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          competencies: review.competencies,
-          goalsObjectives: review.goals_objectives,
-          nextYearGoals: review.next_year_goals,
-          overallRating: review.overall_rating,
-          status: 'submitted',
-          strengths: '', growthAreas: '', goalReflections: [], overallComments: '',
+          competencies: review.competencies, goalsObjectives: review.goals_objectives,
+          nextYearGoals: review.next_year_goals, overallRating: review.overall_rating,
+          status: 'submitted', strengths: '', growthAreas: '', goalReflections: [], overallComments: '',
         }),
       })
       setReview(r => ({ ...r, status: 'submitted', submitted_at: new Date().toISOString() }))
-      setSubmitConfirm(false)
-      router.refresh()
+      setSubmitConfirm(false); router.refresh()
     } finally { setSaving(false) }
   }
 
@@ -235,25 +231,17 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
     setExporting(true); setExportError(null)
     try {
       const today = new Date()
-      const dateStr = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
       const yr = today.getFullYear()
       const res = await fetch('/api/self-reviews/send-to-drive', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           selfReviewId: selfReviewId ?? review.id,
-          employeeName: profile.name || profile.email,
-          employeePosition: '',
-          supervisorName: manager?.name || manager?.email || '',
+          employeeName: profileName || profile.email,
+          employeePosition: '', supervisorName: manager?.name || manager?.email || '',
           appraisalPeriod: `${yr - 1} - ${yr}`,
-          dateCompleted: dateStr,
-          competencies: review.competencies.map(c => ({
-            ...c, examples: c.examples as string[],
-            definition: COMPETENCY_TERMS.find(t => t.term === c.term)?.definition ?? '',
-          })),
-          goalsObjectives: review.goals_objectives,
-          overallRating: review.overall_rating,
-          nextYearGoals: review.next_year_goals,
+          dateCompleted: today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+          competencies: review.competencies.map(c => ({ ...c, examples: c.examples as string[], definition: COMPETENCY_TERMS.find(t => t.term === c.term)?.definition ?? '' })),
+          goalsObjectives: review.goals_objectives, overallRating: review.overall_rating, nextYearGoals: review.next_year_goals,
         }),
       })
       const data = await res.json() as { docUrl?: string; error?: string }
@@ -263,16 +251,22 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
     finally { setExporting(false) }
   }
 
+  async function saveProfile() {
+    if (!profileName.trim()) return
+    setProfileSaving(true)
+    try {
+      await fetch('/api/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: profileName }) })
+      setProfileSaved(true); setTimeout(() => { setProfileSaved(false); setShowProfileEdit(false) }, 1200)
+      router.refresh()
+    } finally { setProfileSaving(false) }
+  }
+
   function updateComp(i: number, field: string, value: unknown) {
-    setReview(r => {
-      const c = [...r.competencies]; c[i] = { ...c[i], [field]: value }
-      return { ...r, competencies: c }
-    })
+    setReview(r => { const c = [...r.competencies]; c[i] = { ...c[i], [field]: value }; return { ...r, competencies: c } })
   }
   function updateExample(ci: number, ei: number, val: string) {
     setReview(r => {
-      const c = [...r.competencies]
-      const ex = [...c[ci].examples] as [string, string, string]; ex[ei] = val
+      const c = [...r.competencies]; const ex = [...c[ci].examples] as [string, string, string]; ex[ei] = val
       c[ci] = { ...c[ci], examples: ex }; return { ...r, competencies: c }
     })
   }
@@ -283,133 +277,88 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
     setReview(r => { const g = [...r.next_year_goals]; g[i] = { ...g[i], [f]: v }; return { ...r, next_year_goals: g } })
   }
 
-  // ── Shared style tokens ────────────────────────────────────────────────────
-  const input: React.CSSProperties = {
-    width: '100%', background: '#0d0f1a', border: '1px solid #2a2d3a',
-    borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#e5e7eb',
-    boxSizing: 'border-box', fontFamily: 'inherit', outline: 'none',
-  }
-  const textarea: React.CSSProperties = { ...input, resize: 'vertical' as const }
-  const select: React.CSSProperties = { ...input }
-  const label: React.CSSProperties = {
-    display: 'block', fontSize: 10, fontWeight: 600, color: '#6b7280',
-    textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5,
-  }
-  const card: React.CSSProperties = {
-    background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 22px', marginBottom: 14,
-  }
-  const sectionLabel: React.CSSProperties = {
-    fontSize: 10, fontWeight: 600, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em',
-    padding: '4px 8px 6px', marginBottom: 2,
+  // ── Shared tokens ─────────────────────────────────────────────────────────
+  const inp: React.CSSProperties = { width: '100%', background: '#0d0f1a', border: '1px solid #2a2d3a', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#e5e7eb', boxSizing: 'border-box', fontFamily: 'inherit', outline: 'none' }
+  const lbl: React.CSSProperties = { display: 'block', fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }
+  const card: React.CSSProperties = { background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '18px 20px', marginBottom: 12 }
+
+  const navBtn = (active: boolean): React.CSSProperties => ({
+    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+    padding: collapsed ? '8px' : '7px 10px',
+    justifyContent: collapsed ? 'center' : 'flex-start',
+    borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent',
+    background: active ? '#1e1f3a' : 'transparent',
+    cursor: 'pointer', marginBottom: 2, transition: 'all 0.15s',
+    fontSize: 12, fontWeight: active ? 600 : 400, color: active ? '#e0e7ff' : '#9ca3af',
+  })
+
+  // ── Step tabs for Self Assessment ─────────────────────────────────────────
+  function renderStepTabs() {
+    return (
+      <div style={{ display: 'flex', borderBottom: '1px solid #1e2130', padding: '0 28px', background: '#0d0f1a', overflowX: 'auto', flexShrink: 0, gap: 0 }}>
+        {SA_STEPS.map((s, i) => {
+          const done = isStepComplete(i, review)
+          const active = step === i
+          return (
+            <button key={s.id} onClick={() => goStep(i)} style={{
+              padding: '10px 14px', fontSize: 12, fontWeight: active ? 700 : 400,
+              color: active ? '#818cf8' : done ? '#34d399' : '#6b7280',
+              borderBottom: `2px solid ${active ? '#6366f1' : 'transparent'}`,
+              background: 'transparent', border: 'none',
+              cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5, transition: 'color 0.15s',
+            } as React.CSSProperties}>
+              {done && !active && <CheckCircle2 size={11} color="#34d399" />}
+              <span>{s.label}</span>
+            </button>
+          )
+        })}
+      </div>
+    )
   }
 
-  // ── Step content renderer ──────────────────────────────────────────────────
-  const currentStep = STEPS[step]
-
-  function renderStepContent() {
-    // Step 0 — Employee Info
+  // ── Self Assessment step content ──────────────────────────────────────────
+  function renderSAStep() {
     if (step === 0) return (
       <div>
-        <div style={{ marginBottom: 24 }}>
-          <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Employee Info</h2>
-          <p style={{ margin: 0, fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
-            Review your information before starting your self-assessment. Contact your admin if anything is incorrect.
-          </p>
-        </div>
         <div style={card}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
-            {[
-              { label: 'Your Name', value: profile.name || '—' },
-              { label: 'Email', value: profile.email },
-              { label: 'Supervisor', value: manager?.name || manager?.email || 'Not assigned' },
-              { label: 'Review Status', value: isSubmitted ? '✓ Submitted' : 'Draft in progress' },
-            ].map(({ label: l, value: v }) => (
-              <div key={l}>
-                <div style={label}>{l}</div>
-                <div style={{ fontSize: 14, color: '#e5e7eb', fontWeight: 500 }}>{v}</div>
-              </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            {[['Your Name', profileName || profile.email], ['Email', profile.email], ['Supervisor', manager?.name || manager?.email || 'Not assigned'], ['Status', isSubmitted ? '✓ Submitted' : 'Draft in progress']].map(([l, v]) => (
+              <div key={l}><div style={lbl}>{l}</div><div style={{ fontSize: 14, color: '#e5e7eb' }}>{v}</div></div>
             ))}
           </div>
         </div>
         <div style={{ ...card, background: '#0d1117', border: '1px solid #1e2130' }}>
           <p style={{ margin: 0, fontSize: 13, color: '#6b7280', lineHeight: 1.7 }}>
-            <strong style={{ color: '#9ca3af' }}>About this self-assessment:</strong> You will evaluate five competency words
-            (two positive, two constructive, and one of your choice), reflect on your goals and accomplishments,
-            rate your overall performance, and set goals for the coming year. Use the{' '}
-            <button onClick={() => setShowGuide(true)} style={{ color: '#818cf8', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 0, textDecoration: 'underline' }}>Employee Guide</button>{' '}
-            and{' '}
-            <button onClick={() => setShowGlossary(true)} style={{ color: '#818cf8', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 0, textDecoration: 'underline' }}>Competency Glossary</button>{' '}
-            for reference at any time.
+            <strong style={{ color: '#9ca3af' }}>What to expect:</strong> You&apos;ll evaluate five competency words (two positive, two constructive, one of your choice), reflect on your goals and accomplishments, rate your overall performance, and set goals for the coming year.
+            Use the <button onClick={() => setPage('guide')} style={{ color: '#818cf8', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 0, textDecoration: 'underline' }}>Employee Guide</button> and <button onClick={() => setPage('glossary')} style={{ color: '#818cf8', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 0, textDecoration: 'underline' }}>Competency Glossary</button> in the sidebar for reference.
           </p>
         </div>
       </div>
     )
 
-    // Steps 1–5 — Competencies
     if (step >= 1 && step <= 5) {
-      const ci = step - 1
-      const cfg = COMP_CONFIG[ci]
-      const comp = review.competencies[ci]
+      const ci = step - 1; const cfg = COMP_CONFIG[ci]; const comp = review.competencies[ci]
       const def = COMPETENCY_TERMS.find(t => t.term === comp?.term)
-
       return (
         <div>
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <span style={{ padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: cfg.accent + '20', color: cfg.accent }}>
-                {cfg.sublabel}
-              </span>
-              <span style={{ fontSize: 10, color: '#4b5563', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Part One</span>
-            </div>
-            <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>{cfg.label}</h2>
-            <p style={{ margin: 0, fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
-              Select a competency from the glossary that reflects your performance, then provide 1–3 specific examples.{' '}
-              <button onClick={() => setShowGlossary(true)} style={{ color: '#818cf8', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 0, textDecoration: 'underline' }}>
-                Browse Glossary →
-              </button>
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <span style={{ padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: cfg.accent + '20', color: cfg.accent }}>{cfg.sublabel}</span>
+            <span style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>Select a competency and provide 1–3 specific examples. <button onClick={() => setPage('glossary')} style={{ color: '#818cf8', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, padding: 0, textDecoration: 'underline' }}>Browse Glossary →</button></span>
           </div>
-
           <div style={{ ...card, borderLeft: `3px solid ${cfg.accent}` }}>
-            <div style={label}>Competency Term</div>
-            <select value={comp?.term || ''} onChange={e => updateComp(ci, 'term', e.target.value)}
-              disabled={isSubmitted} style={select}>
+            <div style={lbl}>Competency Term</div>
+            <select value={comp?.term || ''} onChange={e => updateComp(ci, 'term', e.target.value)} disabled={isSubmitted} style={{ ...inp, appearance: 'none' }}>
               <option value="">— Select from glossary —</option>
               {COMPETENCY_TERMS.map(t => <option key={t.term} value={t.term}>{t.term}</option>)}
             </select>
-            {def && (
-              <div style={{ marginTop: 10, padding: '10px 14px', background: '#0d1117', borderRadius: 8, fontSize: 12, color: '#9ca3af', lineHeight: 1.6, fontStyle: 'italic' }}>
-                <strong style={{ color: '#6b7280', fontStyle: 'normal' }}>Definition: </strong>{def.definition}
-              </div>
-            )}
+            {def && <div style={{ marginTop: 10, padding: '10px 12px', background: '#0d1117', borderRadius: 8, fontSize: 12, color: '#9ca3af', lineHeight: 1.6, fontStyle: 'italic' }}><strong style={{ color: '#6b7280', fontStyle: 'normal' }}>Definition: </strong>{def.definition}</div>}
           </div>
-
           <div style={card}>
-            <div style={{ marginBottom: 14 }}>
-              <div style={label}>Examples <span style={{ color: '#4b5563', fontWeight: 400, textTransform: 'none' }}>(provide 1–3 specific examples)</span></div>
-              <p style={{ margin: '0 0 12px', fontSize: 12, color: '#4b5563', lineHeight: 1.5 }}>
-                Be specific. Reference actual situations, outcomes, and your impact. Avoid vague or general statements.
-              </p>
-            </div>
+            <div style={lbl}>Examples (1–3 specific situations)</div>
             {[0, 1, 2].map(ei => (
               <div key={ei} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'flex-start' }}>
-                <div style={{
-                  width: 22, height: 22, borderRadius: '50%', flexShrink: 0, marginTop: 9,
-                  background: comp?.examples[ei]?.trim() ? cfg.accent : '#1e2130',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 700, color: comp?.examples[ei]?.trim() ? '#fff' : '#4b5563',
-                  transition: 'background 0.2s',
-                }}>
-                  {ei + 1}
-                </div>
-                <textarea
-                  value={comp?.examples[ei] || ''}
-                  onChange={e => updateExample(ci, ei, e.target.value)}
-                  disabled={isSubmitted}
-                  placeholder={ei === 0 ? 'Required — describe a specific situation, your actions, and the result' : 'Optional — add another example'}
-                  rows={2}
-                  style={{ ...textarea, flex: 1 }}
-                />
+                <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, marginTop: 9, background: comp?.examples[ei]?.trim() ? cfg.accent : '#1e2130', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: comp?.examples[ei]?.trim() ? '#fff' : '#4b5563', transition: 'background 0.2s' }}>{ei + 1}</div>
+                <textarea value={comp?.examples[ei] || ''} onChange={e => updateExample(ci, ei, e.target.value)} disabled={isSubmitted} placeholder={ei === 0 ? 'Required — describe a specific situation, your actions, and the result' : 'Optional — add another example'} rows={2} style={{ ...inp, flex: 1, resize: 'vertical' }} />
               </div>
             ))}
           </div>
@@ -417,82 +366,36 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
       )
     }
 
-    // Step 6 — Goals & Rating
     if (step === 6) return (
       <div>
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 10, color: '#4b5563', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Part Two</div>
-          <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Goals, Objectives & Rating</h2>
-          <p style={{ margin: 0, fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
-            Reflect on your goals and accomplishments from the review period, then rate your overall performance.
-          </p>
-        </div>
-
         <div style={card}>
-          <div style={{ fontWeight: 600, fontSize: 13, color: '#e5e7eb', marginBottom: 4 }}>Goals, Objectives & Accomplishments</div>
-          <p style={{ margin: '0 0 16px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
-            Indicate the completion of your goals or objectives and explain the outcome. Include stand-alone accomplishments too.
-          </p>
+          <div style={{ fontWeight: 600, fontSize: 13, color: '#e5e7eb', marginBottom: 6 }}>Goals, Objectives & Accomplishments</div>
+          <p style={{ margin: '0 0 14px', fontSize: 12, color: '#6b7280' }}>Indicate completion of your goals or objectives and explain why. Include stand-alone accomplishments too.</p>
           {review.goals_objectives.map((g, i) => (
-            <div key={i} style={{ padding: '14px 16px', background: '#0d1117', borderRadius: 10, marginBottom: 10, border: '1px solid #1e2130' }}>
-              <div style={{ fontWeight: 600, fontSize: 11, color: '#10b981', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                {i + 1}. Goal / Objective / Accomplishment
-              </div>
-              <div style={{ marginBottom: 10 }}>
-                <div style={label}>Description</div>
-                <textarea value={g.description} onChange={e => updateGoal(i, 'description', e.target.value)}
-                  disabled={isSubmitted} rows={2} placeholder="Describe your goal, objective, or accomplishment…" style={textarea} />
-              </div>
+            <div key={i} style={{ padding: '14px', background: '#0d1117', borderRadius: 10, marginBottom: 10, border: '1px solid #1e2130' }}>
+              <div style={{ fontWeight: 600, fontSize: 11, color: '#10b981', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{i + 1}. Goal / Objective / Accomplishment</div>
+              <div style={{ marginBottom: 10 }}><div style={lbl}>Description</div><textarea value={g.description} onChange={e => updateGoal(i, 'description', e.target.value)} disabled={isSubmitted} rows={2} placeholder="Describe your goal, objective, or accomplishment…" style={{ ...inp, resize: 'vertical' }} /></div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10 }}>
-                <div>
-                  <div style={label}>Outcome</div>
-                  <select value={g.outcome} onChange={e => updateGoal(i, 'outcome', e.target.value)}
-                    disabled={isSubmitted} style={select}>
-                    <option value="">— Select —</option>
-                    <option value="successful">✓ Successful</option>
-                    <option value="unsuccessful">✗ Unsuccessful</option>
-                  </select>
-                </div>
-                <div>
-                  <div style={label}>Reason / Explanation</div>
-                  <input value={g.reasoning} onChange={e => updateGoal(i, 'reasoning', e.target.value)}
-                    disabled={isSubmitted} placeholder="Why successful or unsuccessful?" style={input} />
-                </div>
+                <div><div style={lbl}>Outcome</div><select value={g.outcome} onChange={e => updateGoal(i, 'outcome', e.target.value)} disabled={isSubmitted} style={{ ...inp, appearance: 'none' }}><option value="">— Select —</option><option value="successful">✓ Successful</option><option value="unsuccessful">✗ Unsuccessful</option></select></div>
+                <div><div style={lbl}>Reason / Explanation</div><input value={g.reasoning} onChange={e => updateGoal(i, 'reasoning', e.target.value)} disabled={isSubmitted} placeholder="Why successful or unsuccessful?" style={inp} /></div>
               </div>
             </div>
           ))}
           {!isSubmitted && review.goals_objectives.length < 5 && (
-            <button onClick={() => setReview(r => ({ ...r, goals_objectives: [...r.goals_objectives, { description: '', outcome: '', reasoning: '' }] }))}
-              style={{ width: '100%', padding: '8px', background: 'transparent', color: '#10b981', border: '1px dashed #1a4a35', borderRadius: 8, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <Plus size={13} /> Add Goal / Accomplishment
-            </button>
+            <button onClick={() => setReview(r => ({ ...r, goals_objectives: [...r.goals_objectives, { description: '', outcome: '', reasoning: '' }] }))} style={{ width: '100%', padding: '8px', background: 'transparent', color: '#10b981', border: '1px dashed #1a4a35', borderRadius: 8, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Plus size={13} /> Add Goal / Accomplishment</button>
           )}
         </div>
-
         <div style={card}>
           <div style={{ fontWeight: 600, fontSize: 13, color: '#e5e7eb', marginBottom: 4 }}>Overall Performance Rating</div>
-          <p style={{ margin: '0 0 14px', fontSize: 12, color: '#6b7280' }}>
-            Select the rating that best reflects your overall performance this review period.
-          </p>
+          <p style={{ margin: '0 0 14px', fontSize: 12, color: '#6b7280' }}>Select the rating that best reflects your overall performance this review period.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[5, 4, 3, 2, 1].map(n => {
-              const s = STAR_LABELS[n]
-              const colors = { 5: '#a78bfa', 4: '#34d399', 3: '#fbbf24', 2: '#fb923c', 1: '#f87171' }
-              const c = colors[n as keyof typeof colors]
-              const sel = review.overall_rating === n
+              const s = STAR_LABELS[n]; const sel = review.overall_rating === n
               return (
-                <button key={n} onClick={() => !isSubmitted && setReview(r => ({ ...r, overall_rating: n }))}
-                  disabled={isSubmitted}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', borderRadius: 10,
-                    border: `1.5px solid ${sel ? c : '#1e2130'}`, background: sel ? c + '15' : '#0d1117',
-                    cursor: isSubmitted ? 'default' : 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.15s',
-                  }}>
-                  <div style={{ fontSize: 16, color: c, fontWeight: 800, minWidth: 80, letterSpacing: -1 }}>{'★'.repeat(n)}{'☆'.repeat(5 - n)}</div>
-                  <div>
-                    <div style={{ fontWeight: 700, color: sel ? c : '#9ca3af', fontSize: 13 }}>{n} — {s.label}</div>
-                    <div style={{ fontSize: 11, color: '#6b7280', marginTop: 1 }}>{s.description}</div>
-                  </div>
+                <button key={n} onClick={() => !isSubmitted && setReview(r => ({ ...r, overall_rating: n }))} disabled={isSubmitted}
+                  style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '11px 14px', borderRadius: 10, border: `1.5px solid ${sel ? s.color : '#1e2130'}`, background: sel ? s.color + '15' : '#0d1117', cursor: isSubmitted ? 'default' : 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.15s' }}>
+                  <div style={{ fontSize: 15, color: s.color, fontWeight: 800, minWidth: 80, letterSpacing: -1 }}>{'★'.repeat(n)}{'☆'.repeat(5 - n)}</div>
+                  <div><div style={{ fontWeight: 700, color: sel ? s.color : '#9ca3af', fontSize: 13 }}>{n} — {s.label}</div><div style={{ fontSize: 11, color: '#6b7280', marginTop: 1 }}>{s.description}</div></div>
                 </button>
               )
             })}
@@ -501,177 +404,85 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
       </div>
     )
 
-    // Step 7 — Next Year's Goals
     if (step === 7) return (
       <div>
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 10, color: '#4b5563', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Part Three</div>
-          <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Next Year&apos;s Goals</h2>
-          <p style={{ margin: 0, fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
-            Identify at least two goals for the next review period with a roadmap (objective) for how you plan to reach each one.
-            These will be discussed with your manager and may change based on that conversation.
-          </p>
-        </div>
-
+        <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>Identify at least two goals for the next review period with a roadmap for how you plan to reach each one. These will be discussed with your manager.</p>
         {review.next_year_goals.map((g, i) => (
           <div key={i} style={{ ...card, borderLeft: '3px solid #f59e0b' }}>
-            <div style={{ fontWeight: 600, fontSize: 12, color: '#f59e0b', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Goal {i + 1}
-            </div>
-            <div style={{ marginBottom: 10 }}>
-              <div style={label}>Goal</div>
-              <input value={g.goal} onChange={e => updateNext(i, 'goal', e.target.value)}
-                disabled={isSubmitted} placeholder="e.g. Improve public speaking skills" style={input} />
-            </div>
-            <div>
-              <div style={label}>Objective / Roadmap</div>
-              <textarea value={g.objective} onChange={e => updateNext(i, 'objective', e.target.value)}
-                disabled={isSubmitted} rows={2} placeholder="e.g. Attend a public speaking course and practice presentations quarterly" style={textarea} />
-            </div>
+            <div style={{ fontWeight: 600, fontSize: 11, color: '#f59e0b', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Goal {i + 1}</div>
+            <div style={{ marginBottom: 10 }}><div style={lbl}>Goal</div><input value={g.goal} onChange={e => updateNext(i, 'goal', e.target.value)} disabled={isSubmitted} placeholder="e.g. Improve public speaking skills" style={inp} /></div>
+            <div><div style={lbl}>Objective / Roadmap</div><textarea value={g.objective} onChange={e => updateNext(i, 'objective', e.target.value)} disabled={isSubmitted} rows={2} placeholder="e.g. Attend a public speaking course and practice presentations quarterly" style={{ ...inp, resize: 'vertical' }} /></div>
           </div>
         ))}
-
         {!isSubmitted && review.next_year_goals.length < 5 && (
-          <button onClick={() => setReview(r => ({ ...r, next_year_goals: [...r.next_year_goals, { goal: '', objective: '' }] }))}
-            style={{ width: '100%', padding: '8px', background: 'transparent', color: '#f59e0b', border: '1px dashed #92400e', borderRadius: 8, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 14 }}>
-            <Plus size={13} /> Add Another Goal
-          </button>
-        )}
-
-        {!isSubmitted && (
-          <div style={{ ...card, background: '#0d1117', border: '1px solid #1e2130' }}>
-            <p style={{ margin: 0, fontSize: 12, color: '#6b7280', lineHeight: 1.6 }}>
-              <strong style={{ color: '#9ca3af' }}>Tip (SMART Goals):</strong> Make each goal Specific, Measurable, Attainable, Relevant, and Time-bound.
-              Your objective should describe HOW you plan to reach the goal — specific steps, courses, or milestones.
-            </p>
-          </div>
+          <button onClick={() => setReview(r => ({ ...r, next_year_goals: [...r.next_year_goals, { goal: '', objective: '' }] }))} style={{ width: '100%', padding: '8px', background: 'transparent', color: '#f59e0b', border: '1px dashed #92400e', borderRadius: 8, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Plus size={13} /> Add Another Goal</button>
         )}
       </div>
     )
 
-    // Step 8 — Review & Export
     if (step === 8) return (
       <div>
-        <div style={{ marginBottom: 24 }}>
-          <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Review & Export</h2>
-          <p style={{ margin: 0, fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
-            {isSubmitted
-              ? 'Your self-assessment has been submitted. Approve and export it to Google Drive as a formatted document.'
-              : 'Review your self-assessment below. When ready, submit it to share with your manager, then export to Google Drive.'}
-          </p>
-        </div>
-
-        {/* Summary */}
         <div style={card}>
-          <div style={{ fontWeight: 600, fontSize: 13, color: '#e5e7eb', marginBottom: 14 }}>Summary</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
-            <div><div style={label}>Employee</div><div style={{ fontSize: 13, color: '#e5e7eb' }}>{profile.name || profile.email}</div></div>
-            <div><div style={label}>Supervisor</div><div style={{ fontSize: 13, color: '#e5e7eb' }}>{manager?.name || manager?.email || '—'}</div></div>
+          <div style={{ fontWeight: 600, fontSize: 13, color: '#e5e7eb', marginBottom: 14 }}>Assessment Summary</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div><div style={lbl}>Employee</div><div style={{ fontSize: 13, color: '#e5e7eb' }}>{profileName || profile.email}</div></div>
+            <div><div style={lbl}>Supervisor</div><div style={{ fontSize: 13, color: '#e5e7eb' }}>{manager?.name || manager?.email || '—'}</div></div>
           </div>
-
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ ...sectionLabel, color: '#818cf8' }}>Part One — Competency Evaluation</div>
-            {review.competencies.map((c, i) => (
-              c.term ? (
-                <div key={i} style={{ padding: '8px 12px', background: '#0d1117', borderRadius: 8, marginBottom: 6, borderLeft: `3px solid ${COMP_CONFIG[i].accent}` }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb' }}>
-                    {COMP_CONFIG[i].label} <span style={{ color: '#6b7280', fontWeight: 400 }}>({COMP_CONFIG[i].sublabel})</span> — {c.term}
-                  </div>
-                  {c.examples.filter(Boolean).map((ex, j) => (
-                    <div key={j} style={{ fontSize: 11, color: '#9ca3af', marginTop: 3 }}>{j + 1}. {ex}</div>
-                  ))}
-                </div>
-              ) : (
-                <div key={i} style={{ padding: '8px 12px', background: '#0d1117', borderRadius: 8, marginBottom: 6, fontSize: 12, color: '#4b5563', fontStyle: 'italic' }}>
-                  {COMP_CONFIG[i].label} — not filled
-                </div>
-              )
-            ))}
-          </div>
-
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ ...sectionLabel, color: '#10b981' }}>Part Two — Goals & Rating</div>
-            {review.goals_objectives.filter(g => g.description).map((g, i) => (
-              <div key={i} style={{ padding: '8px 12px', background: '#0d1117', borderRadius: 8, marginBottom: 6 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb' }}>{i + 1}. {g.description}</div>
-                {g.outcome && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>Outcome: {g.outcome}</div>}
-              </div>
-            ))}
-            {review.overall_rating ? (
-              <div style={{ padding: '8px 12px', background: '#0d1117', borderRadius: 8, fontSize: 12 }}>
-                <span style={{ color: '#fbbf24' }}>{'★'.repeat(review.overall_rating)}</span>
-                {' '}<span style={{ color: '#e5e7eb', fontWeight: 600 }}>{review.overall_rating}/5 — {STAR_LABELS[review.overall_rating].label}</span>
-              </div>
-            ) : (
-              <div style={{ padding: '8px 12px', background: '#0d1117', borderRadius: 8, fontSize: 12, color: '#4b5563', fontStyle: 'italic' }}>No rating selected</div>
-            )}
-          </div>
-
-          <div>
-            <div style={{ ...sectionLabel, color: '#f59e0b' }}>Part Three — Next Year&apos;s Goals</div>
-            {review.next_year_goals.filter(g => g.goal).map((g, i) => (
-              <div key={i} style={{ padding: '8px 12px', background: '#0d1117', borderRadius: 8, marginBottom: 6 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb' }}>{i + 1}. {g.goal}</div>
-                {g.objective && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{g.objective}</div>}
-              </div>
-            ))}
-          </div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Part One — Competencies</div>
+          {review.competencies.map((c, i) => c.term ? (
+            <div key={i} style={{ padding: '8px 12px', background: '#0d1117', borderRadius: 8, marginBottom: 6, borderLeft: `3px solid ${COMP_CONFIG[i].accent}` }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb' }}>{COMP_CONFIG[i].label} <span style={{ color: '#6b7280', fontWeight: 400 }}>({COMP_CONFIG[i].sublabel})</span> — {c.term}</div>
+              {c.examples.filter(Boolean).map((ex, j) => <div key={j} style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{j + 1}. {ex}</div>)}
+            </div>
+          ) : <div key={i} style={{ padding: '8px 12px', background: '#0d1117', borderRadius: 8, marginBottom: 6, fontSize: 12, color: '#4b5563', fontStyle: 'italic' }}>{COMP_CONFIG[i].label} — not filled</div>)}
+          <div style={{ fontSize: 10, fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '14px 0 8px' }}>Part Two — Goals & Rating</div>
+          {review.goals_objectives.filter(g => g.description).map((g, i) => (
+            <div key={i} style={{ padding: '8px 12px', background: '#0d1117', borderRadius: 8, marginBottom: 6 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb' }}>{i + 1}. {g.description}</div>
+              {g.outcome && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>Outcome: {g.outcome}</div>}
+            </div>
+          ))}
+          {review.overall_rating ? (
+            <div style={{ padding: '8px 12px', background: '#0d1117', borderRadius: 8, marginBottom: 6 }}>
+              <span style={{ color: STAR_LABELS[review.overall_rating].color }}>{'★'.repeat(review.overall_rating)}</span>
+              {' '}<span style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb' }}>{review.overall_rating}/5 — {STAR_LABELS[review.overall_rating].label}</span>
+            </div>
+          ) : <div style={{ padding: '8px 12px', background: '#0d1117', borderRadius: 8, fontSize: 12, color: '#4b5563', fontStyle: 'italic' }}>No rating selected</div>}
+          <div style={{ fontSize: 10, fontWeight: 600, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '14px 0 8px' }}>Part Three — Next Year&apos;s Goals</div>
+          {review.next_year_goals.filter(g => g.goal).map((g, i) => (
+            <div key={i} style={{ padding: '8px 12px', background: '#0d1117', borderRadius: 8, marginBottom: 6 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb' }}>{i + 1}. {g.goal}</div>
+              {g.objective && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{g.objective}</div>}
+            </div>
+          ))}
         </div>
 
-        {/* Submit / Export */}
         {!isSubmitted ? (
           <div style={card}>
             <div style={{ fontWeight: 600, fontSize: 13, color: '#e5e7eb', marginBottom: 8 }}>Ready to submit?</div>
-            <p style={{ margin: '0 0 16px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
-              Once submitted, your self-assessment will be shared with your manager and cannot be edited.
-              You&apos;ll then be able to export it to Google Drive.
-            </p>
-            <button onClick={() => setSubmitConfirm(true)}
-              style={{ width: '100%', padding: '11px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-              Submit Self-Assessment
-            </button>
+            <p style={{ margin: '0 0 16px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>Once submitted, your self-assessment is shared with your manager and cannot be edited. You&apos;ll then be able to export it to Google Drive.</p>
+            <button onClick={() => setSubmitConfirm(true)} style={{ width: '100%', padding: '11px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Submit Self-Assessment</button>
           </div>
         ) : driveUrl ? (
           <div style={{ ...card, background: '#0d1a13', border: '1px solid #1a4a35', textAlign: 'center' }}>
-            <div style={{ fontSize: 32, marginBottom: 10 }}>✅</div>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>✅</div>
             <div style={{ fontWeight: 700, color: '#34d399', fontSize: 15, marginBottom: 8 }}>Exported to Google Drive</div>
-            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6b7280' }}>
-              Your self-assessment has been saved as a formatted Google Doc.
-            </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-              <a href={driveUrl} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 20px', background: '#1a4a35', color: '#34d399', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none', border: '1px solid #2a6b4a' }}>
-                <ExternalLink size={13} /> Open in Google Docs
-              </a>
-              <button onClick={sendToDrive} disabled={exporting}
-                style={{ padding: '9px 16px', background: 'transparent', color: '#6b7280', borderRadius: 8, fontSize: 13, border: '1px solid #2a2d3a', cursor: 'pointer' }}>
-                Re-export
-              </button>
+              <a href={driveUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: '#1a4a35', color: '#34d399', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none', border: '1px solid #2a6b4a' }}><ExternalLink size={13} /> Open in Google Docs</a>
+              <button onClick={sendToDrive} disabled={exporting} style={{ padding: '9px 14px', background: 'transparent', color: '#6b7280', borderRadius: 8, fontSize: 13, border: '1px solid #2a2d3a', cursor: 'pointer' }}>Re-export</button>
             </div>
           </div>
         ) : (
           <div style={card}>
             <div style={{ fontWeight: 600, fontSize: 13, color: '#e5e7eb', marginBottom: 8 }}>Export to Google Drive</div>
-            <p style={{ margin: '0 0 16px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
-              A formatted Google Doc will be created in the Performance Reviews folder with your completed self-assessment.
-            </p>
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>A formatted Google Doc will be created in the Performance Reviews folder.</p>
             {!approved ? (
-              <button onClick={() => setApproved(true)}
-                style={{ width: '100%', padding: '10px', background: '#13151f', color: '#e5e7eb', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                ✓ Confirm accuracy and approve for export
-              </button>
+              <button onClick={() => setApproved(true)} style={{ width: '100%', padding: '10px', background: '#13151f', color: '#e5e7eb', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>✓ Confirm accuracy and approve for export</button>
             ) : (
               <div>
-                <div style={{ padding: '8px 14px', background: '#0d1a13', border: '1px solid #1a4a35', borderRadius: 8, color: '#34d399', fontSize: 12, marginBottom: 12 }}>
-                  ✓ Approved — ready to export
-                </div>
-                {exportError && (
-                  <div style={{ padding: '8px 14px', background: '#2d1515', border: '1px solid #5c2020', borderRadius: 8, color: '#f87171', fontSize: 12, marginBottom: 12 }}>
-                    {exportError}
-                  </div>
-                )}
-                <button onClick={sendToDrive} disabled={exporting}
-                  style={{ width: '100%', padding: '11px', background: 'linear-gradient(135deg, #059669, #10b981)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: exporting ? 'wait' : 'pointer', opacity: exporting ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <div style={{ padding: '8px 12px', background: '#0d1a13', border: '1px solid #1a4a35', borderRadius: 8, color: '#34d399', fontSize: 12, marginBottom: 12 }}>✓ Approved — ready to export</div>
+                {exportError && <div style={{ padding: '8px 12px', background: '#2d1515', border: '1px solid #5c2020', borderRadius: 8, color: '#f87171', fontSize: 12, marginBottom: 12 }}>{exportError}</div>}
+                <button onClick={sendToDrive} disabled={exporting} style={{ width: '100%', padding: '11px', background: 'linear-gradient(135deg, #059669, #10b981)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: exporting ? 'wait' : 'pointer', opacity: exporting ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                   {exporting ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Creating Google Doc…</> : <><Send size={14} /> Send to Google Drive</>}
                 </button>
               </div>
@@ -680,19 +491,184 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
         )}
       </div>
     )
-
     return null
   }
 
-  const canNext = step < STEPS.length - 1
-  const canBack = step > 0
+  // ── Page: Performance Reviews ─────────────────────────────────────────────
+  function renderReviewsPage() {
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
+        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Performance Reviews</h1>
+        <p style={{ margin: '0 0 28px', fontSize: 13, color: '#6b7280' }}>Your submitted self-assessments and manager performance reviews.</p>
 
-  const filteredGlossary = COMPETENCY_TERMS.filter(t =>
-    t.term.toLowerCase().includes(glossarySearch.toLowerCase()) ||
-    t.definition.toLowerCase().includes(glossarySearch.toLowerCase())
-  )
+        <div style={{ fontWeight: 600, fontSize: 11, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Your Self-Assessments</div>
+        {isSubmitted ? (
+          <div style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: '#e5e7eb' }}>Self-Assessment</div>
+              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+                Submitted {review.submitted_at ? new Date(review.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''}
+                {review.overall_rating && <> · <span style={{ color: STAR_LABELS[review.overall_rating].color }}>{'★'.repeat(review.overall_rating)}</span> {STAR_LABELS[review.overall_rating].label}</>}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {driveUrl && <a href={driveUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}><ExternalLink size={12} /> Drive</a>}
+              <button onClick={() => { setPage('self-assessment'); setStep(8) }} style={{ padding: '6px 12px', background: '#13151f', color: '#9ca3af', border: '1px solid #1e2130', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>View</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '32px' }}>
+            <div style={{ fontSize: 32, marginBottom: 10 }}>📋</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>No submitted self-assessments yet</div>
+            <button onClick={() => setPage('self-assessment')} style={{ padding: '8px 20px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Start Self-Assessment</button>
+          </div>
+        )}
+
+        <div style={{ fontWeight: 600, fontSize: 11, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '24px 0 10px' }}>Manager Performance Reviews</div>
+        <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '32px' }}>
+          <div style={{ fontSize: 32, marginBottom: 10 }}>📄</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>Coming soon</div>
+          <p style={{ margin: 0, fontSize: 12, color: '#4b5563', lineHeight: 1.6 }}>When your manager completes and shares your annual performance review, it will appear here with your rating and Drive link.</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Page: History ─────────────────────────────────────────────────────────
+  function renderHistoryPage() {
+    const events: { icon: string; label: string; time: string; color: string }[] = []
+    if (review.submitted_at) events.push({ icon: '✅', label: 'Self-assessment submitted', time: new Date(review.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), color: '#34d399' })
+    if (driveUrl) events.push({ icon: '📤', label: 'Exported to Google Drive', time: 'Recent', color: '#818cf8' })
+    if (review.status === 'draft') events.push({ icon: '💾', label: 'Draft in progress', time: 'Auto-saved', color: '#f59e0b' })
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
+        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>History</h1>
+        <p style={{ margin: '0 0 28px', fontSize: 13, color: '#6b7280' }}>A log of activity on your account and self-assessments.</p>
+        {events.length === 0 ? (
+          <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '32px' }}>
+            <div style={{ fontSize: 32, marginBottom: 10 }}>🕐</div>
+            <div style={{ fontSize: 14, color: '#9ca3af' }}>No activity recorded yet</div>
+          </div>
+        ) : (
+          <div style={{ position: 'relative' }}>
+            <div style={{ position: 'absolute', left: 19, top: 8, bottom: 8, width: 2, background: '#1e2130' }} />
+            {events.map((e, i) => (
+              <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 16, position: 'relative' }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#13151f', border: `2px solid ${e.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, zIndex: 1 }}>{e.icon}</div>
+                <div style={{ flex: 1, padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb' }}>{e.label}</div>
+                  <div style={{ fontSize: 11, color: '#6b7280', marginTop: 3 }}>{e.time}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ── Page: Employee Guide ──────────────────────────────────────────────────
+  function renderGuidePage() {
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
+        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Employee Guide to Self-Assessments</h1>
+        <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Reference this guide when completing your self-assessment.</p>
+
+        <p style={{ ...card as object, fontSize: 13, color: '#9ca3af', lineHeight: 1.7, display: 'block' } as React.CSSProperties}>
+          This self-assessment provides you an opportunity to reflect on your performance during the review period, set goals, and identify areas for development. It will also help prepare you for the evaluation discussion with your supervisor.
+        </p>
+
+        {[
+          { title: 'Preparation', accent: '#818cf8', content: 'Prepare your self-assessment by reviewing your job description and past evaluations, and gathering relevant documentation to give a reason for your evaluation of your performance.' },
+          { title: 'Components of a Self-Assessment', accent: '#818cf8', content: 'The self-assessment components include a 5-Word Competency assessment, goal/objective successful or unsuccessful completion, and accomplishments. Make sure you indicate any challenges you faced and any training or development needs.' },
+          { title: 'Tips', accent: '#818cf8', content: 'As you reflect on your performance, make sure you are honest with yourself, use specific examples, stay professional, and reflect on any periodic feedback you have received from management throughout the year.' },
+          { title: 'Mistakes to Avoid', accent: '#f87171', content: '• Avoid generalized or vague statements — be specific about accomplishments and areas for growth.\n• Don\'t shy away from discussing difficulties; they are part of your growth journey.\n• Don\'t ignore input from others — take feedback, positive and constructive, to heart.' },
+        ].map(s => (
+          <div key={s.title} style={{ ...card, borderLeft: `3px solid ${s.accent}` }}>
+            <div style={{ fontWeight: 700, color: s.accent, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{s.title}</div>
+            <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{s.content}</div>
+          </div>
+        ))}
+
+        <div style={card}>
+          <div style={{ fontWeight: 700, color: '#f0f2fa', fontSize: 14, marginBottom: 14 }}>Rush Media Star Rating Matrix</div>
+          {[5, 4, 3, 2, 1].map(n => {
+            const s = STAR_LABELS[n]
+            return (
+              <div key={n} style={{ display: 'flex', gap: 14, marginBottom: 10, alignItems: 'flex-start', padding: '10px 12px', background: '#0d1117', borderRadius: 8 }}>
+                <div style={{ fontSize: 16, color: s.color, fontWeight: 800, minWidth: 24 }}>{n}</div>
+                <div><div style={{ fontSize: 13, fontWeight: 700, color: s.color }}>{s.label}</div><div style={{ fontSize: 12, color: '#6b7280', marginTop: 1 }}>{s.description}</div></div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div style={card}>
+          <div style={{ fontWeight: 700, color: '#f0f2fa', fontSize: 14, marginBottom: 14 }}>SMART Goal Method</div>
+          {[['S', 'Specific', 'Goals should be specific and narrow enough for effective planning and attainability.'], ['M', 'Measurable', 'Define how progress towards the goal will be made.'], ['A', 'Attainable', 'Ensure goals are accomplished reasonably within a certain timeframe.'], ['R', 'Relevant', 'Goals should align with Company values and your job description.'], ['T', 'Time-Bound', 'Set a realistic date and stick to it.']].map(([l, w, d]) => (
+            <div key={l} style={{ display: 'flex', gap: 14, marginBottom: 8, padding: '8px 12px', background: '#0d1117', borderRadius: 8 }}>
+              <div style={{ fontWeight: 800, color: '#818cf8', fontSize: 16, minWidth: 18 }}>{l}</div>
+              <div><div style={{ fontSize: 13, fontWeight: 700, color: '#c4c9d4' }}>{w}</div><div style={{ fontSize: 12, color: '#6b7280', marginTop: 1 }}>{d}</div></div>
+            </div>
+          ))}
+        </div>
+
+        <div style={card}>
+          <div style={{ fontWeight: 700, color: '#f0f2fa', fontSize: 14, marginBottom: 14 }}>Goals vs. Objectives vs. Accomplishments</div>
+          {[
+            { title: 'Goal', color: '#818cf8', desc: 'Broad, longer-term, achievable outcomes agreed upon by the employee and manager as a plan of action for the following review cycle.', example: 'Improve public speaking skills.' },
+            { title: 'Objective', color: '#34d399', desc: 'Shorter, more specific, measurable steps toward achieving a goal. Generally determined by the employee with manager support.', example: 'Attend a public speaking course and practice presentations to a colleague one time per quarter.' },
+            { title: 'Accomplishment', color: '#fbbf24', desc: 'Tangible achievements or milestones from pursuing goals and objectives — what has been successfully met regardless of whether it was part of the goal-planning process.', example: 'Successfully delivered a presentation at a Company-wide meeting that received positive feedback from senior management.' },
+          ].map(item => (
+            <div key={item.title} style={{ marginBottom: 12, padding: '12px 14px', background: '#0d1117', borderRadius: 8, borderLeft: `3px solid ${item.color}` }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: item.color, marginBottom: 4 }}>{item.title}</div>
+              <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6, marginBottom: 6 }}>{item.desc}</div>
+              <div style={{ fontSize: 11, color: '#6b7280', fontStyle: 'italic' }}>Example: {item.example}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={card}>
+          <div style={{ fontWeight: 700, color: '#f0f2fa', fontSize: 14, marginBottom: 12 }}>Questions to Ask Yourself</div>
+          {['How do you perform on the team and in comparison to your colleagues?', 'Does your performance limit the success of your colleagues or does it help them?', 'Are you transparent with yourself about your performance?', 'Are you efficient?', 'What is one small thing you would change that you feel would have the biggest impact to your performance?', 'How would you describe your work ethic in one word?', 'Where have you made the most progress?', 'What makes you most proud?', 'Where have you had the most impact on others and what word best describes that impact?'].map((q, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, padding: '7px 0', borderBottom: '1px solid #1e2130', fontSize: 13, color: '#9ca3af' }}>
+              <span style={{ color: '#818cf8', fontSize: 10, marginTop: 4, flexShrink: 0 }}>▸</span> {q}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Page: Glossary ────────────────────────────────────────────────────────
+  function renderGlossaryPage() {
+    const filtered = COMPETENCY_TERMS.filter(t =>
+      t.term.toLowerCase().includes(glossarySearch.toLowerCase()) ||
+      t.definition.toLowerCase().includes(glossarySearch.toLowerCase())
+    )
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
+        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Competency Glossary of Terms</h1>
+        <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6b7280' }}>Use these definitions when selecting your competency words in Part One of the self-assessment.</p>
+        <input value={glossarySearch} onChange={e => setGlossarySearch(e.target.value)} placeholder="Search by term or definition…" style={{ ...inp, marginBottom: 16 }} />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <span style={{ fontSize: 11, color: '#4b5563' }}>{filtered.length} of {COMPETENCY_TERMS.length} terms</span>
+        </div>
+        {filtered.map(t => (
+          <div key={t.term} style={{ ...card, padding: '14px 18px' }}>
+            <div style={{ fontWeight: 700, color: '#818cf8', fontSize: 14, marginBottom: 5 }}>{t.term}</div>
+            <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>{t.definition}</div>
+          </div>
+        ))}
+        {filtered.length === 0 && <div style={{ textAlign: 'center', padding: '40px 0', color: '#374151', fontSize: 14 }}>No matching competencies found.</div>}
+      </div>
+    )
+  }
 
   // ── Render ─────────────────────────────────────────────────────────────────
+  const displayName = profileName || profile.email
+
   return (
     <div style={{ display: 'flex', height: '100vh', background: '#0b0d14', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#f0f2fa', overflow: 'hidden' }}>
 
@@ -701,121 +677,71 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
 
         {/* Logo + collapse */}
         <div style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: collapsed ? '0 12px' : '0 16px', borderBottom: '1px solid #1e2130', flexShrink: 0 }}>
-          {!collapsed && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 17 }}>⭐</span>
-              <span style={{ fontWeight: 700, fontSize: 13, color: '#f0f2fa', whiteSpace: 'nowrap' }}>Self-Assessment</span>
-            </div>
-          )}
-          {collapsed && <span style={{ fontSize: 17 }}>⭐</span>}
+          {!collapsed && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ fontSize: 16 }}>⭐</span><span style={{ fontWeight: 700, fontSize: 13, color: '#f0f2fa', whiteSpace: 'nowrap' }}>Performance Review</span></div>}
+          {collapsed && <span style={{ fontSize: 16 }}>⭐</span>}
           <button onClick={() => setCollapsed(c => !c)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
             {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
           </button>
         </div>
 
-        {/* Step list */}
+        {/* Nav */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
-          {!collapsed && <div style={sectionLabel}>Steps</div>}
-          {STEPS.map((s, i) => {
-            const isActive = step === i
-            const isDone = i < step || isStepComplete(i, review)
-            const Icon = s.icon
+          {!collapsed && <div style={{ fontSize: 10, fontWeight: 600, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '4px 8px 6px', marginBottom: 2 }}>Menu</div>}
+          {NAV_ITEMS.map(item => {
+            const active = page === item.id
+            const Icon = item.icon
             return (
-              <button key={s.id} onClick={() => goTo(i)}
-                title={collapsed ? s.label : undefined}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-                  padding: collapsed ? '8px' : '7px 8px',
-                  justifyContent: collapsed ? 'center' : 'flex-start',
-                  borderRadius: 8, border: isActive ? '1px solid rgba(79,70,229,0.35)' : '1px solid transparent',
-                  background: isActive ? '#1e1f3a' : 'transparent',
-                  cursor: 'pointer', marginBottom: 2, transition: 'all 0.15s',
-                }}
-                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#13151f' }}
-                onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
-              >
-                <div style={{
-                  width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
-                  background: isDone ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : isActive ? '#1e1f3a' : '#13151f',
-                  border: isActive && !isDone ? '1.5px solid #4f46e5' : 'none',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {isDone
-                    ? <CheckCircle2 size={13} color="#fff" />
-                    : <Icon size={12} color={isActive ? '#818cf8' : '#4b5563'} />
-                  }
-                </div>
-                {!collapsed && (
-                  <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                    {s.part && <div style={{ fontSize: 9, color: '#374151', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.part}</div>}
-                    <div style={{ fontSize: 12, fontWeight: isActive ? 600 : 400, color: isActive ? '#e0e7ff' : '#9ca3af', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {s.label}
-                    </div>
-                  </div>
+              <button key={item.id} onClick={() => setPage(item.id)} title={collapsed ? item.label : undefined}
+                style={navBtn(active)}
+                onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
+                <Icon size={15} color={active ? '#818cf8' : '#6b7280'} />
+                {!collapsed && item.label}
+                {/* Draft indicator on self-assessment */}
+                {item.id === 'self-assessment' && !collapsed && !isSubmitted && (
+                  <span style={{ marginLeft: 'auto', width: 7, height: 7, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />
+                )}
+                {item.id === 'self-assessment' && !collapsed && isSubmitted && (
+                  <CheckCircle2 size={11} color="#34d399" style={{ marginLeft: 'auto' }} />
                 )}
               </button>
             )
           })}
-
-          {/* Divider */}
-          <div style={{ margin: '8px 0', borderTop: '1px solid #1e2130' }} />
-          {!collapsed && <div style={sectionLabel}>Resources</div>}
-
-          {[
-            { label: 'Employee Guide', icon: BookOpen, onClick: () => setShowGuide(true) },
-            { label: 'Competency Glossary', icon: BookMarked, onClick: () => setShowGlossary(true) },
-          ].map(({ label: l, icon: Icon, onClick }) => (
-            <button key={l} onClick={onClick} title={collapsed ? l : undefined}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '8px' : '7px 8px', justifyContent: collapsed ? 'center' : 'flex-start', borderRadius: 8, border: '1px solid transparent', background: 'transparent', cursor: 'pointer', marginBottom: 2 }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#13151f' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-              <div style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, background: '#13151f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon size={12} color="#6b7280" />
-              </div>
-              {!collapsed && <span style={{ fontSize: 12, color: '#9ca3af' }}>{l}</span>}
-            </button>
-          ))}
         </div>
 
         {/* Footer */}
-        <div style={{ padding: collapsed ? '8px' : '8px 12px', borderTop: '1px solid #1e2130', flexShrink: 0 }}>
-          {/* Status pill */}
-          {!collapsed && (
-            <div style={{ padding: '6px 10px', borderRadius: 8, background: isSubmitted ? '#0d2b1f' : '#13151f', border: `1px solid ${isSubmitted ? '#1a4a35' : '#1e2130'}`, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: isSubmitted ? '#34d399' : '#f59e0b', flexShrink: 0 }} />
-              <span style={{ fontSize: 11, color: isSubmitted ? '#34d399' : '#f59e0b', fontWeight: 600 }}>
-                {isSubmitted ? 'Submitted' : 'Draft'}
-              </span>
-              {saving && !isSubmitted && <Loader2 size={10} color="#6b7280" style={{ marginLeft: 'auto', animation: 'spin 1s linear infinite' }} />}
-              {saved && !isSubmitted && <CheckCircle2 size={10} color="#34d399" style={{ marginLeft: 'auto' }} />}
+        <div style={{ padding: collapsed ? '8px' : '8px 10px', borderTop: '1px solid #1e2130', flexShrink: 0 }}>
+          {/* Auto-save status */}
+          {!collapsed && page === 'self-assessment' && !isSubmitted && (
+            <div style={{ padding: '5px 8px', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              {saving ? <><Loader2 size={10} style={{ animation: 'spin 1s linear infinite', color: '#6b7280' }} /><span style={{ fontSize: 11, color: '#6b7280' }}>Saving…</span></> : saved ? <><CheckCircle2 size={10} color="#34d399" /><span style={{ fontSize: 11, color: '#34d399' }}>Saved</span></> : <span style={{ fontSize: 11, color: '#4b5563' }}>Auto-saves</span>}
             </div>
           )}
 
-          {/* Profile */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '4px' : '4px 4px', justifyContent: collapsed ? 'center' : 'flex-start' }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>
-                {(profile.name || profile.email).charAt(0).toUpperCase()}
-              </span>
+          {/* Profile — clickable */}
+          <button onClick={() => setShowProfileEdit(true)} title={collapsed ? displayName : undefined}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '8px' : '8px 8px', borderRadius: 8, border: '1px solid transparent', background: 'transparent', cursor: 'pointer', justifyContent: collapsed ? 'center' : 'flex-start', transition: 'all 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.background = '#13151f'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+              {displayName.charAt(0).toUpperCase()}
             </div>
             {!collapsed && (
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 500, color: '#c4c9d4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {profile.name || profile.email}
-                </div>
-                <div style={{ fontSize: 10, color: '#4b5563' }}>Employee</div>
+              <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                <div style={{ fontSize: 12, fontWeight: 500, color: '#c4c9d4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
+                <div style={{ fontSize: 10, color: '#4b5563' }}>Employee · Edit profile</div>
               </div>
             )}
-          </div>
+            {!collapsed && <Pencil size={11} color="#4b5563" />}
+          </button>
 
           {/* Sign out */}
-          <button onClick={async () => { await fetch('/api/auth/signout', { method: 'POST' }); router.push('/login') }}
-            title={collapsed ? 'Sign out' : undefined}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '7px' : '7px 8px', justifyContent: collapsed ? 'center' : 'flex-start', borderRadius: 8, border: '1px solid transparent', background: 'transparent', cursor: 'pointer', marginTop: 4 }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#13151f' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-            <LogOut size={13} color="#6b7280" />
-            {!collapsed && <span style={{ fontSize: 12, color: '#6b7280' }}>Sign out</span>}
+          <button onClick={async () => { await fetch('/api/auth/signout', { method: 'POST' }); router.push('/login') }} title={collapsed ? 'Sign out' : undefined}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '8px' : '8px 8px', borderRadius: 8, border: '1px solid transparent', background: 'transparent', cursor: 'pointer', justifyContent: collapsed ? 'center' : 'flex-start', marginTop: 2 }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#1a1010'; (e.currentTarget.querySelector('span') as HTMLElement | null)?.style && ((e.currentTarget.querySelector('span') as HTMLElement).style.color = '#f87171') }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; (e.currentTarget.querySelector('span') as HTMLElement | null)?.style && ((e.currentTarget.querySelector('span') as HTMLElement).style.color = '#6b7280') }}>
+            <LogOut size={14} color="#6b7280" />
+            {!collapsed && <span style={{ fontSize: 12, color: '#6b7280', transition: 'color 0.15s' }}>Sign out</span>}
           </button>
         </div>
       </aside>
@@ -823,176 +749,95 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
       {/* ── Main ── */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        {/* Top bar */}
-        <div style={{ height: 56, background: '#0d0f1a', borderBottom: '1px solid #1e2130', padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {currentStep.part && (
-              <span style={{ fontSize: 10, fontWeight: 600, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                {currentStep.part} ·
-              </span>
-            )}
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#c4c9d4' }}>{currentStep.label}</span>
-            <span style={{ fontSize: 11, color: '#374151' }}>· Step {step + 1} of {STEPS.length}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {!isSubmitted && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#4b5563' }}>
-                {saving ? <><Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> Saving…</> : saved ? <><CheckCircle2 size={11} color="#34d399" /> Saved</> : 'Auto-saves'}
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Self Assessment: step tabs + progress */}
+        {page === 'self-assessment' && (
+          <>
+            {renderStepTabs()}
+            <div style={{ height: 3, background: '#1e2130', flexShrink: 0 }}>
+              <div style={{ height: '100%', background: 'linear-gradient(90deg, #4f46e5, #7c3aed)', width: `${(step / (SA_STEPS.length - 1)) * 100}%`, transition: 'width 0.3s ease' }} />
+            </div>
+          </>
+        )}
 
-        {/* Progress bar */}
-        <div style={{ height: 3, background: '#1e2130', flexShrink: 0 }}>
-          <div style={{ height: '100%', background: 'linear-gradient(90deg, #4f46e5, #7c3aed)', width: `${((step) / (STEPS.length - 1)) * 100}%`, transition: 'width 0.3s ease' }} />
-        </div>
+        {/* Other pages: simple header bar */}
+        {page !== 'self-assessment' && (
+          <div style={{ height: 56, background: '#0d0f1a', borderBottom: '1px solid #1e2130', padding: '0 28px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#c4c9d4' }}>
+              {NAV_ITEMS.find(n => n.id === page)?.label}
+            </span>
+          </div>
+        )}
 
         {/* Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
-          <div style={{ maxWidth: 720, margin: '0 auto' }}>
-            {renderStepContent()}
-          </div>
-        </div>
-
-        {/* Bottom nav */}
-        <div style={{ height: 64, background: '#0d0f1a', borderTop: '1px solid #1e2130', padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-          <button onClick={back} disabled={!canBack}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'transparent', color: canBack ? '#9ca3af' : '#374151', border: `1px solid ${canBack ? '#2a2d3a' : '#1e2130'}`, borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: canBack ? 'pointer' : 'default', transition: 'all 0.15s' }}>
-            <ChevronLeft size={15} /> Back
-          </button>
-
-          <div style={{ display: 'flex', gap: 6 }}>
-            {STEPS.map((_, i) => (
-              <div key={i} style={{
-                width: i === step ? 20 : 6, height: 6, borderRadius: 3,
-                background: i === step ? '#6366f1' : i < step ? '#4f46e5' : '#1e2130',
-                transition: 'all 0.2s', cursor: 'pointer',
-              }} onClick={() => goTo(i)} />
-            ))}
-          </div>
-
-          {canNext ? (
-            <button onClick={next}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              Next <ChevronRight size={15} />
-            </button>
-          ) : (
-            <div style={{ width: 90 }} />
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {page === 'self-assessment' && (
+            <div style={{ padding: '24px 32px', maxWidth: 720, margin: '0 auto' }}>
+              {renderSAStep()}
+            </div>
           )}
+          {page === 'reviews'  && renderReviewsPage()}
+          {page === 'history'  && renderHistoryPage()}
+          {page === 'guide'    && renderGuidePage()}
+          {page === 'glossary' && renderGlossaryPage()}
         </div>
+
+        {/* Self Assessment bottom nav */}
+        {page === 'self-assessment' && (
+          <div style={{ height: 60, background: '#0d0f1a', borderTop: '1px solid #1e2130', padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <button onClick={() => goStep(step - 1)} disabled={step === 0}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', background: 'transparent', color: step > 0 ? '#9ca3af' : '#374151', border: `1px solid ${step > 0 ? '#2a2d3a' : '#1e2130'}`, borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: step > 0 ? 'pointer' : 'default' }}>
+              <ChevronLeft size={14} /> Back
+            </button>
+            <div style={{ display: 'flex', gap: 5 }}>
+              {SA_STEPS.map((_, i) => (
+                <div key={i} onClick={() => goStep(i)} style={{ width: i === step ? 18 : 6, height: 6, borderRadius: 3, background: i === step ? '#6366f1' : i < step ? '#4f46e5' : '#1e2130', transition: 'all 0.2s', cursor: 'pointer' }} />
+              ))}
+            </div>
+            {step < SA_STEPS.length - 1 ? (
+              <button onClick={() => goStep(step + 1)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 18px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                Next <ChevronRight size={14} />
+              </button>
+            ) : <div style={{ width: 80 }} />}
+          </div>
+        )}
       </main>
 
-      {/* ── Guide panel ── */}
-      {showGuide && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} onClick={() => setShowGuide(false)} />
-          <div style={{ position: 'relative', width: '100%', maxWidth: 480, background: '#0d0f1a', borderLeft: '1px solid #1e2130', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #1e2130', flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <BookOpen size={14} color="#818cf8" />
-                <span style={{ fontWeight: 600, fontSize: 14, color: '#f0f2fa' }}>Employee Guide</span>
-              </div>
-              <button onClick={() => setShowGuide(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                <X size={16} />
-              </button>
+      {/* ── Profile edit modal ── */}
+      {showProfileEdit && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }} onClick={e => { if (e.target === e.currentTarget) setShowProfileEdit(false) }}>
+          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 16, padding: 28, width: 380 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#f0f2fa' }}>Edit Profile</h2>
+              <button onClick={() => setShowProfileEdit(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer' }}><X size={16} /></button>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
-              {[
-                { title: 'Purpose', content: 'This self-assessment provides you an opportunity to reflect on your performance during the review period, set goals, and identify areas for development. It also prepares you for your evaluation discussion with your supervisor.' },
-                { title: 'Preparation', content: 'Review your job description and past evaluations. Gather relevant documentation to support your evaluation of your performance.' },
-                { title: 'Tips', content: 'Be honest with yourself. Use specific examples. Stay professional. Reflect on periodic feedback you\'ve received from management throughout the year.' },
-                { title: 'Mistakes to Avoid', content: '• Avoid vague or general statements — be specific.\n• Don\'t shy away from discussing difficulties.\n• Don\'t ignore input from others — take feedback to heart.' },
-              ].map(s => (
-                <div key={s.title} style={{ marginBottom: 16, padding: '14px 16px', background: '#13151f', borderRadius: 10, border: '1px solid #1e2130' }}>
-                  <div style={{ fontWeight: 700, color: '#818cf8', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{s.title}</div>
-                  <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{s.content}</div>
-                </div>
-              ))}
-
-              <div style={{ marginBottom: 16, padding: '14px 16px', background: '#13151f', borderRadius: 10, border: '1px solid #1e2130' }}>
-                <div style={{ fontWeight: 700, color: '#818cf8', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Star Rating Matrix</div>
-                {[5, 4, 3, 2, 1].map(n => {
-                  const colors: Record<number, string> = { 5: '#a78bfa', 4: '#34d399', 3: '#fbbf24', 2: '#fb923c', 1: '#f87171' }
-                  return (
-                    <div key={n} style={{ display: 'flex', gap: 10, marginBottom: 8, alignItems: 'flex-start' }}>
-                      <div style={{ fontSize: 14, color: colors[n], fontWeight: 800, minWidth: 20 }}>{n}</div>
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: colors[n] }}>{STAR_LABELS[n].label}</div>
-                        <div style={{ fontSize: 11, color: '#6b7280', marginTop: 1 }}>{STAR_LABELS[n].description}</div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div style={{ padding: '14px 16px', background: '#13151f', borderRadius: 10, border: '1px solid #1e2130' }}>
-                <div style={{ fontWeight: 700, color: '#818cf8', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>SMART Goal Method</div>
-                {[['S', 'Specific', 'Goals should be specific and narrow enough for effective planning.'], ['M', 'Measurable', 'Define how progress towards the goal will be made.'], ['A', 'Attainable', 'Ensure goals can be accomplished within a reasonable timeframe.'], ['R', 'Relevant', "Goals should align with Company values and your job description."], ['T', 'Time-Bound', 'Set a realistic date and stick to it.']].map(([l, w, d]) => (
-                  <div key={l} style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
-                    <div style={{ fontWeight: 800, color: '#818cf8', fontSize: 14, minWidth: 16 }}>{l}</div>
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#c4c9d4' }}>{w}</div>
-                      <div style={{ fontSize: 11, color: '#6b7280', marginTop: 1 }}>{d}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div style={{ marginBottom: 14 }}>
+              <div style={lbl}>Display Name</div>
+              <input value={profileName} onChange={e => setProfileName(e.target.value)} placeholder="Your full name" style={inp} autoFocus />
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <div style={lbl}>Email</div>
+              <input value={profile.email} disabled style={{ ...inp, opacity: 0.5, cursor: 'not-allowed' }} />
+              <div style={{ fontSize: 11, color: '#4b5563', marginTop: 4 }}>Email is managed by your Google account and cannot be changed here.</div>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowProfileEdit(false)} style={{ flex: 1, padding: '10px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={saveProfile} disabled={profileSaving || !profileName.trim()} style={{ flex: 2, padding: '10px', background: profileSaved ? 'linear-gradient(135deg, #059669, #10b981)' : 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: (!profileName.trim() || profileSaving) ? 0.6 : 1 }}>
+                {profileSaved ? <><Check size={14} /> Saved!</> : profileSaving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Saving…</> : 'Save Profile'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Glossary panel ── */}
-      {showGlossary && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} onClick={() => setShowGlossary(false)} />
-          <div style={{ position: 'relative', width: '100%', maxWidth: 480, background: '#0d0f1a', borderLeft: '1px solid #1e2130', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #1e2130', flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <BookMarked size={14} color="#818cf8" />
-                <span style={{ fontWeight: 600, fontSize: 14, color: '#f0f2fa' }}>Competency Glossary</span>
-              </div>
-              <button onClick={() => setShowGlossary(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                <X size={16} />
-              </button>
-            </div>
-            <div style={{ padding: '12px 20px', borderBottom: '1px solid #1e2130', flexShrink: 0 }}>
-              <input value={glossarySearch} onChange={e => setGlossarySearch(e.target.value)}
-                placeholder="Search competencies…"
-                style={{ width: '100%', background: '#13151f', border: '1px solid #2a2d3a', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#e5e7eb', boxSizing: 'border-box', outline: 'none' }} />
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
-              {filteredGlossary.map(t => (
-                <div key={t.term} style={{ marginBottom: 10, padding: '12px 14px', background: '#13151f', borderRadius: 10, border: '1px solid #1e2130' }}>
-                  <div style={{ fontWeight: 700, color: '#818cf8', fontSize: 13, marginBottom: 4 }}>{t.term}</div>
-                  <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>{t.definition}</div>
-                </div>
-              ))}
-              {filteredGlossary.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '40px 0', color: '#374151', fontSize: 13 }}>No results found.</div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Submit modal ── */}
+      {/* ── Submit confirmation ── */}
       {submitConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 16, padding: 32, maxWidth: 400, width: '90%' }}>
-            <h2 style={{ margin: '0 0 10px', fontSize: 18, color: '#f0f2fa' }}>Submit Self-Assessment?</h2>
-            <p style={{ margin: '0 0 24px', color: '#9ca3af', fontSize: 13, lineHeight: 1.6 }}>
-              Once submitted, your self-assessment will be shared with your manager and cannot be edited.
-              Make sure you have reviewed all sections.
-            </p>
+          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 16, padding: 28, maxWidth: 400, width: '90%' }}>
+            <h2 style={{ margin: '0 0 10px', fontSize: 17, color: '#f0f2fa' }}>Submit Self-Assessment?</h2>
+            <p style={{ margin: '0 0 22px', color: '#9ca3af', fontSize: 13, lineHeight: 1.6 }}>Once submitted, your self-assessment will be shared with your manager and cannot be edited.</p>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setSubmitConfirm(false)}
-                style={{ flex: 1, padding: '10px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>
-                Go Back
-              </button>
-              <button onClick={submit} disabled={saving}
-                style={{ flex: 2, padding: '10px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              <button onClick={() => setSubmitConfirm(false)} style={{ flex: 1, padding: '10px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Go Back</button>
+              <button onClick={submitReview} disabled={saving} style={{ flex: 2, padding: '10px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                 {saving ? 'Submitting…' : 'Yes, Submit'}
               </button>
             </div>
@@ -1000,7 +845,6 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
         </div>
       )}
 
-      {/* spin keyframe */}
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   )
