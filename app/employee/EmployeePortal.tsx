@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, FileText, BookOpen, BookMarked,
   Send, LogOut, CheckCircle2, Star, Plus, X, Loader2,
   ExternalLink, Clock, Bell, Target, User, ChevronDown,
-  BarChart2, History, Pencil, Check,
+  BarChart2, History, Pencil, Check, Sparkles,
 } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -201,6 +201,84 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
   const [goalSaving, setGoalSaving] = useState(false)
   // Notifications
   const [showNotifications, setShowNotifications] = useState(false)
+
+  // AI draft state — competency examples: key = `${compIdx}-${exIdx}`
+  type CompAIState = { showPrompt: boolean; context: string; loading: boolean; error: string }
+  const [compAI, setCompAI] = useState<Record<string, CompAIState>>({})
+  // AI draft state — goal explanations: key = goal index string
+  const [goalAI, setGoalAI] = useState<Record<string, { loading: boolean; error: string }>>({})
+  // AI draft state — next year goals
+  const [nextYearAI, setNextYearAI] = useState<{ loading: boolean; error: string }>({ loading: false, error: '' })
+
+  function getCompAI(ci: number, ei: number): CompAIState {
+    return compAI[`${ci}-${ei}`] ?? { showPrompt: false, context: '', loading: false, error: '' }
+  }
+  function setCompAIKey(ci: number, ei: number, update: Partial<CompAIState>) {
+    setCompAI(prev => ({ ...prev, [`${ci}-${ei}`]: { ...getCompAI(ci, ei), ...update } }))
+  }
+
+  async function draftCompExample(ci: number, ei: number) {
+    const state = getCompAI(ci, ei)
+    if (!state.context.trim()) return
+    const comp = review.competencies[ci]
+    setCompAIKey(ci, ei, { loading: true, error: '' })
+    try {
+      const res = await fetch('/api/self-reviews/draft-example', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ competency: comp.term, type: comp.type, context: state.context, exampleIndex: ei, employeeName: profileName || profile.email }),
+      })
+      const data = await res.json() as { example?: string; error?: string }
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Request failed')
+      updateExample(ci, ei, data.example ?? '')
+      setCompAIKey(ci, ei, { showPrompt: false, context: '', loading: false, error: '' })
+    } catch (e) {
+      setCompAIKey(ci, ei, { loading: false, error: String(e) })
+    }
+  }
+
+  async function draftGoalExplanation(i: number) {
+    const goal = review.goals_objectives[i]
+    if (!goal.description.trim() || !goal.outcome) return
+    setGoalAI(prev => ({ ...prev, [i]: { loading: true, error: '' } }))
+    try {
+      const res = await fetch('/api/self-reviews/draft-goal-explanation', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goalDescription: goal.description, outcome: goal.outcome, employeeName: profileName || profile.email }),
+      })
+      const data = await res.json() as { explanation?: string; error?: string }
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Request failed')
+      updateGoal(i, 'reasoning', data.explanation ?? '')
+      setGoalAI(prev => ({ ...prev, [i]: { loading: false, error: '' } }))
+    } catch (e) {
+      setGoalAI(prev => ({ ...prev, [i]: { loading: false, error: String(e) } }))
+    }
+  }
+
+  async function draftNextYearGoals() {
+    setNextYearAI({ loading: true, error: '' })
+    try {
+      const res = await fetch('/api/self-reviews/draft-next-goals', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeName: profileName || profile.email,
+          competencies: review.competencies.map(c => ({ competency: c.term, type: c.type, examples: c.examples })),
+          currentGoals: review.goals_objectives.filter(g => g.description.trim()).map(g => ({ description: g.description, outcome: g.outcome, reasoning: g.reasoning })),
+          overallRating: review.overall_rating,
+        }),
+      })
+      const data = await res.json() as { goals?: Array<{ goal: string; objective: string }>; error?: string }
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Request failed')
+      const drafted = data.goals ?? []
+      setReview(r => {
+        const merged: NextYearGoal[] = drafted.map(d => ({ goal: d.goal, objective: d.objective }))
+        while (merged.length < 2) merged.push({ goal: '', objective: '' })
+        return { ...r, next_year_goals: merged }
+      })
+      setNextYearAI({ loading: false, error: '' })
+    } catch (e) {
+      setNextYearAI({ loading: false, error: String(e) })
+    }
+  }
 
   const isSubmitted = review.status === 'submitted'
 
@@ -419,12 +497,50 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
           </div>
           <div style={card}>
             <div style={lbl}>Examples (1–3 specific situations)</div>
-            {[0, 1, 2].map(ei => (
-              <div key={ei} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'flex-start' }}>
-                <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, marginTop: 9, background: comp?.examples[ei]?.trim() ? cfg.accent : '#1e2130', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: comp?.examples[ei]?.trim() ? '#fff' : '#4b5563', transition: 'background 0.2s' }}>{ei + 1}</div>
-                <textarea value={comp?.examples[ei] || ''} onChange={e => updateExample(ci, ei, e.target.value)} disabled={isSubmitted} placeholder={ei === 0 ? 'Required — describe a specific situation, your actions, and the result' : 'Optional — add another example'} rows={2} style={{ ...inp, flex: 1, resize: 'vertical' }} />
-              </div>
-            ))}
+            {[0, 1, 2].map(ei => {
+              const aiState = getCompAI(ci, ei)
+              const canDraft = !!(comp?.term)
+              return (
+                <div key={ei} style={{ marginBottom: 14 }}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, marginTop: 9, background: comp?.examples[ei]?.trim() ? cfg.accent : '#1e2130', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: comp?.examples[ei]?.trim() ? '#fff' : '#4b5563', transition: 'background 0.2s' }}>{ei + 1}</div>
+                    <div style={{ flex: 1 }}>
+                      <textarea value={comp?.examples[ei] || ''} onChange={e => updateExample(ci, ei, e.target.value)} disabled={isSubmitted} placeholder={ei === 0 ? 'Required — describe a specific situation, your actions, and the result' : 'Optional — add another example'} rows={2} style={{ ...inp, resize: 'vertical' }} />
+                      {!isSubmitted && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 5 }}>
+                          <button
+                            onClick={() => setCompAIKey(ci, ei, { showPrompt: !aiState.showPrompt, error: '' })}
+                            disabled={!canDraft}
+                            title={!canDraft ? 'Select a competency first' : 'AI-draft this example'}
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', background: aiState.showPrompt ? '#1e1f3a' : 'transparent', color: aiState.showPrompt ? '#818cf8' : '#6b7280', border: `1px solid ${aiState.showPrompt ? 'rgba(129,140,248,0.4)' : '#2a2d3a'}`, borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: canDraft ? 'pointer' : 'not-allowed', opacity: canDraft ? 1 : 0.4 }}>
+                            <Sparkles size={10} /> {aiState.showPrompt ? 'Cancel' : '✨ AI Draft'}
+                          </button>
+                        </div>
+                      )}
+                      {!isSubmitted && aiState.showPrompt && (
+                        <div style={{ marginTop: 8, padding: '10px 12px', background: '#0d1117', border: '1px solid rgba(129,140,248,0.25)', borderRadius: 8 }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Your notes → AI expands into a polished example</div>
+                          <textarea
+                            value={aiState.context}
+                            onChange={e => setCompAIKey(ci, ei, { context: e.target.value })}
+                            placeholder={ei === 0 ? 'e.g. "handled the Q3 client escalation, stayed calm, resolved it in 2 days"' : 'e.g. "still working on replying faster to Slack messages"'}
+                            rows={2}
+                            style={{ ...inp, fontSize: 12, resize: 'vertical', marginBottom: 8 }}
+                          />
+                          {aiState.error && <div style={{ fontSize: 11, color: '#f87171', marginBottom: 6 }}>{aiState.error}</div>}
+                          <button
+                            onClick={() => draftCompExample(ci, ei)}
+                            disabled={aiState.loading || !aiState.context.trim()}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: aiState.loading || !aiState.context.trim() ? 'not-allowed' : 'pointer', opacity: aiState.loading || !aiState.context.trim() ? 0.6 : 1 }}>
+                            {aiState.loading ? <><Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> Drafting…</> : <><Sparkles size={11} /> Generate Example</>}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )
@@ -441,7 +557,22 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
               <div style={{ marginBottom: 10 }}><div style={lbl}>Description</div><textarea value={g.description} onChange={e => updateGoal(i, 'description', e.target.value)} disabled={isSubmitted} rows={2} placeholder="Describe your goal, objective, or accomplishment…" style={{ ...inp, resize: 'vertical' }} /></div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10 }}>
                 <div><div style={lbl}>Outcome</div><select value={g.outcome} onChange={e => updateGoal(i, 'outcome', e.target.value)} disabled={isSubmitted} style={{ ...inp, appearance: 'none' }}><option value="">— Select —</option><option value="successful">✓ Successful</option><option value="unsuccessful">✗ Unsuccessful</option></select></div>
-                <div><div style={lbl}>Reason / Explanation</div><input value={g.reasoning} onChange={e => updateGoal(i, 'reasoning', e.target.value)} disabled={isSubmitted} placeholder="Why successful or unsuccessful?" style={inp} /></div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                    <div style={lbl}>Reason / Explanation</div>
+                    {!isSubmitted && (
+                      <button
+                        onClick={() => draftGoalExplanation(i)}
+                        disabled={!g.description.trim() || !g.outcome || !!goalAI[i]?.loading}
+                        title={!g.description.trim() || !g.outcome ? 'Fill in goal description and outcome first' : 'AI-draft this explanation'}
+                        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', background: 'transparent', color: '#818cf8', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: (!g.description.trim() || !g.outcome || !!goalAI[i]?.loading) ? 'not-allowed' : 'pointer', opacity: (!g.description.trim() || !g.outcome) ? 0.4 : 1, marginBottom: 2 }}>
+                        {goalAI[i]?.loading ? <><Loader2 size={9} style={{ animation: 'spin 1s linear infinite' }} /> Drafting…</> : <><Sparkles size={9} /> AI Draft</>}
+                      </button>
+                    )}
+                  </div>
+                  <input value={g.reasoning} onChange={e => updateGoal(i, 'reasoning', e.target.value)} disabled={isSubmitted} placeholder="Why successful or unsuccessful?" style={inp} />
+                  {goalAI[i]?.error && <div style={{ fontSize: 11, color: '#f87171', marginTop: 4 }}>{goalAI[i].error}</div>}
+                </div>
               </div>
             </div>
           ))}
@@ -468,9 +599,26 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
       </div>
     )
 
-    if (step === 7) return (
+    if (step === 7) {
+      const hasConstructive = review.competencies.some(c => c.type === 'constructive' && c.term)
+      return (
       <div>
-        <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>Identify at least two goals for the next review period with a roadmap for how you plan to reach each one. These will be discussed with your manager.</p>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+          <p style={{ margin: 0, fontSize: 13, color: '#6b7280', lineHeight: 1.6, flex: 1 }}>Identify at least two goals for the next review period with a roadmap for how you plan to reach each one. These will be discussed with your manager.</p>
+          {!isSubmitted && (
+            <div style={{ flexShrink: 0 }}>
+              <button
+                onClick={draftNextYearGoals}
+                disabled={nextYearAI.loading || !hasConstructive}
+                title={!hasConstructive ? 'Fill in your constructive competencies (steps 3–4) first' : 'Generate SMART goals based on your constructive competency areas'}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: (nextYearAI.loading || !hasConstructive) ? 'not-allowed' : 'pointer', opacity: (nextYearAI.loading || !hasConstructive) ? 0.5 : 1 }}>
+                {nextYearAI.loading ? <><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Generating…</> : <><Sparkles size={12} /> Generate with AI</>}
+              </button>
+              {!hasConstructive && <div style={{ fontSize: 10, color: '#6b7280', marginTop: 4, textAlign: 'right' }}>Requires constructive competencies</div>}
+            </div>
+          )}
+        </div>
+        {nextYearAI.error && <div style={{ padding: '8px 12px', background: '#2d1515', border: '1px solid #5c2020', borderRadius: 8, color: '#f87171', fontSize: 12, marginBottom: 12 }}>{nextYearAI.error}</div>}
         {review.next_year_goals.map((g, i) => (
           <div key={i} style={{ ...card, borderLeft: '3px solid #f59e0b' }}>
             <div style={{ fontWeight: 600, fontSize: 11, color: '#f59e0b', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Goal {i + 1}</div>
@@ -483,6 +631,7 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
         )}
       </div>
     )
+    }
 
     if (step === 8) return (
       <div>
