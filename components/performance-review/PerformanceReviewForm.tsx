@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft, LogOut, BookOpen, BookMarked } from 'lucide-react'
+import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft, LogOut, BookOpen, BookMarked, Bell } from 'lucide-react'
 
 // ─── Competency glossary ──────────────────────────────────────────────────────
 
@@ -2478,12 +2478,16 @@ export function PerformanceReviewForm() {
   const [form, setForm] = useState<FormData>(defaultForm())
   const [saves, setSaves] = useState<SavedReview[]>([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notifications'>('reviews')
   const [showDirectReports, setShowDirectReports] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showManagerGuide, setShowManagerGuide] = useState(false)
   const [showManagerGlossary, setShowManagerGlossary] = useState(false)
   const [glossarySearch, setGlossarySearch] = useState('')
   const [directReports, setDirectReports] = useState<DirectReport[]>([])
+  const [selfAssessments, setSelfAssessments] = useState<{ employee_id: string; status: string; submitted_at: string | null }[]>([])
+  const selfAssessmentMap = Object.fromEntries(selfAssessments.map(s => [s.employee_id, s]))
+  const [managerGlossarySearch, setManagerGlossarySearch] = useState('')
   const [settings, setSettings] = useState<AppSettings>({ driveFolderUrl: '' })
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const reviewIdRef = useRef('')
@@ -2577,6 +2581,15 @@ export function PerformanceReviewForm() {
       } else {
         setSaves(getSaves())
       }
+
+      // Load team self-assessments
+      try {
+        const saRes = await fetch('/api/self-reviews/team')
+        if (saRes.ok) {
+          const saData = await saRes.json() as { selfAssessments?: { employee_id: string; status: string; submitted_at: string | null }[] }
+          if (saData.selfAssessments) setSelfAssessments(saData.selfAssessments)
+        }
+      } catch { /* non-critical */ }
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -2996,156 +3009,160 @@ export function PerformanceReviewForm() {
           </button>
         </div>
 
-        {/* Review list — scrollable */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: sidebarCollapsed ? '0 8px' : '0 8px' }}>
-          {!sidebarCollapsed && saves.length > 0 && (
-            <div style={{ fontSize: 10, fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '4px 8px 6px', marginBottom: 2 }}>
-              Reviews
-            </div>
-          )}
-          {saves.map(save => {
-            const isActive = save.id === currentReviewId
-            const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, save.form)).length
-            const pct = Math.round((filled / (STEPS.length - 1)) * 100)
+        {/* ── Nav items ── */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+          {!sidebarCollapsed && <div style={{ fontSize: 10, fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '4px 8px 6px' }}>Menu</div>}
+
+          {/* Performance Reviews nav item */}
+          {(() => {
+            const active = activePage === 'reviews'
             return (
-              <div key={save.id}
-                onClick={() => handleLoad(save)}
-                title={sidebarCollapsed ? save.employeeName || 'Untitled' : undefined}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '8px',
-                  borderRadius: 8, cursor: 'pointer', marginBottom: 2,
-                  background: isActive ? '#1e1f3a' : 'transparent',
-                  border: isActive ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent',
-                  justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-                }}
-                onMouseOver={e => { if (!isActive) e.currentTarget.style.background = '#13151f' }}
-                onMouseOut={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
-              >
-                <div style={{
-                  width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                  background: isActive ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 700, color: isActive ? 'white' : '#6b7280',
-                }}>
-                  {pct === 100 ? '✓' : (save.employeeName?.charAt(0).toUpperCase() || '?')}
-                </div>
-                {!sidebarCollapsed && (
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: isActive ? '#e0e7ff' : '#c4c9d4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {save.employeeName || 'Untitled'}
-                    </div>
-                    <div style={{ fontSize: 10, color: '#4b5563', marginTop: 1 }}>{pct}% complete</div>
+              <div>
+                <button onClick={() => setActivePage('reviews')} title={sidebarCollapsed ? 'Performance Reviews' : undefined}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                  onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                  onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                  <FileText size={15} color={active ? '#818cf8' : '#6b7280'} />
+                  {!sidebarCollapsed && 'Performance Reviews'}
+                </button>
+                {/* Review sub-list under Performance Reviews */}
+                {active && !sidebarCollapsed && (
+                  <div style={{ marginBottom: 4 }}>
+                    {saves.map(save => {
+                      const isActive = save.id === currentReviewId
+                      const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, save.form)).length
+                      const pct = Math.round((filled / (STEPS.length - 1)) * 100)
+                      return (
+                        <div key={save.id} onClick={() => handleLoad(save)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px 6px 24px', borderRadius: 8, cursor: 'pointer', marginBottom: 1, background: isActive ? '#1e1f3a' : 'transparent', border: isActive ? '1px solid rgba(79,70,229,0.2)' : '1px solid transparent' }}
+                          onMouseOver={e => { if (!isActive) e.currentTarget.style.background = '#13151f' }}
+                          onMouseOut={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}>
+                          <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: isActive ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: isActive ? 'white' : '#6b7280' }}>
+                            {pct === 100 ? '✓' : (save.employeeName?.charAt(0).toUpperCase() || '?')}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 500, color: isActive ? '#e0e7ff' : '#c4c9d4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{save.employeeName || 'Untitled'}</div>
+                            <div style={{ fontSize: 10, color: '#4b5563', marginTop: 1 }}>{pct}% complete</div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {saves.length === 0 && (
+                      <div style={{ padding: '8px 8px 8px 24px', fontSize: 11, color: '#374151', lineHeight: 1.5 }}>No reviews yet.<br />Create your first one.</div>
+                    )}
                   </div>
                 )}
               </div>
             )
-          })}
-          {saves.length === 0 && !sidebarCollapsed && (
-            <div style={{ padding: '16px 8px', fontSize: 11, color: '#374151', textAlign: 'center', lineHeight: 1.5 }}>
-              No reviews yet.<br />Create your first one.
-            </div>
-          )}
+          })()}
+
+          {/* History */}
+          {(() => {
+            const active = activePage === 'history'
+            return (
+              <button onClick={() => setActivePage('history')} title={sidebarCollapsed ? 'History' : undefined}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                <History size={15} color={active ? '#818cf8' : '#6b7280'} />
+                {!sidebarCollapsed && 'History'}
+              </button>
+            )
+          })()}
+
+          {/* Team */}
+          {(() => {
+            const active = activePage === 'team'
+            const pending = directReports.filter(r => {
+              const sa = selfAssessmentMap?.[r.id]
+              return sa?.status === 'submitted'
+            }).length
+            return (
+              <button onClick={() => setActivePage('team')} title={sidebarCollapsed ? 'Team' : undefined}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                <Users size={15} color={active ? '#818cf8' : '#6b7280'} />
+                {!sidebarCollapsed && 'Team'}
+                {pending > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: '#4f46e5', color: 'white', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{pending}</span>}
+              </button>
+            )
+          })()}
+
+          {/* Manager Guide */}
+          {(() => {
+            const active = activePage === 'guide'
+            return (
+              <button onClick={() => setActivePage('guide')} title={sidebarCollapsed ? 'Manager Guide' : undefined}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                <BookOpen size={15} color={active ? '#818cf8' : '#6b7280'} />
+                {!sidebarCollapsed && 'Manager Guide'}
+              </button>
+            )
+          })()}
+
+          {/* Competency Glossary */}
+          {(() => {
+            const active = activePage === 'glossary'
+            return (
+              <button onClick={() => setActivePage('glossary')} title={sidebarCollapsed ? 'Competency Glossary' : undefined}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                <BookMarked size={15} color={active ? '#818cf8' : '#6b7280'} />
+                {!sidebarCollapsed && 'Competency Glossary'}
+              </button>
+            )
+          })()}
+
+          {/* Notifications */}
+          {(() => {
+            const active = activePage === 'notifications'
+            const notifCount = saves.filter(s => {
+              const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, s.form)).length
+              return filled > 0 && filled < STEPS.length - 1
+            }).length
+            return (
+              <button onClick={() => setActivePage('notifications')} title={sidebarCollapsed ? 'Notifications' : undefined}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                <Bell size={15} color={active ? '#818cf8' : '#6b7280'} />
+                {!sidebarCollapsed && 'Notifications'}
+                {notifCount > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: '#f59e0b', color: '#0d0f1a', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{notifCount}</span>}
+              </button>
+            )
+          })()}
         </div>
 
-        {/* Sidebar footer */}
+        {/* Sidebar footer — profile + admin + sign out */}
         <div style={{ borderTop: '1px solid #1e2130', padding: '8px', flexShrink: 0 }}>
-          {/* My Team */}
-          <button onClick={() => setShowDirectReports(true)}
-            title={sidebarCollapsed ? 'My Team' : undefined}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-              padding: '8px', borderRadius: 8, border: 'none', background: 'transparent',
-              color: '#6b7280', cursor: 'pointer', fontSize: 12, fontWeight: 500,
-              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-            }}
-            onMouseOver={e => { e.currentTarget.style.background = '#13151f'; e.currentTarget.style.color = '#c4c9d4' }}
-            onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6b7280' }}
-          >
-            <Users size={15} />
-            {!sidebarCollapsed && 'My Team'}
-            {directReports.length > 0 && !sidebarCollapsed && (
-              <span style={{ marginLeft: 'auto', background: '#4f46e5', color: 'white', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>
-                {directReports.length}
-              </span>
-            )}
-          </button>
           {/* Settings */}
-          <button onClick={() => setShowSettings(true)}
-            title={sidebarCollapsed ? 'Settings' : undefined}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-              padding: '8px', borderRadius: 8, border: 'none', background: 'transparent',
-              color: settings.driveFolderUrl ? '#818cf8' : '#6b7280', cursor: 'pointer', fontSize: 12, fontWeight: 500,
-              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-            }}
+          <button onClick={() => setShowSettings(true)} title={sidebarCollapsed ? 'Settings' : undefined}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px', borderRadius: 8, border: 'none', background: 'transparent', color: settings.driveFolderUrl ? '#818cf8' : '#6b7280', cursor: 'pointer', fontSize: 12, fontWeight: 500, justifyContent: sidebarCollapsed ? 'center' : 'flex-start' }}
             onMouseOver={e => { e.currentTarget.style.background = '#13151f' }}
-            onMouseOut={e => { e.currentTarget.style.background = 'transparent' }}
-          >
+            onMouseOut={e => { e.currentTarget.style.background = 'transparent' }}>
             <Settings size={15} />
             {!sidebarCollapsed && 'Settings'}
           </button>
-          {/* Manager Guide */}
-          <button onClick={() => setShowManagerGuide(true)}
-            title={sidebarCollapsed ? 'Manager Guide' : undefined}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-              padding: '8px', borderRadius: 8, border: 'none', background: 'transparent',
-              color: '#6b7280', cursor: 'pointer', fontSize: 12, fontWeight: 500,
-              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-            }}
-            onMouseOver={e => { e.currentTarget.style.background = '#13151f'; e.currentTarget.style.color = '#c4c9d4' }}
-            onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6b7280' }}
-          >
-            <BookOpen size={15} />
-            {!sidebarCollapsed && 'Manager Guide'}
-          </button>
-          {/* Competency Glossary */}
-          <button onClick={() => setShowManagerGlossary(true)}
-            title={sidebarCollapsed ? 'Competency Glossary' : undefined}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-              padding: '8px', borderRadius: 8, border: 'none', background: 'transparent',
-              color: '#6b7280', cursor: 'pointer', fontSize: 12, fontWeight: 500,
-              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-            }}
-            onMouseOver={e => { e.currentTarget.style.background = '#13151f'; e.currentTarget.style.color = '#c4c9d4' }}
-            onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6b7280' }}
-          >
-            <BookMarked size={15} />
-            {!sidebarCollapsed && 'Competency Glossary'}
-          </button>
           {/* Profile */}
-          <button onClick={() => setShowProfile(true)}
-            title={sidebarCollapsed ? (profileName || profileEmail || 'Profile') : undefined}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-              padding: '8px', borderRadius: 8, border: 'none', background: 'transparent',
-              color: '#6b7280', cursor: 'pointer', fontSize: 12, fontWeight: 500,
-              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-            }}
+          <button onClick={() => setShowProfile(true)} title={sidebarCollapsed ? (profileName || profileEmail || 'Profile') : undefined}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px', borderRadius: 8, border: 'none', background: 'transparent', color: '#6b7280', cursor: 'pointer', fontSize: 12, fontWeight: 500, justifyContent: sidebarCollapsed ? 'center' : 'flex-start' }}
             onMouseOver={e => { e.currentTarget.style.background = '#13151f' }}
-            onMouseOut={e => { e.currentTarget.style.background = 'transparent' }}
-          >
+            onMouseOut={e => { e.currentTarget.style.background = 'transparent' }}>
             <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: 'white', flexShrink: 0 }}>
               {(profileName || profileEmail).charAt(0).toUpperCase() || '?'}
             </div>
             {!sidebarCollapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profileName || profileEmail || 'Profile'}</span>}
           </button>
-          {/* Admin Portal toggle — only for admins */}
+          {/* Admin Portal */}
           {profileRole === 'admin' && (
-            <a href="/admin"
-              title={sidebarCollapsed ? 'Admin Portal' : undefined}
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-                padding: '8px', borderRadius: 8, border: 'none', background: 'transparent',
-                color: '#818cf8', cursor: 'pointer', fontSize: 12, fontWeight: 500,
-                justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-                textDecoration: 'none',
-              }}
+            <a href="/admin" title={sidebarCollapsed ? 'Admin Portal' : undefined}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px', borderRadius: 8, border: 'none', background: 'transparent', color: '#818cf8', cursor: 'pointer', fontSize: 12, fontWeight: 500, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', textDecoration: 'none' }}
               onMouseOver={e => { e.currentTarget.style.background = '#13151f' }}
-              onMouseOut={e => { e.currentTarget.style.background = 'transparent' }}
-            >
+              onMouseOut={e => { e.currentTarget.style.background = 'transparent' }}>
               <span style={{ fontSize: 14 }}>⚙️</span>
               {!sidebarCollapsed && 'Admin Portal'}
             </a>
@@ -3171,7 +3188,170 @@ export function PerformanceReviewForm() {
 
       {/* ── Main content ── */}
       <main style={{ flex: 1, overflow: 'auto', background: '#0b0d14' }}>
-        {!currentReviewId ? (
+
+        {/* ── History page ── */}
+        {activePage === 'history' && (
+          <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
+            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>History</h1>
+            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>All performance reviews you&apos;ve created, including completed and exported ones.</p>
+            {saves.length === 0 ? (
+              <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '40px', textAlign: 'center' }}>
+                <div style={{ fontSize: 36, marginBottom: 10 }}>📋</div>
+                <div style={{ fontSize: 14, color: '#9ca3af' }}>No reviews yet. Create your first one.</div>
+              </div>
+            ) : saves.map(save => {
+              const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, save.form)).length
+              const pct = Math.round((filled / (STEPS.length - 1)) * 100)
+              return (
+                <div key={save.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '16px 20px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: pct === 100 ? '#0d1a13' : 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: pct === 100 ? '2px solid #34d399' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: pct === 100 ? '#34d399' : 'white', flexShrink: 0 }}>
+                    {pct === 100 ? '✓' : save.employeeName?.charAt(0).toUpperCase() || '?'}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e7eb' }}>{save.employeeName || 'Untitled'}</div>
+                    <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{save.employeePosition || 'No position'} · {pct}% complete · {save.savedAt ? new Date(save.savedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    {save.driveUrl && <a href={save.driveUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '5px 12px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}>Drive</a>}
+                    <button onClick={() => { handleLoad(save); setActivePage('reviews') }} style={{ padding: '5px 12px', background: '#1e1f3a', color: '#818cf8', border: '1px solid rgba(79,70,229,0.3)', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Open</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* ── Team page ── */}
+        {activePage === 'team' && (
+          <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
+            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Team</h1>
+            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Your direct reports and their self-assessment status.</p>
+            {directReports.length === 0 ? (
+              <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '40px', textAlign: 'center' }}>
+                <div style={{ fontSize: 36, marginBottom: 10 }}>👥</div>
+                <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 6 }}>No direct reports assigned yet.</div>
+                <div style={{ fontSize: 12, color: '#4b5563' }}>Ask your admin to assign employees to your team.</div>
+              </div>
+            ) : directReports.map(r => {
+              const sa = selfAssessmentMap[r.id]
+              const hasReview = saves.some(s => s.employeeName === r.name)
+              return (
+                <div key={r.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '16px 20px', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+                      {r.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e7eb' }}>{r.name}</div>
+                      <div style={{ fontSize: 11, color: '#6b7280' }}>{r.division || r.position || 'Direct report'}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                    <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: '#0d1a13', color: '#34d399', border: '1px solid #1a4a35' }}>Active</span>
+                    {sa ? (
+                      <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: sa.status === 'submitted' ? '#1e1f3a' : '#1f1a0d', color: sa.status === 'submitted' ? '#818cf8' : '#f59e0b', border: `1px solid ${sa.status === 'submitted' ? 'rgba(129,140,248,0.4)' : '#92400e'}` }}>
+                        Self-assessment: {sa.status}{sa.submitted_at ? ` · ${new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+                      </span>
+                    ) : (
+                      <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: '#13151f', color: '#4b5563', border: '1px solid #1e2130' }}>No self-assessment</span>
+                    )}
+                    {hasReview && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: '#0d0f1a', color: '#6b7280', border: '1px solid #1e2130' }}>Review started</span>}
+                  </div>
+                  <button onClick={() => { handleNewReview(); setActivePage('reviews') }}
+                    style={{ padding: '7px 16px', background: sa?.status === 'submitted' ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', color: sa?.status === 'submitted' ? '#fff' : '#6b7280', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    {sa?.status === 'submitted' ? '✨ Start Review' : 'Start Review'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* ── Manager Guide page ── */}
+        {activePage === 'guide' && (
+          <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
+            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Manager Guide</h1>
+            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Best practices and guidance for conducting performance reviews.</p>
+            {[
+              { title: 'Preparation', accent: '#818cf8', content: 'Before writing a review, gather concrete examples of the employee\'s work. Reference their job description, any prior reviews, and feedback you\'ve collected throughout the year. Avoid relying solely on recent events — look at the full review period.' },
+              { title: 'Choosing Competencies', accent: '#818cf8', content: 'Select two positive competencies that genuinely reflect the employee\'s strengths — be specific and back them with examples. Choose two constructive competencies that represent real growth opportunities. The fifth competency is your choice and can be either.' },
+              { title: 'Writing Strong Examples', accent: '#818cf8', content: 'Use the STAR method: Situation, Task, Action, Result. Describe specific behaviors and their impact on the team or business. Avoid vague praise like "great work" — specificity is what makes feedback credible and actionable. Use ✨ AI Draft to help expand your notes.' },
+              { title: 'Goals & Objectives', accent: '#34d399', content: 'Review the employee\'s goals from the prior cycle. Mark each as successful, unsuccessful, or ongoing with a clear explanation. Unsuccessful goals should be treated as learning opportunities, not criticism. Use AI Draft Goals on the next-year step to generate SMART goals from the constructive competencies.' },
+              { title: 'Rating Guidelines', accent: '#f59e0b', content: '5 - Outstanding: Consistently exceeds all expectations with significant impact.\n4 - Exceeds: Regularly goes beyond requirements.\n3 - Meets Expectations: Solid, reliable performance at the expected level.\n2 - Needs Improvement: Inconsistent; key areas require attention.\n1 - Unsatisfactory: Performance is below acceptable standards.' },
+              { title: 'Having the Conversation', accent: '#f97316', content: 'Share the review with the employee before your meeting so they can read it. During the conversation, let them respond — the self-assessment comparison tool helps you see their perspective. Focus on development, not just evaluation. End with clear, agreed-upon goals for the next cycle.' },
+              { title: 'Mistakes to Avoid', accent: '#f87171', content: '• Recency bias — don\'t let the last few weeks overshadow the full year.\n• Halo/horn effect — one strong or weak area shouldn\'t color your view of everything else.\n• Vague language — be specific about behaviors, not personality traits.\n• Skipping the self-assessment comparison — employee perspective matters.\n• Waiting until review time to give feedback — reviews should never be a surprise.' },
+            ].map(s => (
+              <div key={s.title} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '16px 20px', marginBottom: 10, borderLeft: `3px solid ${s.accent}` }}>
+                <div style={{ fontWeight: 700, color: s.accent, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{s.title}</div>
+                <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{s.content}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Competency Glossary page ── */}
+        {activePage === 'glossary' && (
+          <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
+            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Competency Glossary</h1>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6b7280' }}>Definitions for all 40 competency terms used in performance reviews.</p>
+            <input value={managerGlossarySearch} onChange={e => setManagerGlossarySearch(e.target.value)} placeholder="Search by term or definition…" style={{ width: '100%', background: '#0d0f1a', border: '1px solid #2a2d3a', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#e5e7eb', boxSizing: 'border-box', outline: 'none', marginBottom: 16 }} />
+            {COMPETENCIES.filter(c => c.name.toLowerCase().includes(managerGlossarySearch.toLowerCase()) || c.definition.toLowerCase().includes(managerGlossarySearch.toLowerCase())).map(c => (
+              <div key={c.name} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '14px 18px', marginBottom: 8 }}>
+                <div style={{ fontWeight: 700, color: '#818cf8', fontSize: 14, marginBottom: 5 }}>{c.name}</div>
+                <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>{c.definition}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Notifications page ── */}
+        {activePage === 'notifications' && (
+          <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
+            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Notifications</h1>
+            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Action items and activity across your team&apos;s review cycle.</p>
+            {(() => {
+              const items: { icon: string; color: string; label: string; detail: string; action?: () => void }[] = []
+              // Submitted self-assessments waiting on a review
+              directReports.forEach(r => {
+                const sa = selfAssessmentMap[r.id]
+                if (sa?.status === 'submitted') {
+                  items.push({ icon: '📋', color: '#818cf8', label: `${r.name} submitted their self-assessment`, detail: `Submitted ${sa.submitted_at ? new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'recently'}. Start their review when ready.`, action: () => { handleNewReview(); setActivePage('reviews') } })
+                }
+              })
+              // In-progress reviews
+              saves.filter(s => { const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, s.form)).length; return filled > 0 && filled < STEPS.length - 1 }).forEach(s => {
+                const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, s.form)).length
+                const pct = Math.round((filled / (STEPS.length - 1)) * 100)
+                items.push({ icon: '✏️', color: '#f59e0b', label: `${s.employeeName}'s review is ${pct}% complete`, detail: 'This review is in progress and hasn\'t been exported yet.', action: () => { handleLoad(s); setActivePage('reviews') } })
+              })
+              // Completed reviews not yet exported
+              saves.filter(s => { const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, s.form)).length; return filled === STEPS.length - 1 && !s.driveUrl }).forEach(s => {
+                items.push({ icon: '✅', color: '#34d399', label: `${s.employeeName}'s review is complete — not yet exported`, detail: 'All steps are done. Export to Google Drive to share with the employee.', action: () => { handleLoad(s); setActivePage('reviews') } })
+              })
+              if (items.length === 0) return (
+                <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '40px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 36, marginBottom: 10 }}>🔔</div>
+                  <div style={{ fontSize: 14, color: '#9ca3af' }}>All caught up! No pending action items.</div>
+                </div>
+              )
+              return items.map((item, i) => (
+                <div key={i} onClick={item.action} style={{ background: '#13151f', border: `1px solid #1e2130`, borderLeft: `3px solid ${item.color}`, borderRadius: 12, padding: '14px 20px', marginBottom: 10, cursor: item.action ? 'pointer' : 'default', display: 'flex', gap: 14, alignItems: 'flex-start' }}
+                  onMouseOver={e => { if (item.action) e.currentTarget.style.background = '#1a1c2e' }}
+                  onMouseOut={e => { e.currentTarget.style.background = '#13151f' }}>
+                  <span style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>{item.icon}</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', marginBottom: 3 }}>{item.label}</div>
+                    <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>{item.detail}</div>
+                    {item.action && <div style={{ fontSize: 11, color: item.color, marginTop: 5, fontWeight: 600 }}>View →</div>}
+                  </div>
+                </div>
+              ))
+            })()}
+          </div>
+        )}
+
+        {/* ── Performance Reviews (form) ── */}
+        {activePage === 'reviews' && (!currentReviewId ? (
           /* Empty state */
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 16, padding: 32 }}>
             <div style={{ fontSize: 48 }}>📋</div>
@@ -3337,8 +3517,8 @@ export function PerformanceReviewForm() {
             </button>
           </div>
         )}
-          </div>
-        )}
+        </div>
+        ))}
       </main>
     </div>
   )
