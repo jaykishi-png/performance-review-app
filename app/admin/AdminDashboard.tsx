@@ -18,11 +18,18 @@ type InviteRecord = {
   id: string; email: string; role: string; created_at: string; expires_at: string; accepted_at: string | null
 }
 type SelfAssessmentStatus = { employee_id: string; status: string; submitted_at: string | null }
+type ReviewRecord = {
+  id: string; user_id: string; employee_name: string; employee_position: string
+  step: number; max_step: number; drive_url: string | null; drive_doc_id: string | null
+  comparison_report: string | null; saved_at: string; updated_at: string
+}
+
 type Props = {
   currentUser: { id: string; email: string; role: 'admin' | 'dev_admin' }
   users: UserRecord[]
   invites: InviteRecord[]
   selfAssessments: SelfAssessmentStatus[]
+  reviews: ReviewRecord[]
 }
 
 type Page = 'dashboard' | 'users' | 'reviews' | 'cycles' | 'analytics' | 'audit' | 'settings'
@@ -68,7 +75,28 @@ function yearsOfService(startDate: string): number {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function AdminDashboard({ currentUser, users, invites, selfAssessments }: Props) {
+// 8 content steps (0–7), step 8 = output. Complete when max_step >= 8.
+const TOTAL_CONTENT_STEPS = 8
+
+function reviewProgress(r: ReviewRecord): number {
+  return Math.min(100, Math.round((r.max_step / TOTAL_CONTENT_STEPS) * 100))
+}
+
+function reviewStatus(r: ReviewRecord): 'exported' | 'complete' | 'in_progress' | 'not_started' {
+  if (r.drive_url) return 'exported'
+  if (r.max_step >= TOTAL_CONTENT_STEPS) return 'complete'
+  if (r.max_step > 0) return 'in_progress'
+  return 'not_started'
+}
+
+const STATUS_META = {
+  exported:    { label: 'Exported',    color: '#34d399', bg: '#0d1a13', border: '#1a4a35' },
+  complete:    { label: 'Complete',    color: '#818cf8', bg: '#13151f', border: 'rgba(129,140,248,0.3)' },
+  in_progress: { label: 'In Progress', color: '#f59e0b', bg: '#1f1a0d', border: '#92400e' },
+  not_started: { label: 'Not Started', color: '#6b7280', bg: '#13151f', border: '#2a2d3a' },
+}
+
+export default function AdminDashboard({ currentUser, users, invites, selfAssessments, reviews }: Props) {
   const router = useRouter()
   const isDevAdmin = currentUser.role === 'dev_admin'
 
@@ -89,6 +117,13 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [userSearch, setUserSearch] = useState('')
   const [userRoleFilter, setUserRoleFilter] = useState<string>('all')
   const [reminderCopied, setReminderCopied] = useState<string | null>(null)
+
+  // Reviews page state
+  const [reviewSearch, setReviewSearch] = useState('')
+  const [reviewStatusFilter, setReviewStatusFilter] = useState<'all' | 'exported' | 'complete' | 'in_progress' | 'not_started'>('all')
+  const [reviewManagerFilter, setReviewManagerFilter] = useState<string>('all')
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const managers = users.filter(u => u.role === 'manager' || u.role === 'admin')
   const saMap = Object.fromEntries(selfAssessments.map(s => [s.employee_id, s]))
@@ -117,6 +152,23 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     if (userRoleFilter !== 'all') result = result.filter(u => u.role === userRoleFilter)
     return result
   }, [users, userSearch, userRoleFilter])
+
+  const filteredReviews = useMemo(() => {
+    let result = reviews
+    if (reviewSearch) result = result.filter(r => r.employee_name.toLowerCase().includes(reviewSearch.toLowerCase()) || r.employee_position.toLowerCase().includes(reviewSearch.toLowerCase()))
+    if (reviewStatusFilter !== 'all') result = result.filter(r => reviewStatus(r) === reviewStatusFilter)
+    if (reviewManagerFilter !== 'all') result = result.filter(r => r.user_id === reviewManagerFilter)
+    return result
+  }, [reviews, reviewSearch, reviewStatusFilter, reviewManagerFilter])
+
+  async function deleteReview(id: string) {
+    setDeleting(true)
+    try {
+      await fetch('/api/reviews', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+      setDeleteConfirm(null)
+      router.refresh()
+    } finally { setDeleting(false) }
+  }
 
   // Notifications count for bell
   const notifCount = urgentCount + invites.length
@@ -405,6 +457,209 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     )
   }
 
+  function renderReviews() {
+    // Unique managers who have reviews
+    const reviewManagers = Array.from(new Set(reviews.map(r => r.user_id)))
+      .map(id => users.find(u => u.id === id))
+      .filter(Boolean) as UserRecord[]
+
+    const counts = {
+      total:       reviews.length,
+      exported:    reviews.filter(r => reviewStatus(r) === 'exported').length,
+      complete:    reviews.filter(r => reviewStatus(r) === 'complete').length,
+      in_progress: reviews.filter(r => reviewStatus(r) === 'in_progress').length,
+      not_started: reviews.filter(r => reviewStatus(r) === 'not_started').length,
+    }
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
+        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Reviews</h1>
+        <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>All manager performance reviews across the organization.</p>
+
+        {/* Stats */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 24 }}>
+          {[
+            { label: 'Total',       value: counts.total,       color: '#f0f2fa', bg: '#13151f', border: '#1e2130',  filter: 'all'         },
+            { label: 'Exported',    value: counts.exported,    color: STATUS_META.exported.color,    bg: STATUS_META.exported.bg,    border: STATUS_META.exported.border,    filter: 'exported'    },
+            { label: 'Complete',    value: counts.complete,    color: STATUS_META.complete.color,    bg: STATUS_META.complete.bg,    border: STATUS_META.complete.border,    filter: 'complete'    },
+            { label: 'In Progress', value: counts.in_progress, color: STATUS_META.in_progress.color, bg: STATUS_META.in_progress.bg, border: STATUS_META.in_progress.border, filter: 'in_progress' },
+            { label: 'Not Started', value: counts.not_started, color: '#6b7280',                    bg: '#13151f',                  border: '#1e2130',                      filter: 'not_started' },
+          ].map(s => (
+            <div key={s.label} onClick={() => setReviewStatusFilter(s.filter as typeof reviewStatusFilter)}
+              style={{ background: s.bg, border: `1px solid ${reviewStatusFilter === s.filter ? s.color + '60' : s.border}`, borderRadius: 12, padding: '16px 18px', cursor: 'pointer', transition: 'all 0.15s', outline: reviewStatusFilter === s.filter ? `1px solid ${s.color}40` : 'none' }}>
+              <div style={{ fontSize: 26, fontWeight: 700, color: s.color, marginBottom: 3 }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: '#6b7280' }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Filters */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+          <input value={reviewSearch} onChange={e => setReviewSearch(e.target.value)} placeholder="Search by employee or position…"
+            style={{ ...inp, maxWidth: 280 }} />
+          <select value={reviewManagerFilter} onChange={e => setReviewManagerFilter(e.target.value)}
+            style={{ ...inp, maxWidth: 200, appearance: 'none' }}>
+            <option value="all">All managers</option>
+            {reviewManagers.map(m => <option key={m.id} value={m.id}>{m.name || m.email}</option>)}
+          </select>
+          {(reviewSearch || reviewStatusFilter !== 'all' || reviewManagerFilter !== 'all') && (
+            <button onClick={() => { setReviewSearch(''); setReviewStatusFilter('all'); setReviewManagerFilter('all') }}
+              style={{ padding: '8px 14px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 12, cursor: 'pointer' }}>
+              Clear filters
+            </button>
+          )}
+          <div style={{ marginLeft: 'auto', fontSize: 12, color: '#4b5563', alignSelf: 'center' }}>
+            {filteredReviews.length} of {reviews.length} reviews
+          </div>
+        </div>
+
+        {/* Table */}
+        <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflow: 'hidden' }}>
+          {filteredReviews.length === 0 ? (
+            <div style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>
+              <div style={{ fontSize: 32, marginBottom: 10 }}>📝</div>
+              <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 4 }}>No reviews found</div>
+              <div style={{ fontSize: 12 }}>{reviews.length === 0 ? 'No performance reviews have been created yet.' : 'Try adjusting your filters.'}</div>
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>{['Employee', 'Position', 'Manager', 'Progress', 'Status', 'Drive', 'Comparison', 'Last Updated', 'Actions'].map(h => (
+                  <th key={h} style={th}>{h}</th>
+                ))}</tr>
+              </thead>
+              <tbody>
+                {filteredReviews.map((r, i) => {
+                  const pct = reviewProgress(r)
+                  const status = reviewStatus(r)
+                  const sm = STATUS_META[status]
+                  const manager = users.find(u => u.id === r.user_id)
+                  const isDeleting = deleteConfirm === r.id
+                  return (
+                    <tr key={r.id} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(13,15,26,0.4)' }}>
+
+                      {/* Employee */}
+                      <td style={td}>
+                        <div style={{ fontWeight: 500, color: '#e5e7eb' }}>{r.employee_name || '—'}</div>
+                      </td>
+
+                      {/* Position */}
+                      <td style={{ ...td, color: '#9ca3af', fontSize: 12 }}>{r.employee_position || '—'}</td>
+
+                      {/* Manager */}
+                      <td style={td}>
+                        {manager ? (
+                          <div>
+                            <div style={{ fontSize: 12, color: '#c4c9d4' }}>{manager.name || manager.email}</div>
+                            {manager.name && <div style={{ fontSize: 10, color: '#4b5563', marginTop: 1 }}>{manager.email}</div>}
+                          </div>
+                        ) : <span style={{ fontSize: 12, color: '#374151' }}>Unknown</span>}
+                      </td>
+
+                      {/* Progress bar */}
+                      <td style={td}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 80, height: 5, background: '#1e2130', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#34d399' : '#4f46e5', borderRadius: 3, transition: 'width 0.3s' }} />
+                          </div>
+                          <span style={{ fontSize: 11, color: '#6b7280', minWidth: 28 }}>{pct}%</span>
+                        </div>
+                        <div style={{ fontSize: 10, color: '#374151', marginTop: 3 }}>Step {Math.min(r.max_step, TOTAL_CONTENT_STEPS)}/{TOTAL_CONTENT_STEPS}</div>
+                      </td>
+
+                      {/* Status badge */}
+                      <td style={td}>
+                        <span style={{ padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>
+                          {sm.label}
+                        </span>
+                      </td>
+
+                      {/* Drive link */}
+                      <td style={td}>
+                        {r.drive_url ? (
+                          <a href={r.drive_url} target="_blank" rel="noopener noreferrer"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}>
+                            <ExternalLink size={10} /> Open
+                          </a>
+                        ) : <span style={{ fontSize: 11, color: '#374151' }}>—</span>}
+                      </td>
+
+                      {/* Comparison report */}
+                      <td style={td}>
+                        {isDevAdmin ? (
+                          <span style={{ fontSize: 11, color: '#374151', fontStyle: 'italic' }}>Hidden</span>
+                        ) : r.comparison_report ? (
+                          <span style={{ padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: '#1e1f3a', color: '#818cf8', border: '1px solid rgba(129,140,248,0.3)' }}>✓ Generated</span>
+                        ) : (
+                          <span style={{ fontSize: 11, color: '#374151' }}>—</span>
+                        )}
+                      </td>
+
+                      {/* Last updated */}
+                      <td style={{ ...td, color: '#6b7280', fontSize: 12 }}>
+                        {new Date(r.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </td>
+
+                      {/* Actions */}
+                      <td style={td}>
+                        {isDeleting ? (
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <span style={{ fontSize: 11, color: '#f87171' }}>Delete?</span>
+                            <button onClick={() => deleteReview(r.id)} disabled={deleting}
+                              style={{ padding: '3px 8px', fontSize: 11, background: '#5c2020', color: '#f87171', border: '1px solid #7c2020', borderRadius: 5, cursor: 'pointer' }}>
+                              {deleting ? '…' : 'Yes'}
+                            </button>
+                            <button onClick={() => setDeleteConfirm(null)}
+                              style={{ padding: '3px 8px', fontSize: 11, background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 5, cursor: 'pointer' }}>
+                              No
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            {!isDevAdmin && (
+                              <button onClick={() => setDeleteConfirm(r.id)}
+                                style={{ padding: '4px 9px', fontSize: 11, background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 5, cursor: 'pointer' }}>
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Export CSV */}
+        {!isDevAdmin && reviews.length > 0 && (
+          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+            <button onClick={() => {
+              const rows = [['Employee', 'Position', 'Manager', 'Progress', 'Status', 'Drive URL', 'Has Comparison', 'Last Updated']]
+              filteredReviews.forEach(r => {
+                const mgr = users.find(u => u.id === r.user_id)
+                rows.push([
+                  r.employee_name, r.employee_position,
+                  mgr ? (mgr.name || mgr.email) : '',
+                  `${reviewProgress(r)}%`, STATUS_META[reviewStatus(r)].label,
+                  r.drive_url || '', r.comparison_report ? 'Yes' : 'No',
+                  new Date(r.updated_at).toLocaleDateString(),
+                ])
+              })
+              const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+              const a = document.createElement('a'); a.href = `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`; a.download = 'reviews-export.csv'; a.click()
+            }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#13151f', color: '#9ca3af', border: '1px solid #1e2130', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              ↓ Export CSV ({filteredReviews.length} rows)
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   function renderPlaceholder(title: string, description: string, icon: string, items: string[]) {
     return (
       <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
@@ -517,16 +772,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         {page === 'dashboard' && renderDashboard()}
         {page === 'users'     && renderUsers()}
 
-        {page === 'reviews'   && renderPlaceholder(
-          'Reviews', 'View and manage all performance reviews across the organization.',
-          '📝', [
-            'Read all manager reviews org-wide',
-            'Reopen submitted reviews when needed',
-            'Archive or delete reviews',
-            'Filter by employee, manager, status, or date range',
-            'Export review data to CSV',
-          ]
-        )}
+        {page === 'reviews' && renderReviews()}
 
         {page === 'cycles' && renderPlaceholder(
           'Review Cycles', 'Define and manage organization-wide review windows.',

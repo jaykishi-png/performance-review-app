@@ -34,6 +34,17 @@ export default async function AdminPage() {
     .from('self_reviews')
     .select('employee_id, status, submitted_at')
 
+  // Fetch all reviews — redact comparison_report for dev_admin
+  const { data: reviewsRaw } = await serviceClient
+    .from('reviews')
+    .select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at')
+    .order('updated_at', { ascending: false })
+
+  const reviews = (reviewsRaw ?? []).map(r => ({
+    ...r,
+    comparison_report: role === 'dev_admin' ? null : r.comparison_report,
+  }))
+
   return (
     <AdminDashboard
       currentUser={{ id: user.id, email: user.email!, role: role as 'admin' | 'dev_admin' }}
@@ -43,6 +54,11 @@ export default async function AdminPage() {
       }[]}
       invites={invites ?? []}
       selfAssessments={(selfAssessments ?? []) as { employee_id: string; status: string; submitted_at: string | null }[]}
+      reviews={reviews as {
+        id: string; user_id: string; employee_name: string; employee_position: string;
+        step: number; max_step: number; drive_url: string | null; drive_doc_id: string | null;
+        comparison_report: string | null; saved_at: string; updated_at: string;
+      }[]}
     />
   )
 }
