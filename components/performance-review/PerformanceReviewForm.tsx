@@ -2594,6 +2594,7 @@ export function PerformanceReviewForm() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notifications'>('reviews')
   const [reviewsExpanded, setReviewsExpanded] = useState(true)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [showDirectReports, setShowDirectReports] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showManagerGuide, setShowManagerGuide] = useState(false)
@@ -3183,18 +3184,45 @@ export function PerformanceReviewForm() {
                       const isActive = save.id === currentReviewId
                       const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, save.form)).length
                       const pct = Math.round((filled / (STEPS.length - 1)) * 100)
+                      const isConfirming = confirmDeleteId === save.id
                       return (
-                        <div key={save.id} onClick={() => { handleLoad(save); setActivePage('reviews') }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px 6px 24px', borderRadius: 8, cursor: 'pointer', marginBottom: 1, background: isActive ? '#1e1f3a' : 'transparent', border: isActive ? '1px solid rgba(79,70,229,0.2)' : '1px solid transparent' }}
-                          onMouseOver={e => { if (!isActive) e.currentTarget.style.background = '#13151f' }}
-                          onMouseOut={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}>
-                          <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: isActive ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: isActive ? 'white' : '#6b7280' }}>
-                            {save.employeeName?.charAt(0).toUpperCase() || '?'}
+                        <div key={save.id} className="group"
+                          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 6px 6px 24px', borderRadius: 8, marginBottom: 1, background: isActive ? '#1e1f3a' : 'transparent', border: isActive ? '1px solid rgba(79,70,229,0.2)' : '1px solid transparent' }}
+                          onMouseOver={e => { if (!isActive && !isConfirming) e.currentTarget.style.background = '#13151f' }}
+                          onMouseOut={e => { if (!isActive && !isConfirming) e.currentTarget.style.background = 'transparent' }}>
+                          {/* Main clickable area */}
+                          <div onClick={() => { if (!isConfirming) { handleLoad(save); setActivePage('reviews') } }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, cursor: isConfirming ? 'default' : 'pointer' }}>
+                            <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: isActive ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: isActive ? 'white' : '#6b7280' }}>
+                              {save.employeeName?.charAt(0).toUpperCase() || '?'}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 12, fontWeight: 500, color: isActive ? '#e0e7ff' : '#c4c9d4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{save.employeeName || 'Untitled'}</div>
+                              <div style={{ fontSize: 10, color: '#4b5563', marginTop: 1 }}>{pct}% complete</div>
+                            </div>
                           </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12, fontWeight: 500, color: isActive ? '#e0e7ff' : '#c4c9d4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{save.employeeName || 'Untitled'}</div>
-                            <div style={{ fontSize: 10, color: '#4b5563', marginTop: 1 }}>{pct}% complete</div>
-                          </div>
+                          {/* Delete controls */}
+                          {isConfirming ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                              <button onClick={e => { e.stopPropagation(); handleDelete(save.id); if (save.id === currentReviewId) { setCurrentReviewId(''); setForm(defaultForm()) }; setConfirmDeleteId(null) }}
+                                style={{ fontSize: 10, padding: '2px 6px', background: '#5c2020', color: '#f87171', border: '1px solid #7c2020', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
+                                Yes
+                              </button>
+                              <button onClick={e => { e.stopPropagation(); setConfirmDeleteId(null) }}
+                                style={{ fontSize: 10, padding: '2px 6px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 4, cursor: 'pointer' }}>
+                                No
+                              </button>
+                            </div>
+                          ) : (
+                            <button onClick={e => { e.stopPropagation(); setConfirmDeleteId(save.id) }}
+                              title="Delete review"
+                              style={{ opacity: 0, padding: '3px', background: 'transparent', border: 'none', color: '#6b7280', cursor: 'pointer', borderRadius: 4, display: 'flex', alignItems: 'center', flexShrink: 0, transition: 'opacity 0.1s' }}
+                              className="group-hover:opacity-100"
+                              onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = '#f87171' }}
+                              onMouseLeave={e => { e.currentTarget.style.opacity = '0'; e.currentTarget.style.color = '#6b7280' }}>
+                              <Trash2 size={11} />
+                            </button>
+                          )}
                         </div>
                       )
                     })}
@@ -3350,8 +3378,9 @@ export function PerformanceReviewForm() {
             ) : saves.map(save => {
               const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, save.form)).length
               const pct = Math.round((filled / (STEPS.length - 1)) * 100)
+              const isConfirming = confirmDeleteId === save.id
               return (
-                <div key={save.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '16px 20px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div key={save.id} style={{ background: '#13151f', border: `1px solid ${isConfirming ? '#5c2020' : '#1e2130'}`, borderRadius: 12, padding: '16px 20px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 16, transition: 'border-color 0.15s' }}>
                   <div style={{ width: 40, height: 40, borderRadius: '50%', background: pct === 100 ? '#0d1a13' : 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: pct === 100 ? '2px solid #34d399' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: pct === 100 ? '#34d399' : 'white', flexShrink: 0 }}>
                     {pct === 100 ? '✓' : save.employeeName?.charAt(0).toUpperCase() || '?'}
                   </div>
@@ -3360,8 +3389,29 @@ export function PerformanceReviewForm() {
                     <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{save.employeePosition || 'No position'} · {pct}% complete · {save.savedAt ? new Date(save.savedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    {save.driveUrl && <a href={save.driveUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '5px 12px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}>Drive</a>}
-                    <button onClick={() => { handleLoad(save); setActivePage('reviews') }} style={{ padding: '5px 12px', background: '#1e1f3a', color: '#818cf8', border: '1px solid rgba(79,70,229,0.3)', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Open</button>
+                    {isConfirming ? (
+                      <>
+                        <span style={{ fontSize: 12, color: '#f87171' }}>Delete this review?</span>
+                        <button onClick={() => { handleDelete(save.id); if (save.id === currentReviewId) { setCurrentReviewId(''); setForm(defaultForm()) }; setConfirmDeleteId(null) }}
+                          style={{ padding: '5px 12px', background: '#5c2020', color: '#f87171', border: '1px solid #7c2020', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                          Delete
+                        </button>
+                        <button onClick={() => setConfirmDeleteId(null)}
+                          style={{ padding: '5px 12px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {save.driveUrl && <a href={save.driveUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '5px 12px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}>Drive</a>}
+                        <button onClick={() => { handleLoad(save); setActivePage('reviews') }} style={{ padding: '5px 12px', background: '#1e1f3a', color: '#818cf8', border: '1px solid rgba(79,70,229,0.3)', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Open</button>
+                        <button onClick={() => setConfirmDeleteId(save.id)}
+                          style={{ padding: '5px 8px', background: 'transparent', color: '#4b5563', border: '1px solid #2a2d3a', borderRadius: 6, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          title="Delete review">
+                          <Trash2 size={13} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               )
