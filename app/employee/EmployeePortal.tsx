@@ -11,7 +11,17 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Page = 'self-assessment' | 'reviews' | 'history' | 'guide' | 'glossary'
+type Page = 'self-assessment' | 'reviews' | 'timeline' | 'goals' | 'guide' | 'glossary'
+
+type Goal = {
+  id: string
+  title: string
+  description: string
+  status: 'not_started' | 'in_progress' | 'complete'
+  target_date: string
+  notes: string
+  created_at: string
+}
 type CompetencyType = 'positive' | 'constructive' | 'choice'
 type Competency = { type: CompetencyType; term: string; examples: [string, string, string] }
 type GoalItem = { description: string; outcome: 'successful' | 'unsuccessful' | ''; reasoning: string }
@@ -106,10 +116,11 @@ const SA_STEPS = [
 ]
 
 const NAV_ITEMS: { id: Page; label: string; icon: React.FC<{ size: number; color?: string }> }[] = [
-  { id: 'self-assessment', label: 'Self Assessment',      icon: FileText  },
-  { id: 'reviews',         label: 'Performance Reviews',  icon: BarChart2 },
-  { id: 'history',         label: 'History',              icon: History   },
-  { id: 'guide',           label: 'Employee Guide',       icon: BookOpen  },
+  { id: 'self-assessment', label: 'Self Assessment',      icon: FileText   },
+  { id: 'reviews',         label: 'Performance Reviews',  icon: BarChart2  },
+  { id: 'timeline',        label: 'Review Timeline',      icon: History    },
+  { id: 'goals',           label: 'Goals Tracker',        icon: Target     },
+  { id: 'guide',           label: 'Employee Guide',       icon: BookOpen   },
   { id: 'glossary',        label: 'Competency Glossary',  icon: BookMarked },
 ]
 
@@ -181,6 +192,15 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
   const [profileName, setProfileName] = useState(profile.name || '')
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
+  // Goals
+  const [goals, setGoals] = useState<Goal[]>([])
+  const [goalsLoading, setGoalsLoading] = useState(false)
+  const [showAddGoal, setShowAddGoal] = useState(false)
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
+  const [goalForm, setGoalForm] = useState({ title: '', description: '', status: 'not_started' as Goal['status'], target_date: '', notes: '' })
+  const [goalSaving, setGoalSaving] = useState(false)
+  // Notifications
+  const [showNotifications, setShowNotifications] = useState(false)
 
   const isSubmitted = review.status === 'submitted'
 
@@ -260,6 +280,50 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
       router.refresh()
     } finally { setProfileSaving(false) }
   }
+
+  // Fetch goals when Goals page opens
+  useEffect(() => {
+    if (page !== 'goals') return
+    setGoalsLoading(true)
+    fetch('/api/goals').then(r => r.json()).then(d => { if (d.goals) setGoals(d.goals) }).finally(() => setGoalsLoading(false))
+  }, [page])
+
+  async function createGoal() {
+    if (!goalForm.title.trim()) return
+    setGoalSaving(true)
+    try {
+      const res = await fetch('/api/goals', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(goalForm) })
+      const d = await res.json() as { goal?: Goal }
+      if (d.goal) setGoals(g => [d.goal!, ...g])
+      setShowAddGoal(false)
+      setGoalForm({ title: '', description: '', status: 'not_started', target_date: '', notes: '' })
+    } finally { setGoalSaving(false) }
+  }
+
+  async function updateGoalRecord(id: string, updates: Partial<Goal>) {
+    await fetch('/api/goals', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...updates }) })
+    setGoals(g => g.map(goal => goal.id === id ? { ...goal, ...updates } : goal))
+  }
+
+  async function deleteGoal(id: string) {
+    await fetch('/api/goals', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    setGoals(g => g.filter(goal => goal.id !== id))
+  }
+
+  async function saveEditGoal() {
+    if (!editingGoal) return
+    setGoalSaving(true)
+    try {
+      await updateGoalRecord(editingGoal.id, goalForm)
+      setEditingGoal(null)
+    } finally { setGoalSaving(false) }
+  }
+
+  // Computed notifications
+  const notifications: { id: string; label: string; detail: string; color: string; action?: () => void }[] = []
+  if (!isSubmitted) notifications.push({ id: 'draft', label: 'Self-assessment pending', detail: 'Your self-assessment is in draft. Submit it so your manager can review it.', color: '#f59e0b', action: () => setPage('self-assessment') })
+  if (isSubmitted && !driveUrl) notifications.push({ id: 'drive', label: 'Export ready', detail: 'Your submitted self-assessment can be exported to Google Drive.', color: '#818cf8', action: () => { setPage('self-assessment'); setStep(8) } })
+  if (goals.some(g => g.target_date && g.status !== 'complete' && new Date(g.target_date) < new Date())) notifications.push({ id: 'overdue', label: 'Overdue goals', detail: 'You have goals past their target date that are not yet complete.', color: '#f87171', action: () => setPage('goals') })
 
   function updateComp(i: number, field: string, value: unknown) {
     setReview(r => { const c = [...r.competencies]; c[i] = { ...c[i], [field]: value }; return { ...r, competencies: c } })
@@ -534,8 +598,150 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
     )
   }
 
-  // ── Page: History ─────────────────────────────────────────────────────────
-  function renderHistoryPage() {
+  // ── Page: Goals Tracker ───────────────────────────────────────────────────
+  const STATUS_CONFIG = {
+    not_started: { label: 'Not Started', color: '#6b7280', bg: '#13151f' },
+    in_progress:  { label: 'In Progress', color: '#f59e0b', bg: '#1f1a0d' },
+    complete:     { label: 'Complete',    color: '#34d399', bg: '#0d1a13' },
+  }
+
+  function renderGoalsPage() {
+    const complete   = goals.filter(g => g.status === 'complete').length
+    const inProgress = goals.filter(g => g.status === 'in_progress').length
+    const overdue    = goals.filter(g => g.target_date && g.status !== 'complete' && new Date(g.target_date) < new Date()).length
+
+    const formFields = (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div><div style={lbl}>Goal Title *</div><input value={goalForm.title} onChange={e => setGoalForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Improve public speaking skills" style={inp} autoFocus /></div>
+        <div><div style={lbl}>Description</div><textarea value={goalForm.description} onChange={e => setGoalForm(f => ({ ...f, description: e.target.value }))} placeholder="What does success look like?" rows={2} style={{ ...inp, resize: 'vertical' }} /></div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div><div style={lbl}>Status</div>
+            <select value={goalForm.status} onChange={e => setGoalForm(f => ({ ...f, status: e.target.value as Goal['status'] }))} style={{ ...inp, appearance: 'none' }}>
+              <option value="not_started">Not Started</option>
+              <option value="in_progress">In Progress</option>
+              <option value="complete">Complete</option>
+            </select>
+          </div>
+          <div><div style={lbl}>Target Date</div><input type="date" value={goalForm.target_date} onChange={e => setGoalForm(f => ({ ...f, target_date: e.target.value }))} style={inp} /></div>
+        </div>
+        <div><div style={lbl}>Notes / Progress Update</div><textarea value={goalForm.notes} onChange={e => setGoalForm(f => ({ ...f, notes: e.target.value }))} placeholder="Add any notes or progress updates…" rows={2} style={{ ...inp, resize: 'vertical' }} /></div>
+      </div>
+    )
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div>
+            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Goals Tracker</h1>
+            <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Track your progress between review cycles. Goals can pre-populate your next self-assessment.</p>
+          </div>
+          <button onClick={() => { setShowAddGoal(true); setGoalForm({ title: '', description: '', status: 'not_started', target_date: '', notes: '' }) }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+            <Plus size={14} /> Add Goal
+          </button>
+        </div>
+
+        {/* Stats */}
+        {goals.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+            {[
+              { label: 'Total', value: goals.length, color: '#9ca3af' },
+              { label: 'In Progress', value: inProgress, color: '#f59e0b' },
+              { label: 'Complete', value: complete, color: '#34d399' },
+              { label: 'Overdue', value: overdue, color: overdue > 0 ? '#f87171' : '#4b5563' },
+            ].map(s => (
+              <div key={s.label} style={{ ...card, padding: '12px 16px', textAlign: 'center' }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add goal form */}
+        {showAddGoal && (
+          <div style={{ ...card, border: '1px solid rgba(79,70,229,0.4)', marginBottom: 16 }}>
+            <div style={{ fontWeight: 600, fontSize: 13, color: '#e5e7eb', marginBottom: 14 }}>New Goal</div>
+            {formFields}
+            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+              <button onClick={() => setShowAddGoal(false)} style={{ flex: 1, padding: '9px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={createGoal} disabled={goalSaving || !goalForm.title.trim()} style={{ flex: 2, padding: '9px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: (!goalForm.title.trim() || goalSaving) ? 0.6 : 1 }}>
+                {goalSaving ? 'Saving…' : 'Add Goal'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Goals list */}
+        {goalsLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280', fontSize: 13 }}><Loader2 size={20} style={{ animation: 'spin 1s linear infinite', marginBottom: 8 }} /><br />Loading goals…</div>
+        ) : goals.length === 0 ? (
+          <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '40px' }}>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>🎯</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>No goals yet</div>
+            <p style={{ margin: '0 0 16px', fontSize: 12, color: '#4b5563', lineHeight: 1.6, maxWidth: 340, marginLeft: 'auto', marginRight: 'auto' }}>
+              Add goals between review cycles to track your progress. Your active goals can carry forward into your next self-assessment.
+            </p>
+            <button onClick={() => setShowAddGoal(true)} style={{ padding: '8px 20px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Add Your First Goal</button>
+          </div>
+        ) : (
+          goals.map(g => {
+            const sc = STATUS_CONFIG[g.status]
+            const isEditing = editingGoal?.id === g.id
+            const isOverdue = g.target_date && g.status !== 'complete' && new Date(g.target_date) < new Date()
+            return (
+              <div key={g.id} style={{ ...card, borderLeft: `3px solid ${sc.color}`, background: isEditing ? '#1e1f3a' : '#13151f' }}>
+                {isEditing ? (
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 12, color: '#818cf8', marginBottom: 14 }}>Editing Goal</div>
+                    {formFields}
+                    <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+                      <button onClick={() => setEditingGoal(null)} style={{ flex: 1, padding: '8px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={saveEditGoal} disabled={goalSaving} style={{ flex: 2, padding: '8px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{goalSaving ? 'Saving…' : 'Save Changes'}</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e7eb' }}>{g.title}</div>
+                        {g.description && <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 3, lineHeight: 1.5 }}>{g.description}</div>}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        {/* Quick status toggle */}
+                        {g.status !== 'complete' && (
+                          <button onClick={() => updateGoalRecord(g.id, { status: g.status === 'not_started' ? 'in_progress' : 'complete' })}
+                            title={g.status === 'not_started' ? 'Mark In Progress' : 'Mark Complete'}
+                            style={{ padding: '4px 8px', background: '#1e2130', color: '#9ca3af', border: '1px solid #2a2d3a', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>
+                            {g.status === 'not_started' ? '▶ Start' : '✓ Done'}
+                          </button>
+                        )}
+                        <button onClick={() => { setEditingGoal(g); setGoalForm({ title: g.title, description: g.description, status: g.status, target_date: g.target_date, notes: g.notes }) }}
+                          style={{ padding: '4px 8px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Edit</button>
+                        <button onClick={() => deleteGoal(g.id)} style={{ padding: '4px 8px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>✕</button>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: sc.bg, color: sc.color, border: `1px solid ${sc.color}40` }}>{sc.label}</span>
+                      {g.target_date && (
+                        <span style={{ fontSize: 11, color: isOverdue ? '#f87171' : '#6b7280' }}>
+                          {isOverdue ? '⚠ Overdue · ' : '📅 '}{new Date(g.target_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
+                    {g.notes && <div style={{ marginTop: 10, padding: '8px 12px', background: '#0d1117', borderRadius: 8, fontSize: 12, color: '#9ca3af', lineHeight: 1.5 }}>{g.notes}</div>}
+                  </div>
+                )}
+              </div>
+            )
+          })
+        )}
+      </div>
+    )
+  }
+
+  // ── Page: Review Timeline ──────────────────────────────────────────────────
+  function renderTimelinePage() {
     const events: { icon: string; label: string; time: string; color: string }[] = []
     if (review.submitted_at) events.push({ icon: '✅', label: 'Self-assessment submitted', time: new Date(review.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), color: '#34d399' })
     if (driveUrl) events.push({ icon: '📤', label: 'Exported to Google Drive', time: 'Recent', color: '#818cf8' })
@@ -543,8 +749,8 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
 
     return (
       <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>History</h1>
-        <p style={{ margin: '0 0 28px', fontSize: 13, color: '#6b7280' }}>A log of activity on your account and self-assessments.</p>
+        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Review Timeline</h1>
+        <p style={{ margin: '0 0 28px', fontSize: 13, color: '#6b7280' }}>A chronological log of your review activity and milestones.</p>
         {events.length === 0 ? (
           <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '32px' }}>
             <div style={{ fontSize: 32, marginBottom: 10 }}>🕐</div>
@@ -666,6 +872,54 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
     )
   }
 
+  // ── Notification Bell ─────────────────────────────────────────────────────
+  function NotificationBell() {
+    return (
+      <div style={{ position: 'relative' }}>
+        <button onClick={() => setShowNotifications(n => !n)}
+          style={{ position: 'relative', width: 34, height: 34, borderRadius: 8, background: showNotifications ? '#1e1f3a' : 'transparent', border: '1px solid transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#13151f'; e.currentTarget.style.borderColor = '#2a2d3a' }}
+          onMouseLeave={e => { if (!showNotifications) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' } }}>
+          <Bell size={16} />
+          {notifications.length > 0 && (
+            <span style={{ position: 'absolute', top: 5, right: 5, width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', border: '1.5px solid #0d0f1a' }} />
+          )}
+        </button>
+        {showNotifications && (
+          <>
+            <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setShowNotifications(false)} />
+            <div style={{ position: 'absolute', right: 0, top: 40, width: 320, background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, zIndex: 50, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid #1e2130', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#e5e7eb' }}>Notifications</span>
+                {notifications.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#f59e0b20', color: '#f59e0b', padding: '1px 6px', borderRadius: 10 }}>{notifications.length}</span>}
+              </div>
+              {notifications.length === 0 ? (
+                <div style={{ padding: '24px 16px', textAlign: 'center', color: '#4b5563', fontSize: 13 }}>
+                  <div style={{ fontSize: 24, marginBottom: 6 }}>🔔</div>
+                  All caught up!
+                </div>
+              ) : (
+                notifications.map(n => (
+                  <div key={n.id} onClick={() => { if (n.action) { n.action(); setShowNotifications(false) } }}
+                    style={{ padding: '12px 16px', borderBottom: '1px solid #1e2130', cursor: n.action ? 'pointer' : 'default', display: 'flex', gap: 12, alignItems: 'flex-start' }}
+                    onMouseEnter={e => { if (n.action) e.currentTarget.style.background = '#0d1117' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: n.color, flexShrink: 0, marginTop: 4 }} />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', marginBottom: 2 }}>{n.label}</div>
+                      <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>{n.detail}</div>
+                      {n.action && <div style={{ fontSize: 11, color: n.color, marginTop: 4, fontWeight: 600 }}>View →</div>}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    )
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
   const displayName = profileName || profile.email
 
@@ -747,7 +1001,7 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
       </aside>
 
       {/* ── Main ── */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
 
         {/* Self Assessment: step tabs + progress */}
         {page === 'self-assessment' && (
@@ -759,13 +1013,17 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
           </>
         )}
 
-        {/* Other pages: simple header bar */}
+        {/* Other pages: header bar with notification bell */}
         {page !== 'self-assessment' && (
-          <div style={{ height: 56, background: '#0d0f1a', borderBottom: '1px solid #1e2130', padding: '0 28px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#c4c9d4' }}>
-              {NAV_ITEMS.find(n => n.id === page)?.label}
-            </span>
+          <div style={{ height: 56, background: '#0d0f1a', borderBottom: '1px solid #1e2130', padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#c4c9d4' }}>{NAV_ITEMS.find(n => n.id === page)?.label}</span>
+            <NotificationBell />
           </div>
+        )}
+
+        {/* SA notification bell sits over the tab bar */}
+        {page === 'self-assessment' && (
+          <div style={{ position: 'absolute', top: 8, right: 12, zIndex: 20 }}><NotificationBell /></div>
         )}
 
         {/* Content */}
@@ -776,7 +1034,8 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
             </div>
           )}
           {page === 'reviews'  && renderReviewsPage()}
-          {page === 'history'  && renderHistoryPage()}
+          {page === 'timeline' && renderTimelinePage()}
+          {page === 'goals'    && renderGoalsPage()}
           {page === 'guide'    && renderGuidePage()}
           {page === 'glossary' && renderGlossaryPage()}
         </div>
