@@ -1915,8 +1915,21 @@ function StepOutput({
   const [compareError, setCompareError]         = useState('')
   const [reportCopied, setReportCopied]         = useState(false)
   const [reportEditMode, setReportEditMode]     = useState(false)
+  const [showManualReport, setShowManualReport] = useState(false)
+  const [manualReportValue, setManualReportValue] = useState('')
   const [selfReviewStatus, setSelfReviewStatus] = useState<'idle' | 'loading' | 'found' | 'none'>('idle')
   const [selfReviewText, setSelfReviewText]     = useState('')
+
+  function handleSaveManualReport() {
+    const val = manualReportValue.trim()
+    if (!val) return
+    setCompareReport(val)
+    setCompareStatus('done')
+    setReportEditMode(false)
+    setShowManualReport(false)
+    setManualReportValue('')
+    onReportSaved?.(val)
+  }
 
   async function loadSubmittedSelfReview() {
     setSelfReviewStatus('loading')
@@ -2444,7 +2457,7 @@ function StepOutput({
               <><Sparkles size={13} /> Generate Comparison Report</>
             )}
           </button>
-          {compareStatus === 'done' && (
+          {compareStatus === 'done' && !showManualReport && (
             <span className="text-[11px] text-emerald-400 flex items-center gap-1">
               <CheckCircle2 size={11} /> Saved to this review
             </span>
@@ -2454,6 +2467,45 @@ function StepOutput({
         {compareStatus === 'error' && (
           <div className="text-[11px] text-red-400 bg-red-950/30 rounded-lg px-3 py-2">
             <span className="font-semibold">Error: </span>{compareError}
+          </div>
+        )}
+
+        {/* Manual report paste */}
+        {!showManualReport ? (
+          <button
+            type="button"
+            onClick={() => { setShowManualReport(true); setManualReportValue(compareStatus === 'done' ? compareReport : '') }}
+            className="text-[11px] text-gray-600 hover:text-gray-400 transition-colors underline-offset-2 hover:underline"
+          >
+            {compareStatus === 'done' ? 'Replace with a manually written report' : 'Already wrote the report? Paste it in directly'}
+          </button>
+        ) : (
+          <div className="space-y-2 pt-1">
+            <p className="text-[11px] text-gray-500">Paste your manually written comparison report:</p>
+            <textarea
+              value={manualReportValue}
+              onChange={e => setManualReportValue(e.target.value)}
+              placeholder="Paste your comparison report here…"
+              rows={8}
+              className="w-full bg-[#0a0c14] border border-[#2a2d3a] rounded-xl px-4 py-3 text-[12px] text-gray-200 placeholder-gray-700 focus:outline-none focus:border-purple-600/60 transition-colors resize-y"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSaveManualReport}
+                disabled={!manualReportValue.trim()}
+                className="px-4 py-2 rounded-lg bg-purple-700 hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[12px] font-semibold transition-colors"
+              >
+                Save Report
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowManualReport(false); setManualReportValue('') }}
+                className="px-3 py-2 rounded-lg border border-[#1e2030] text-gray-500 hover:text-gray-300 text-[12px] transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
 
