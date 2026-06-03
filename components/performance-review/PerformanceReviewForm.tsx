@@ -2479,6 +2479,7 @@ export function PerformanceReviewForm() {
   const [saves, setSaves] = useState<SavedReview[]>([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notifications'>('reviews')
+  const [reviewsExpanded, setReviewsExpanded] = useState(true)
   const [showDirectReports, setShowDirectReports] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showManagerGuide, setShowManagerGuide] = useState(false)
@@ -3013,32 +3014,51 @@ export function PerformanceReviewForm() {
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
           {!sidebarCollapsed && <div style={{ fontSize: 10, fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '4px 8px 6px' }}>Menu</div>}
 
-          {/* Performance Reviews nav item */}
+          {/* Performance Reviews nav item — dropdown */}
           {(() => {
             const active = activePage === 'reviews'
+            const inProgressSaves = saves.filter(save => {
+              const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, save.form)).length
+              return filled < STEPS.length - 1
+            })
             return (
-              <div>
-                <button onClick={() => setActivePage('reviews')} title={sidebarCollapsed ? 'Performance Reviews' : undefined}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+              <div style={{ marginBottom: 2 }}>
+                {/* Row: clicking icon/label sets page, clicking chevron toggles dropdown */}
+                <div style={{ display: 'flex', alignItems: 'center', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent' }}
                   onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                   onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
-                  <FileText size={15} color={active ? '#818cf8' : '#6b7280'} />
-                  {!sidebarCollapsed && 'Performance Reviews'}
-                </button>
-                {/* Review sub-list under Performance Reviews */}
-                {active && !sidebarCollapsed && (
-                  <div style={{ marginBottom: 4 }}>
-                    {saves.map(save => {
+                  <button
+                    onClick={() => { setActivePage('reviews'); if (!reviewsExpanded) setReviewsExpanded(true) }}
+                    title={sidebarCollapsed ? 'Performance Reviews' : undefined}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', background: 'none', border: 'none', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start' }}>
+                    <FileText size={15} color={active ? '#818cf8' : '#6b7280'} />
+                    {!sidebarCollapsed && 'Performance Reviews'}
+                    {!sidebarCollapsed && inProgressSaves.length > 0 && (
+                      <span style={{ marginLeft: 4, background: '#4f46e5', color: 'white', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{inProgressSaves.length}</span>
+                    )}
+                  </button>
+                  {/* Chevron toggle — only when not collapsed */}
+                  {!sidebarCollapsed && (
+                    <button onClick={e => { e.stopPropagation(); setReviewsExpanded(v => !v) }}
+                      style={{ padding: '8px 8px 8px 0', background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                      <ChevronRight size={13} style={{ transform: reviewsExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }} />
+                    </button>
+                  )}
+                </div>
+                {/* In-progress review sub-list */}
+                {reviewsExpanded && !sidebarCollapsed && (
+                  <div style={{ marginTop: 2, marginBottom: 2 }}>
+                    {inProgressSaves.map(save => {
                       const isActive = save.id === currentReviewId
                       const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, save.form)).length
                       const pct = Math.round((filled / (STEPS.length - 1)) * 100)
                       return (
-                        <div key={save.id} onClick={() => handleLoad(save)}
+                        <div key={save.id} onClick={() => { handleLoad(save); setActivePage('reviews') }}
                           style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px 6px 24px', borderRadius: 8, cursor: 'pointer', marginBottom: 1, background: isActive ? '#1e1f3a' : 'transparent', border: isActive ? '1px solid rgba(79,70,229,0.2)' : '1px solid transparent' }}
                           onMouseOver={e => { if (!isActive) e.currentTarget.style.background = '#13151f' }}
                           onMouseOut={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}>
                           <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: isActive ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: isActive ? 'white' : '#6b7280' }}>
-                            {pct === 100 ? '✓' : (save.employeeName?.charAt(0).toUpperCase() || '?')}
+                            {save.employeeName?.charAt(0).toUpperCase() || '?'}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 12, fontWeight: 500, color: isActive ? '#e0e7ff' : '#c4c9d4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{save.employeeName || 'Untitled'}</div>
@@ -3047,8 +3067,8 @@ export function PerformanceReviewForm() {
                         </div>
                       )
                     })}
-                    {saves.length === 0 && (
-                      <div style={{ padding: '8px 8px 8px 24px', fontSize: 11, color: '#374151', lineHeight: 1.5 }}>No reviews yet.<br />Create your first one.</div>
+                    {inProgressSaves.length === 0 && (
+                      <div style={{ padding: '6px 8px 6px 24px', fontSize: 11, color: '#374151', lineHeight: 1.5 }}>No active reviews.<br />Create one above.</div>
                     )}
                   </div>
                 )}
