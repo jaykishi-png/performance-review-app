@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft, LogOut } from 'lucide-react'
+import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft, LogOut, BookOpen, BookMarked } from 'lucide-react'
 
 // ─── Competency glossary ──────────────────────────────────────────────────────
 
@@ -2480,6 +2480,9 @@ export function PerformanceReviewForm() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [showDirectReports, setShowDirectReports] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showManagerGuide, setShowManagerGuide] = useState(false)
+  const [showManagerGlossary, setShowManagerGlossary] = useState(false)
+  const [glossarySearch, setGlossarySearch] = useState('')
   const [directReports, setDirectReports] = useState<DirectReport[]>([])
   const [settings, setSettings] = useState<AppSettings>({ driveFolderUrl: '' })
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -2724,6 +2727,185 @@ export function PerformanceReviewForm() {
       {/* Overlay panels */}
       {showSettings && <SettingsPanel settings={settings} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} />}
       {showDirectReports && <DirectReportsPanel reports={directReports} onSave={handleSaveReport} onDelete={handleDeleteReport} onClose={() => setShowDirectReports(false)} />}
+
+      {/* Manager Guide panel */}
+      {showManagerGuide && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} onClick={() => setShowManagerGuide(false)} />
+          <div style={{ position: 'relative', width: '100%', maxWidth: 500, background: '#0b0d14', borderLeft: '1px solid #1e2030', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #1e2030', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <BookOpen size={14} className="text-purple-400" style={{ color: '#c084fc' }} />
+                <span style={{ fontWeight: 600, fontSize: 14, color: '#f0f2fa' }}>Manager&apos;s Guide to Performance Reviews</span>
+              </div>
+              <button onClick={() => setShowManagerGuide(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <X size={16} />
+              </button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px', fontSize: 13, lineHeight: 1.7 }}>
+
+              <p style={{ color: '#9ca3af', marginTop: 0 }}>
+                Performance reviews are a critical tool for aligning employee performance with organizational goals, personal and professional development, and building a culture of continuous improvement. Your role is to ensure reviews are fair, constructive, and future-focused.
+              </p>
+
+              {[
+                {
+                  title: 'Preparation',
+                  color: '#c084fc',
+                  content: 'Review performance metrics (job descriptions, KPIs, project completion rates, attendance). Gather 360-degree feedback from colleagues and key stakeholders. Review the employee\'s self-assessment to understand their perspective before the evaluation discussion.',
+                },
+                {
+                  title: 'Components of an Evaluation',
+                  color: '#c084fc',
+                  content: 'The evaluation includes a 5-word competency review, evaluation of successful or unsuccessful completion of goals and objectives, and accomplishments made during the relevant review period. Reflect on previous reviews to determine progress on past goals and identify potential recurring issues.',
+                },
+                {
+                  title: 'Tips for the Discussion',
+                  color: '#c084fc',
+                  content: '• Recognize strengths genuinely — highlight how they contribute positively to the team.\n• Don\'t sugar-coat underperformance — address missed goals with specific examples.\n• Frame tough conversations as growth opportunities, not criticism.\n• Be empathetic — listen to the employee\'s perspective and challenges.\n• Identify skills gaps and be clear on what success looks like for each goal.\n• If an employee disagrees, express rationale calmly, acknowledge their viewpoint, and focus on an action plan.',
+                },
+                {
+                  title: '⚠️ Important Note',
+                  color: '#f87171',
+                  content: 'One and Two-star ratings MUST ALWAYS have a consultation with Human Resources before the evaluation discussion.',
+                },
+              ].map(s => (
+                <div key={s.title} style={{ marginBottom: 14, padding: '14px 16px', background: '#13151f', borderRadius: 10, border: '1px solid #1e2030' }}>
+                  <div style={{ fontWeight: 700, color: s.color, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{s.title}</div>
+                  <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{s.content}</div>
+                </div>
+              ))}
+
+              {/* Star Matrix */}
+              <div style={{ marginBottom: 14, padding: '14px 16px', background: '#13151f', borderRadius: 10, border: '1px solid #1e2030' }}>
+                <div style={{ fontWeight: 700, color: '#c084fc', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Rush Media Star Rating Matrix</div>
+                {[
+                  [5, '#a78bfa', 'Outstanding', 'Consistently exceeds performance requirements.'],
+                  [4, '#34d399', 'Exceeds Job Requirements', 'Meets and at times exceeds performance requirements (above average).'],
+                  [3, '#fbbf24', 'Meets Expectations', 'Job requirements are being met at a satisfactory level.'],
+                  [2, '#fb923c', 'Needs Improvement', 'Does not consistently meet the expected job requirements.'],
+                  [1, '#f87171', 'Unsatisfactory', 'Demonstrates an unacceptable level of skills and competencies.'],
+                ].map(([n, color, label, desc]) => (
+                  <div key={String(n)} style={{ display: 'flex', gap: 12, marginBottom: 10, alignItems: 'flex-start' }}>
+                    <div style={{ fontSize: 15, color: color as string, fontWeight: 800, minWidth: 20 }}>{n}</div>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: color as string }}>{label as string}</div>
+                      <div style={{ fontSize: 11, color: '#6b7280', marginTop: 1 }}>{desc as string}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* SMART Goals */}
+              <div style={{ marginBottom: 14, padding: '14px 16px', background: '#13151f', borderRadius: 10, border: '1px solid #1e2030' }}>
+                <div style={{ fontWeight: 700, color: '#c084fc', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>SMART Goal Method</div>
+                {[
+                  ['S', 'Specific', 'Goals should be specific and narrow enough for effective planning and attainability.'],
+                  ['M', 'Measurable', 'Define how progress towards the goal will be made.'],
+                  ['A', 'Attainable', 'Ensure goals are accomplished reasonably within a certain timeframe.'],
+                  ['R', 'Relevant', 'Goals should align with Company values and the employee\'s job description.'],
+                  ['T', 'Time-Bound', 'Set a realistic date and stick to it.'],
+                ].map(([letter, word, desc]) => (
+                  <div key={letter} style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
+                    <div style={{ fontWeight: 800, color: '#818cf8', fontSize: 15, minWidth: 16 }}>{letter}</div>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#c4c9d4' }}>{word}</div>
+                      <div style={{ fontSize: 11, color: '#6b7280', marginTop: 1 }}>{desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Goals vs Objectives */}
+              <div style={{ marginBottom: 14, padding: '14px 16px', background: '#13151f', borderRadius: 10, border: '1px solid #1e2030' }}>
+                <div style={{ fontWeight: 700, color: '#c084fc', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Goals vs. Objectives vs. Accomplishments</div>
+                {[
+                  { title: 'Goal', color: '#818cf8', desc: 'Broad, longer-term, achievable outcomes agreed upon by the employee and manager as a plan of action for the following review cycle.', example: 'Improve public speaking skills.' },
+                  { title: 'Objective', color: '#34d399', desc: 'Shorter, more specific, measurable steps toward achieving a goal. Generally determined by the employee with manager support.', example: 'Attend a public speaking course and practice presentations to a colleague one time per quarter.' },
+                  { title: 'Accomplishment', color: '#fbbf24', desc: 'Tangible achievements or milestones as a result of pursuing goals and objectives.', example: 'Successfully delivered a confident presentation at a Company-wide meeting that received positive feedback from senior management.' },
+                ].map(item => (
+                  <div key={item.title} style={{ marginBottom: 12, padding: '10px 12px', background: '#0d0f1a', borderRadius: 8, borderLeft: `3px solid ${item.color}` }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: item.color, marginBottom: 4 }}>{item.title}</div>
+                    <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6, marginBottom: 6 }}>{item.desc}</div>
+                    <div style={{ fontSize: 11, color: '#6b7280', fontStyle: 'italic' }}>Example: {item.example}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Things to consider */}
+              <div style={{ padding: '14px 16px', background: '#13151f', borderRadius: 10, border: '1px solid #1e2030' }}>
+                <div style={{ fontWeight: 700, color: '#c084fc', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Questions to Consider</div>
+                {[
+                  'How does your employee perform on the team?',
+                  'Does their performance limit the success of colleagues or help them?',
+                  'Is/has the employee been transparent and efficient?',
+                  'What is one small thing your employee could change that would have the biggest impact?',
+                  'Where have they made the most progress?',
+                  'Where have they had the most impact on others?',
+                  'Alignment — Are they spending the right time on the right work?',
+                  'Balance — What are they good at? What could they improve? What have they accomplished?',
+                  'Communication — Do they have the information and resources needed to grow?',
+                ].map((q, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid #1e2030', fontSize: 12, color: '#9ca3af' }}>
+                    <span style={{ color: '#818cf8', fontSize: 10, marginTop: 3, flexShrink: 0 }}>▸</span> {q}
+                  </div>
+                ))}
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Competency Glossary panel */}
+      {showManagerGlossary && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} onClick={() => setShowManagerGlossary(false)} />
+          <div style={{ position: 'relative', width: '100%', maxWidth: 500, background: '#0b0d14', borderLeft: '1px solid #1e2030', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #1e2030', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <BookMarked size={14} style={{ color: '#c084fc' }} />
+                <span style={{ fontWeight: 600, fontSize: 14, color: '#f0f2fa' }}>Competency Glossary of Terms</span>
+              </div>
+              <button onClick={() => setShowManagerGlossary(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <X size={16} />
+              </button>
+            </div>
+            <div style={{ padding: '12px 20px', borderBottom: '1px solid #1e2030', flexShrink: 0 }}>
+              <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280' }}>
+                Use these definitions when selecting competency words for Part One of the review.
+              </p>
+              <input
+                value={glossarySearch}
+                onChange={e => setGlossarySearch(e.target.value)}
+                placeholder="Search competencies…"
+                style={{ width: '100%', background: '#13151f', border: '1px solid #2a2d3a', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#e5e7eb', boxSizing: 'border-box', outline: 'none' }}
+              />
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
+              {COMPETENCIES
+                .filter(c =>
+                  c.name.toLowerCase().includes(glossarySearch.toLowerCase()) ||
+                  c.definition.toLowerCase().includes(glossarySearch.toLowerCase())
+                )
+                .map(c => (
+                  <div key={c.name} style={{ marginBottom: 10, padding: '12px 14px', background: '#13151f', borderRadius: 10, border: '1px solid #1e2030' }}>
+                    <div style={{ fontWeight: 700, color: '#818cf8', fontSize: 13, marginBottom: 4 }}>{c.name}</div>
+                    <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>{c.definition}</div>
+                  </div>
+                ))
+              }
+              {COMPETENCIES.filter(c =>
+                c.name.toLowerCase().includes(glossarySearch.toLowerCase()) ||
+                c.definition.toLowerCase().includes(glossarySearch.toLowerCase())
+              ).length === 0 && (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#374151', fontSize: 13 }}>No results found.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Profile modal */}
       {showProfile && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={e => { if (e.target === e.currentTarget) setShowProfile(false) }}>
@@ -2902,6 +3084,36 @@ export function PerformanceReviewForm() {
           >
             <Settings size={15} />
             {!sidebarCollapsed && 'Settings'}
+          </button>
+          {/* Manager Guide */}
+          <button onClick={() => setShowManagerGuide(true)}
+            title={sidebarCollapsed ? 'Manager Guide' : undefined}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px', borderRadius: 8, border: 'none', background: 'transparent',
+              color: '#6b7280', cursor: 'pointer', fontSize: 12, fontWeight: 500,
+              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+            }}
+            onMouseOver={e => { e.currentTarget.style.background = '#13151f'; e.currentTarget.style.color = '#c4c9d4' }}
+            onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6b7280' }}
+          >
+            <BookOpen size={15} />
+            {!sidebarCollapsed && 'Manager Guide'}
+          </button>
+          {/* Competency Glossary */}
+          <button onClick={() => setShowManagerGlossary(true)}
+            title={sidebarCollapsed ? 'Competency Glossary' : undefined}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px', borderRadius: 8, border: 'none', background: 'transparent',
+              color: '#6b7280', cursor: 'pointer', fontSize: 12, fontWeight: 500,
+              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+            }}
+            onMouseOver={e => { e.currentTarget.style.background = '#13151f'; e.currentTarget.style.color = '#c4c9d4' }}
+            onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6b7280' }}
+          >
+            <BookMarked size={15} />
+            {!sidebarCollapsed && 'Competency Glossary'}
           </button>
           {/* Profile */}
           <button onClick={() => setShowProfile(true)}
