@@ -186,6 +186,33 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
   const [driveUrl, setDriveUrl] = useState<string | null>(initialDriveUrl ?? null)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [showManualLink, setShowManualLink] = useState(false)
+  const [manualLinkValue, setManualLinkValue] = useState('')
+  const [manualLinkError, setManualLinkError] = useState('')
+  const [manualLinkSaving, setManualLinkSaving] = useState(false)
+
+  async function saveManualDriveLink() {
+    const val = manualLinkValue.trim()
+    if (!val) { setManualLinkError('Please enter a URL.'); return }
+    if (!val.startsWith('https://docs.google.com/') && !val.startsWith('https://drive.google.com/')) {
+      setManualLinkError('Must be a Google Docs or Drive URL.')
+      return
+    }
+    setManualLinkSaving(true)
+    try {
+      await fetch('/api/self-reviews', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ drive_url: val }),
+      })
+      setDriveUrl(val)
+      setShowManualLink(false)
+      setManualLinkValue('')
+      setManualLinkError('')
+    } finally {
+      setManualLinkSaving(false)
+    }
+  }
   const [approved, setApproved] = useState(false)
   const [glossarySearch, setGlossarySearch] = useState('')
   const [showProfileEdit, setShowProfileEdit] = useState(false)
@@ -705,13 +732,28 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
             <button onClick={() => setSubmitConfirm(true)} style={{ width: '100%', padding: '11px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Submit Self-Assessment</button>
           </div>
         ) : driveUrl ? (
-          <div style={{ ...card, background: '#0d1a13', border: '1px solid #1a4a35', textAlign: 'center' }}>
-            <div style={{ fontSize: 28, marginBottom: 8 }}>✅</div>
-            <div style={{ fontWeight: 700, color: '#34d399', fontSize: 15, marginBottom: 8 }}>Exported to Google Drive</div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-              <a href={driveUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: '#1a4a35', color: '#34d399', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none', border: '1px solid #2a6b4a' }}><ExternalLink size={13} /> Open in Google Docs</a>
-              <button onClick={sendToDrive} disabled={exporting} style={{ padding: '9px 14px', background: 'transparent', color: '#6b7280', borderRadius: 8, fontSize: 13, border: '1px solid #2a2d3a', cursor: 'pointer' }}>Re-export</button>
+          <div style={{ ...card, background: '#0d1a13', border: '1px solid #1a4a35' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <div style={{ fontSize: 22 }}>✅</div>
+              <div style={{ fontWeight: 700, color: '#34d399', fontSize: 14 }}>Saved to Google Drive</div>
             </div>
+            <div style={{ fontSize: 11, color: '#34d399', background: '#0a1f13', border: '1px solid #1a4a35', borderRadius: 8, padding: '7px 12px', marginBottom: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{driveUrl}</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <a href={driveUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#1a4a35', color: '#34d399', borderRadius: 8, fontWeight: 700, fontSize: 12, textDecoration: 'none', border: '1px solid #2a6b4a' }}><ExternalLink size={12} /> Open in Google Docs</a>
+              <button onClick={sendToDrive} disabled={exporting} style={{ padding: '8px 14px', background: 'transparent', color: '#6b7280', borderRadius: 8, fontSize: 12, border: '1px solid #2a2d3a', cursor: 'pointer' }}>Re-export</button>
+              <button onClick={() => { setShowManualLink(true); setManualLinkValue(driveUrl ?? '') }} style={{ padding: '8px 14px', background: 'transparent', color: '#6b7280', borderRadius: 8, fontSize: 12, border: '1px solid #2a2d3a', cursor: 'pointer' }}>Replace link</button>
+            </div>
+            {showManualLink && (
+              <div style={{ marginTop: 12, padding: '12px', background: '#0d1117', border: '1px solid #2a2d3a', borderRadius: 8 }}>
+                <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 8 }}>Paste a Google Docs or Drive URL:</div>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                  <input value={manualLinkValue} onChange={e => { setManualLinkValue(e.target.value); setManualLinkError('') }} onKeyDown={e => { if (e.key === 'Enter') saveManualDriveLink() }} placeholder="https://docs.google.com/document/d/..." style={{ ...inp, flex: 1, fontSize: 12 }} />
+                  <button onClick={saveManualDriveLink} disabled={manualLinkSaving || !manualLinkValue.trim()} style={{ padding: '8px 14px', background: '#059669', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{manualLinkSaving ? 'Saving…' : 'Save'}</button>
+                  <button onClick={() => { setShowManualLink(false); setManualLinkError('') }} style={{ padding: '8px 12px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>Cancel</button>
+                </div>
+                {manualLinkError && <div style={{ fontSize: 11, color: '#f87171' }}>{manualLinkError}</div>}
+              </div>
+            )}
           </div>
         ) : (
           <div style={card}>
@@ -728,6 +770,24 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
                 </button>
               </div>
             )}
+            {/* Manual link entry */}
+            <div style={{ marginTop: 12, borderTop: '1px solid #1e2130', paddingTop: 12 }}>
+              {!showManualLink ? (
+                <button onClick={() => setShowManualLink(true)} style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: 11, cursor: 'pointer', padding: 0, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                  Already have a doc? Paste the link manually
+                </button>
+              ) : (
+                <div>
+                  <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 8 }}>Paste a Google Docs or Drive URL:</div>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                    <input value={manualLinkValue} onChange={e => { setManualLinkValue(e.target.value); setManualLinkError('') }} onKeyDown={e => { if (e.key === 'Enter') saveManualDriveLink() }} placeholder="https://docs.google.com/document/d/..." style={{ ...inp, flex: 1, fontSize: 12 }} />
+                    <button onClick={saveManualDriveLink} disabled={manualLinkSaving || !manualLinkValue.trim()} style={{ padding: '8px 14px', background: '#059669', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, opacity: (!manualLinkValue.trim() || manualLinkSaving) ? 0.6 : 1 }}>{manualLinkSaving ? 'Saving…' : 'Save'}</button>
+                    <button onClick={() => { setShowManualLink(false); setManualLinkError('') }} style={{ padding: '8px 12px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>Cancel</button>
+                  </div>
+                  {manualLinkError && <div style={{ fontSize: 11, color: '#f87171' }}>{manualLinkError}</div>}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

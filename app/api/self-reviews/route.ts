@@ -115,3 +115,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }
+
+// PATCH — update specific fields (e.g. drive_url added manually)
+export async function PATCH(req: NextRequest) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const body = await req.json() as Record<string, unknown>
+    const serviceClient = await createServiceClient()
+
+    // Only allow patching safe fields — never status or content via this route
+    const allowed = ['drive_url', 'drive_doc_id']
+    const patch: Record<string, unknown> = {}
+    for (const key of allowed) {
+      if (key in body) patch[key] = body[key]
+    }
+    if (Object.keys(patch).length === 0) {
+      return NextResponse.json({ error: 'No patchable fields provided' }, { status: 400 })
+    }
+
+    const { error } = await serviceClient
+      .from('self_reviews')
+      .update(patch)
+      .eq('employee_id', user.id)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 })
+  }
+}
