@@ -532,46 +532,23 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
       return (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ padding: '3px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: cfg.accent + '20', color: cfg.accent, border: `1px solid ${cfg.accent}40` }}>{cfg.sublabel}</span>
-              <span style={{ fontSize: 12, color: '#6b7280' }}>Select a competency and provide 1–3 specific examples.</span>
+              {/* Type pills — Competency 5 only */}
+              {ci === 4 && (['positive', 'constructive'] as const).map(t => {
+                const isSelected = comp?.type === t
+                const color = t === 'positive' ? '#10b981' : '#f97316'
+                return (
+                  <button key={t} onClick={() => !isSubmitted && updateComp(ci, 'type', t)} disabled={isSubmitted}
+                    style={{ padding: '3px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, border: `1px solid ${isSelected ? color : '#2a2d3a'}`, background: isSelected ? color + '20' : 'transparent', color: isSelected ? color : '#4b5563', cursor: isSubmitted ? 'default' : 'pointer', transition: 'all 0.15s' }}>
+                    {t === 'positive' ? 'Positive' : 'Constructive'}
+                  </button>
+                )
+              })}
+              {ci !== 4 && <span style={{ fontSize: 12, color: '#6b7280' }}>Select a competency and provide 1–3 specific examples.</span>}
             </div>
             <button onClick={() => setPage('glossary')} style={{ fontSize: 11, color: '#818cf8', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', flexShrink: 0 }}>Browse Glossary →</button>
           </div>
-          {/* Type selector — Competency 5 only */}
-          {ci === 4 && (
-            <div style={{ ...card, borderLeft: '3px solid #818cf8', marginBottom: 12 }}>
-              <div style={lbl}>Competency Type</div>
-              <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
-                Choose whether this competency reflects a strength or an area for growth.
-              </p>
-              <div style={{ display: 'flex', gap: 10 }}>
-                {(['positive', 'constructive'] as const).map(t => {
-                  const selected = (comp?.type === t) || (comp?.type === 'choice' && t === 'positive' && !comp?.type)
-                  const isSelected = comp?.type === t
-                  const color = t === 'positive' ? '#10b981' : '#f97316'
-                  return (
-                    <button
-                      key={t}
-                      onClick={() => !isSubmitted && updateComp(ci, 'type', t)}
-                      disabled={isSubmitted}
-                      style={{
-                        flex: 1, padding: '10px 14px', borderRadius: 10, border: `2px solid ${isSelected ? color : '#2a2d3a'}`,
-                        background: isSelected ? color + '15' : 'transparent',
-                        color: isSelected ? color : '#6b7280',
-                        cursor: isSubmitted ? 'default' : 'pointer',
-                        fontWeight: 600, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <span style={{ fontSize: 14 }}>{t === 'positive' ? '✦' : '◈'}</span>
-                      {t === 'positive' ? 'Positive' : 'Constructive'}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
           {/* Resolve accent for C5 based on selected type */}
           {(() => {
             const resolvedAccent = ci === 4
