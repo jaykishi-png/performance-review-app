@@ -168,6 +168,12 @@ function isStepComplete(stepIdx: number, r: SelfReview): boolean {
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
+type ActiveCycle = {
+  id: string; phase: string; sa_open_at: string; sa_close_at: string
+  review_open_at: string; review_close_at: string; meeting_open_at: string; meeting_close_at: string
+  trigger_date: string; anniversary_year: number
+} | null
+
 type Props = {
   profile: Profile
   position?: string | null
@@ -175,11 +181,13 @@ type Props = {
   initialSelfReview: Partial<SelfReview> | null
   initialDriveUrl?: string | null
   selfReviewId?: string | null
+  activeCycle?: ActiveCycle
+  unreadCount?: number
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function EmployeePortal({ profile, position, manager, initialSelfReview, initialDriveUrl, selfReviewId }: Props) {
+export default function EmployeePortal({ profile, position, manager, initialSelfReview, initialDriveUrl, selfReviewId, activeCycle = null, unreadCount = 0 }: Props) {
   const router = useRouter()
   const [page, setPage] = useState<Page>('self-assessment')
   const [collapsed, setCollapsed] = useState(false)
@@ -329,11 +337,29 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   }
 
   const isSubmitted = review.status === 'submitted'
+  const saWindowOpen = activeCycle?.phase === 'sa_open'
+  const saLocked = !isSubmitted && !saWindowOpen
+
+  // DB notifications state
+  const [cycleNotifs, setCycleNotifs] = useState<{ id: string; type: string; title: string; body: string; created_at: string }[]>([])
+  useEffect(() => {
+    fetch('/api/notifications')
+      .then(r => r.json())
+      .then(d => { if (d.notifications) setCycleNotifs(d.notifications) })
+      .catch(() => {})
+  }, [])
+
+  async function markAllNotifsRead() {
+    await fetch('/api/notifications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+    setCycleNotifs(ns => ns.map(n => ({ ...n, read_at: new Date().toISOString() })))
+  }
+
+  const totalUnread = unreadCount + cycleNotifs.filter(n => !(n as {read_at?: string}).read_at).length
 
   // Auto-save debounce
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   useEffect(() => {
-    if (isSubmitted) return
+    if (isSubmitted || saLocked) return
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => saveDraft(), 1800)
     return () => clearTimeout(saveTimer.current)
@@ -1228,46 +1254,67 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   }
 
   // ── Notification Bell ─────────────────────────────────────────────────────
+  const CYCLE_NOTIF_COLORS: Record<string, string> = {
+    sa_open: '#818cf8', sa_submitted: '#34d399', review_open: '#f59e0b',
+    review_exported: '#34d399', meeting: '#60a5fa', signed: '#f472b6', complete: '#34d399',
+  }
+
   function NotificationBell() {
+    const allNotifs = totalUnread > 0 || cycleNotifs.length > 0
     return (
       <div style={{ position: 'relative' }}>
-        <button onClick={() => setShowNotifications(n => !n)}
+        <button onClick={() => { setShowNotifications(n => !n); if (!showNotifications) markAllNotifsRead() }}
           style={{ position: 'relative', width: 34, height: 34, borderRadius: 8, background: showNotifications ? '#1e1f3a' : 'transparent', border: '1px solid transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}
           onMouseEnter={e => { e.currentTarget.style.background = '#13151f'; e.currentTarget.style.borderColor = '#2a2d3a' }}
           onMouseLeave={e => { if (!showNotifications) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' } }}>
           <Bell size={16} />
-          {notifications.length > 0 && (
-            <span style={{ position: 'absolute', top: 5, right: 5, width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', border: '1.5px solid #0d0f1a' }} />
+          {(totalUnread > 0 || notifications.length > 0) && (
+            <span style={{ position: 'absolute', top: 4, right: 4, minWidth: 14, height: 14, borderRadius: 7, background: '#f59e0b', border: '1.5px solid #0d0f1a', fontSize: 8, fontWeight: 700, color: '#0d0f1a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
+              {totalUnread + notifications.length || ''}
+            </span>
           )}
         </button>
         {showNotifications && (
           <>
             <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setShowNotifications(false)} />
-            <div style={{ position: 'absolute', right: 0, top: 40, width: 320, background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, zIndex: 50, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
-              <div style={{ padding: '12px 16px', borderBottom: '1px solid #1e2130', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ position: 'absolute', right: 0, top: 40, width: 340, background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, zIndex: 50, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', maxHeight: 420, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid #1e2130', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: '#e5e7eb' }}>Notifications</span>
-                {notifications.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#f59e0b20', color: '#f59e0b', padding: '1px 6px', borderRadius: 10 }}>{notifications.length}</span>}
+                {allNotifs && <span style={{ fontSize: 10, fontWeight: 700, background: '#f59e0b20', color: '#f59e0b', padding: '1px 6px', borderRadius: 10 }}>{totalUnread + notifications.length}</span>}
               </div>
-              {notifications.length === 0 ? (
-                <div style={{ padding: '24px 16px', textAlign: 'center', color: '#4b5563', fontSize: 13 }}>
-                  <div style={{ fontSize: 24, marginBottom: 6 }}>🔔</div>
-                  All caught up!
-                </div>
-              ) : (
-                notifications.map(n => (
-                  <div key={n.id} onClick={() => { if (n.action) { n.action(); setShowNotifications(false) } }}
-                    style={{ padding: '12px 16px', borderBottom: '1px solid #1e2130', cursor: n.action ? 'pointer' : 'default', display: 'flex', gap: 12, alignItems: 'flex-start' }}
-                    onMouseEnter={e => { if (n.action) e.currentTarget.style.background = '#0d1117' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: n.color, flexShrink: 0, marginTop: 4 }} />
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', marginBottom: 2 }}>{n.label}</div>
-                      <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>{n.detail}</div>
-                      {n.action && <div style={{ fontSize: 11, color: n.color, marginTop: 4, fontWeight: 600 }}>View →</div>}
+              <div style={{ overflowY: 'auto', flex: 1 }}>
+                {/* DB cycle notifications */}
+                {cycleNotifs.map(n => (
+                  <div key={n.id} style={{ padding: '11px 16px', borderBottom: '1px solid #1e2130', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: CYCLE_NOTIF_COLORS[n.type] ?? '#818cf8', flexShrink: 0, marginTop: 4 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 2 }}>{n.title}</div>
+                      <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>{n.body}</div>
+                      <div style={{ fontSize: 10, color: '#374151', marginTop: 3 }}>{new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
                     </div>
                   </div>
-                ))
-              )}
+                ))}
+                {/* UI-computed notifications */}
+                {notifications.map(n => (
+                  <div key={n.id} onClick={() => { if (n.action) { n.action(); setShowNotifications(false) } }}
+                    style={{ padding: '11px 16px', borderBottom: '1px solid #1e2130', cursor: n.action ? 'pointer' : 'default', display: 'flex', gap: 10, alignItems: 'flex-start' }}
+                    onMouseEnter={e => { if (n.action) e.currentTarget.style.background = '#0d1117' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: n.color, flexShrink: 0, marginTop: 4 }} />
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 2 }}>{n.label}</div>
+                      <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>{n.detail}</div>
+                      {n.action && <div style={{ fontSize: 10, color: n.color, marginTop: 3, fontWeight: 600 }}>View →</div>}
+                    </div>
+                  </div>
+                ))}
+                {!allNotifs && notifications.length === 0 && (
+                  <div style={{ padding: '28px 16px', textAlign: 'center', color: '#4b5563', fontSize: 13 }}>
+                    <div style={{ fontSize: 24, marginBottom: 6 }}>🔔</div>
+                    All caught up!
+                  </div>
+                )}
+              </div>
             </div>
           </>
         )}
@@ -1390,7 +1437,11 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           <>
             {/* Manager strip */}
             <div style={{ height: 40, background: '#0d0f1a', borderBottom: '1px solid #1e2130', padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#f0f2fa' }}>Self Assessment</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#f0f2fa' }}>Self Assessment</span>
+                {saLocked && <span style={{ fontSize: 10, color: '#6b7280', background: '#1e2130', border: '1px solid #2a2d3a', borderRadius: 20, padding: '1px 8px' }}>🔒 Closed</span>}
+                {saWindowOpen && <span style={{ fontSize: 10, color: '#34d399', background: '#0d1a13', border: '1px solid #1a4a35', borderRadius: 20, padding: '1px 8px' }}>● Open</span>}
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 11, color: '#4b5563' }}>Supervisor:</span>
                 <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff' }}>
@@ -1400,10 +1451,12 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                 <NotificationBell />
               </div>
             </div>
-            {renderStepTabs()}
-            <div style={{ height: 3, background: '#1e2130', flexShrink: 0 }}>
-              <div style={{ height: '100%', background: 'linear-gradient(90deg, #4f46e5, #7c3aed)', width: `${(step / (SA_STEPS.length - 1)) * 100}%`, transition: 'width 0.3s ease' }} />
-            </div>
+            {!saLocked && renderStepTabs()}
+            {!saLocked && (
+              <div style={{ height: 3, background: '#1e2130', flexShrink: 0 }}>
+                <div style={{ height: '100%', background: 'linear-gradient(90deg, #4f46e5, #7c3aed)', width: `${(step / (SA_STEPS.length - 1)) * 100}%`, transition: 'width 0.3s ease' }} />
+              </div>
+            )}
           </>
         )}
 
@@ -1418,7 +1471,52 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
 
         {/* Content */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          {page === 'self-assessment' && (
+          {page === 'self-assessment' && saLocked && (
+            <div style={{ padding: '48px 32px', maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
+              <div style={{ fontSize: 40, marginBottom: 16 }}>🔒</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#f0f2fa', marginBottom: 8 }}>Self-Assessment is Closed</div>
+              <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.7, marginBottom: 28, maxWidth: 420, margin: '0 auto 28px' }}>
+                Your self-assessment will become editable when your annual review cycle opens — approximately 30 days before your work anniversary.
+              </p>
+              {activeCycle && activeCycle.phase !== 'sa_open' && (
+                <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', textAlign: 'left', maxWidth: 420, margin: '0 auto 20px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Your {activeCycle.anniversary_year} Review Cycle</div>
+                  {[
+                    { label: 'Self-Assessment', open: activeCycle.sa_open_at, close: activeCycle.sa_close_at, phase: 'sa_open' },
+                    { label: 'Manager Review', open: activeCycle.review_open_at, close: activeCycle.review_close_at, phase: 'review_open' },
+                    { label: '1-on-1 Meeting', open: activeCycle.meeting_open_at, close: activeCycle.meeting_close_at, phase: 'meeting' },
+                  ].map(w => {
+                    const isPast = new Date(w.close) < new Date()
+                    const isCurrent = activeCycle.phase === w.phase
+                    return (
+                      <div key={w.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #1e2130' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {isCurrent && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34d399', boxShadow: '0 0 4px #34d399', flexShrink: 0 }} />}
+                          <span style={{ fontSize: 12, color: isCurrent ? '#f0f2fa' : isPast ? '#4b5563' : '#9ca3af', fontWeight: isCurrent ? 600 : 400 }}>{w.label}</span>
+                        </div>
+                        <span style={{ fontSize: 11, color: '#4b5563' }}>
+                          {new Date(w.open).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(w.close).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                      </div>
+                    )
+                  })}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10 }}>
+                    <span style={{ fontSize: 12, color: '#6b7280' }}>Work Anniversary</span>
+                    <span style={{ fontSize: 12, color: '#c4c9d4', fontWeight: 600 }}>
+                      {new Date(activeCycle.trigger_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {!activeCycle && (
+                <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 10, padding: '14px 18px', fontSize: 13, color: '#4b5563', maxWidth: 420, margin: '0 auto' }}>
+                  No active review cycle found. Your manager or admin will be notified when your anniversary is approaching.
+                </div>
+              )}
+            </div>
+          )}
+
+          {page === 'self-assessment' && !saLocked && (
             <div style={{ padding: '24px 32px', maxWidth: 720, margin: '0 auto' }}>
               {renderSAStep()}
             </div>
@@ -1431,7 +1529,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         </div>
 
         {/* Self Assessment bottom nav */}
-        {page === 'self-assessment' && (
+        {page === 'self-assessment' && !saLocked && (
           <div style={{ height: 60, background: '#0d0f1a', borderTop: '1px solid #1e2130', padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
             <button onClick={() => goStep(step - 1)} disabled={step === 0}
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', background: 'transparent', color: step > 0 ? '#9ca3af' : '#374151', border: `1px solid ${step > 0 ? '#2a2d3a' : '#1e2130'}`, borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: step > 0 ? 'pointer' : 'default' }}>

@@ -31,6 +31,15 @@ type CycleRecord = {
   created_by: string | null; published_at: string | null; closed_at: string | null
   created_at: string; updated_at: string
 }
+type EmployeeCycleRecord = {
+  id: string; employee_id: string; anniversary_year: number; phase: string
+  trigger_date: string; sa_open_at: string; sa_close_at: string
+  review_open_at: string; review_close_at: string; meeting_open_at: string; meeting_close_at: string
+  sa_submitted_at: string | null; review_exported_at: string | null
+  manager_signed_at: string | null; employee_signed_at: string | null
+  admin_confirmed_at: string | null; confirmed_by: string | null
+  created_at: string; updated_at: string
+}
 
 type Props = {
   currentUser: { id: string; email: string; role: 'admin' | 'dev_admin' }
@@ -39,6 +48,7 @@ type Props = {
   selfAssessments: SelfAssessmentStatus[]
   reviews: ReviewRecord[]
   cycles: CycleRecord[]
+  employeeCycles: EmployeeCycleRecord[]
 }
 
 type Page = 'dashboard' | 'users' | 'reviews' | 'cycles' | 'analytics' | 'audit' | 'settings'
@@ -105,7 +115,7 @@ const STATUS_META = {
   not_started: { label: 'Not Started', color: '#6b7280', bg: '#13151f', border: '#2a2d3a' },
 }
 
-export default function AdminDashboard({ currentUser, users, invites, selfAssessments, reviews, cycles }: Props) {
+export default function AdminDashboard({ currentUser, users, invites, selfAssessments, reviews, cycles, employeeCycles }: Props) {
   const router = useRouter()
   const isDevAdmin = currentUser.role === 'dev_admin'
 
@@ -159,6 +169,15 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [cycleReviewClose, setCycleReviewClose] = useState('')
   const [cycleLoading, setCycleLoading] = useState(false)
   const [cycleDeleteConfirm, setCycleDeleteConfirm] = useState<string | null>(null)
+
+  const [cyclesTab, setCyclesTab] = useState<'manual' | 'employee'>('manual')
+  const [confirmingCycle, setConfirmingCycle] = useState<string | null>(null)
+
+  async function confirmEmployeeCycleComplete(id: string) {
+    await fetch('/api/admin/employee-cycles', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    setConfirmingCycle(null)
+    router.refresh()
+  }
 
   function openNewCycle() {
     setEditingCycle(null)
@@ -808,6 +827,15 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     closed: { label: 'Closed', color: '#6b7280', bg: '#13151f', border: '#1e2130' },
   }
 
+  const EMP_PHASE_META: Record<string, { label: string; color: string; bg: string; border: string; step: number }> = {
+    pending:         { label: 'Pending',        color: '#6b7280', bg: '#13151f', border: '#2a2d3a', step: 0 },
+    sa_open:         { label: 'SA Open',         color: '#818cf8', bg: '#13151f', border: 'rgba(129,140,248,0.3)', step: 1 },
+    review_open:     { label: 'Review Open',     color: '#f59e0b', bg: '#1f1a0d', border: '#92400e', step: 2 },
+    meeting:         { label: 'Meeting',         color: '#60a5fa', bg: '#0d1625', border: '#1e3a5f', step: 3 },
+    signed:          { label: 'Awaiting Admin',  color: '#f472b6', bg: '#1a0d1a', border: '#5c1a5c', step: 4 },
+    complete:        { label: 'Complete',        color: '#34d399', bg: '#0d1a13', border: '#1a4a35', step: 5 },
+  }
+
   function renderCycles() {
     const draftCount  = cycles.filter(c => c.status === 'draft').length
     const activeCount = cycles.filter(c => c.status === 'active').length
@@ -823,158 +851,257 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
       if (open) return `Opens ${fmtDate(open)}`
       return `Closes ${fmtDate(close)}`
     }
+    function fmtTS(iso: string | null) {
+      if (!iso) return '—'
+      return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    }
+
+    const pendingConfirmCount = employeeCycles.filter(c => c.phase === 'signed' && !c.admin_confirmed_at).length
 
     return (
-      <div style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div style={{ padding: '28px 32px', maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
             <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Review Cycles</h1>
-            <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Define and manage organization-wide review windows.</p>
+            <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Manage manual cycles and track per-employee anniversary reviews.</p>
           </div>
-          <button onClick={openNewCycle}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
-            <Plus size={14} /> New Cycle
-          </button>
+          {cyclesTab === 'manual' && (
+            <button onClick={openNewCycle}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+              <Plus size={14} /> New Cycle
+            </button>
+          )}
         </div>
 
-        {/* Stats strip */}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-          {[
-            { title: 'Draft',  value: draftCount,  ...CYCLE_STATUS_META.draft  },
-            { title: 'Active', value: activeCount, ...CYCLE_STATUS_META.active },
-            { title: 'Closed', value: closedCount, ...CYCLE_STATUS_META.closed },
-            { title: 'Total',  value: cycles.length, color: '#f0f2fa', bg: '#13151f', border: '#1e2130' },
-          ].map(s => (
-            <div key={s.title} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10, padding: '12px 18px', minWidth: 80 }}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{s.title}</div>
-            </div>
+        {/* Tab toggle */}
+        <div style={{ display: 'flex', gap: 4, background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 10, padding: 4, width: 'fit-content', marginBottom: 24 }}>
+          {([['manual', 'Manual Cycles'], ['employee', 'Employee Cycles']] as const).map(([tab, label]) => (
+            <button key={tab} onClick={() => setCyclesTab(tab)}
+              style={{ padding: '6px 16px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, background: cyclesTab === tab ? '#1e2130' : 'transparent', color: cyclesTab === tab ? '#f0f2fa' : '#6b7280', display: 'flex', alignItems: 'center', gap: 6 }}>
+              {label}
+              {tab === 'employee' && pendingConfirmCount > 0 && (
+                <span style={{ background: '#f472b6', color: '#0d0f1a', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{pendingConfirmCount}</span>
+              )}
+            </button>
           ))}
         </div>
 
-        {/* Empty state */}
-        {cycles.length === 0 && (
-          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '60px 32px', textAlign: 'center' }}>
-            <div style={{ fontSize: 40, marginBottom: 14 }}>🔄</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>No review cycles yet</div>
-            <p style={{ fontSize: 13, color: '#4b5563', maxWidth: 400, margin: '0 auto 20px', lineHeight: 1.7 }}>
-              Create a named cycle like &quot;2025 Annual Review&quot; to define windows for self-assessments and manager reviews.
-            </p>
-            <button onClick={openNewCycle}
-              style={{ padding: '9px 20px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              + Create First Cycle
-            </button>
-          </div>
+        {/* ── MANUAL CYCLES TAB ── */}
+        {cyclesTab === 'manual' && (
+          <>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+              {[
+                { title: 'Draft',  value: draftCount,  ...CYCLE_STATUS_META.draft  },
+                { title: 'Active', value: activeCount, ...CYCLE_STATUS_META.active },
+                { title: 'Closed', value: closedCount, ...CYCLE_STATUS_META.closed },
+                { title: 'Total',  value: cycles.length, color: '#f0f2fa', bg: '#13151f', border: '#1e2130' },
+              ].map(s => (
+                <div key={s.title} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10, padding: '12px 18px', minWidth: 80 }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.value}</div>
+                  <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{s.title}</div>
+                </div>
+              ))}
+            </div>
+
+            {cycles.length === 0 ? (
+              <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '60px 32px', textAlign: 'center' }}>
+                <div style={{ fontSize: 40, marginBottom: 14 }}>🔄</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>No manual cycles yet</div>
+                <p style={{ fontSize: 13, color: '#4b5563', maxWidth: 400, margin: '0 auto 20px', lineHeight: 1.7 }}>
+                  Create a named cycle like &quot;2025 Annual Review&quot; to define org-wide review windows.
+                </p>
+                <button onClick={openNewCycle} style={{ padding: '9px 20px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  + Create First Cycle
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {cycles.map(cycle => {
+                  const sm = CYCLE_STATUS_META[cycle.status]
+                  const stats = cycleCompletionStats(cycle)
+                  const saPercent = stats.totalEmployees > 0 ? Math.round((stats.saCount / stats.totalEmployees) * 100) : 0
+                  const revPercent = stats.totalEmployees > 0 ? Math.round((stats.reviewCount / stats.totalEmployees) * 100) : 0
+                  const isDeleting = cycleDeleteConfirm === cycle.id
+                  return (
+                    <div key={cycle.id} style={{ background: '#13151f', border: `1px solid ${cycle.status === 'active' ? '#1a4a35' : '#1e2130'}`, borderRadius: 12, padding: '20px 24px' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+                            {cycle.status === 'active' && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#34d399', display: 'inline-block', boxShadow: '0 0 6px #34d399' }} />}
+                            <span style={{ fontSize: 15, fontWeight: 700, color: '#f0f2fa' }}>{cycle.name}</span>
+                            <span style={{ padding: '2px 9px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>{sm.label.toUpperCase()}</span>
+                            {cycle.published_at && <span style={{ fontSize: 11, color: '#4b5563' }}>Published {fmtDate(cycle.published_at.split('T')[0])}</span>}
+                            {cycle.closed_at && <span style={{ fontSize: 11, color: '#4b5563' }}>Closed {fmtDate(cycle.closed_at.split('T')[0])}</span>}
+                          </div>
+                          {cycle.description && <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6b7280', lineHeight: 1.5 }}>{cycle.description}</p>}
+                          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                            <div style={{ background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '8px 14px', minWidth: 200 }}>
+                              <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Self-Assessment Window</div>
+                              <div style={{ fontSize: 12, color: '#c4c9d4' }}>{fmtDateRange(cycle.sa_open, cycle.sa_close)}</div>
+                            </div>
+                            <div style={{ background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '8px 14px', minWidth: 200 }}>
+                              <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Manager Review Window</div>
+                              <div style={{ fontSize: 12, color: '#c4c9d4' }}>{fmtDateRange(cycle.review_open, cycle.review_close)}</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
+                          <div style={{ display: 'flex', gap: 10 }}>
+                            {[
+                              { label: 'SAs Submitted', count: stats.saCount, total: stats.totalEmployees, pct: saPercent, color: '#818cf8' },
+                              { label: 'Reviews Exported', count: stats.reviewCount, total: stats.totalEmployees, pct: revPercent, color: '#34d399' },
+                            ].map(s => (
+                              <div key={s.label} style={{ background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '8px 12px', textAlign: 'center', minWidth: 100 }}>
+                                <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 5 }}>{s.label}</div>
+                                <div style={{ fontSize: 15, fontWeight: 700, color: s.color, marginBottom: 4 }}>{s.count}<span style={{ fontSize: 10, color: '#4b5563', fontWeight: 400 }}>/{s.total}</span></div>
+                                <div style={{ width: '100%', height: 3, background: '#1e2130', borderRadius: 2, overflow: 'hidden' }}>
+                                  <div style={{ height: '100%', width: `${s.pct}%`, background: s.color, borderRadius: 2 }} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          {isDeleting ? (
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                              <span style={{ fontSize: 11, color: '#f87171' }}>Delete?</span>
+                              <button onClick={() => deleteCycle(cycle.id)} style={{ padding: '4px 10px', fontSize: 11, background: '#5c2020', color: '#f87171', border: '1px solid #7c2020', borderRadius: 5, cursor: 'pointer' }}>Yes</button>
+                              <button onClick={() => setCycleDeleteConfirm(null)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 5, cursor: 'pointer' }}>No</button>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              {cycle.status === 'draft' && <>
+                                <button onClick={() => openEditCycle(cycle)} style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: '#9ca3af', border: '1px solid #2a2d3e', borderRadius: 6, cursor: 'pointer' }}>Edit</button>
+                                <button onClick={() => cycleAction(cycle.id, 'publish')} style={{ padding: '5px 12px', fontSize: 11, background: '#0d2b1f', color: '#34d399', border: '1px solid #1a4a35', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>▶ Publish</button>
+                                <button onClick={() => setCycleDeleteConfirm(cycle.id)} style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 6, cursor: 'pointer' }}>Delete</button>
+                              </>}
+                              {cycle.status === 'active' && <>
+                                <button onClick={() => openEditCycle(cycle)} style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: '#9ca3af', border: '1px solid #2a2d3e', borderRadius: 6, cursor: 'pointer' }}>Edit</button>
+                                <button onClick={() => cycleAction(cycle.id, 'close')} style={{ padding: '5px 12px', fontSize: 11, background: '#1f1c0d', color: '#f59e0b', border: '1px solid #92400e', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>■ Close</button>
+                              </>}
+                              {cycle.status === 'closed' && <button onClick={() => cycleAction(cycle.id, 'reopen')} style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3e', borderRadius: 6, cursor: 'pointer' }}>Reopen</button>}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </>
         )}
 
-        {/* Cycle cards */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {cycles.map(cycle => {
-            const sm = CYCLE_STATUS_META[cycle.status]
-            const stats = cycleCompletionStats(cycle)
-            const saPercent = stats.totalEmployees > 0 ? Math.round((stats.saCount / stats.totalEmployees) * 100) : 0
-            const revPercent = stats.totalEmployees > 0 ? Math.round((stats.reviewCount / stats.totalEmployees) * 100) : 0
-            const isDeleting = cycleDeleteConfirm === cycle.id
-
-            return (
-              <div key={cycle.id} style={{ background: '#13151f', border: `1px solid ${cycle.status === 'active' ? '#1a4a35' : '#1e2130'}`, borderRadius: 12, padding: '20px 24px' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-
-                  {/* Left: meta */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
-                      {cycle.status === 'active' && (
-                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#34d399', display: 'inline-block', boxShadow: '0 0 6px #34d399' }} />
-                      )}
-                      <span style={{ fontSize: 15, fontWeight: 700, color: '#f0f2fa' }}>{cycle.name}</span>
-                      <span style={{ padding: '2px 9px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>
-                        {sm.label.toUpperCase()}
-                      </span>
-                      {cycle.published_at && (
-                        <span style={{ fontSize: 11, color: '#4b5563' }}>Published {new Date(cycle.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                      )}
-                      {cycle.closed_at && (
-                        <span style={{ fontSize: 11, color: '#4b5563' }}>Closed {new Date(cycle.closed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                      )}
-                    </div>
-                    {cycle.description && (
-                      <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6b7280', lineHeight: 1.5 }}>{cycle.description}</p>
-                    )}
-
-                    {/* Date windows */}
-                    <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-                      <div style={{ background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '8px 14px', minWidth: 220 }}>
-                        <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Self-Assessment Window</div>
-                        <div style={{ fontSize: 12, color: '#c4c9d4' }}>{fmtDateRange(cycle.sa_open, cycle.sa_close)}</div>
-                      </div>
-                      <div style={{ background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '8px 14px', minWidth: 220 }}>
-                        <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Manager Review Window</div>
-                        <div style={{ fontSize: 12, color: '#c4c9d4' }}>{fmtDateRange(cycle.review_open, cycle.review_close)}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: completion + actions */}
-                  <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
-
-                    {/* Completion */}
-                    <div style={{ display: 'flex', gap: 12 }}>
-                      {[
-                        { label: 'SAs Submitted', count: stats.saCount, total: stats.totalEmployees, pct: saPercent, color: '#818cf8' },
-                        { label: 'Reviews Exported', count: stats.reviewCount, total: stats.totalEmployees, pct: revPercent, color: '#34d399' },
-                      ].map(s => (
-                        <div key={s.label} style={{ background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '8px 14px', textAlign: 'center', minWidth: 110 }}>
-                          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>{s.label}</div>
-                          <div style={{ fontSize: 16, fontWeight: 700, color: s.color, marginBottom: 5 }}>{s.count}<span style={{ fontSize: 11, color: '#4b5563', fontWeight: 400 }}>/{s.total}</span></div>
-                          <div style={{ width: '100%', height: 4, background: '#1e2130', borderRadius: 2, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${s.pct}%`, background: s.color, borderRadius: 2, transition: 'width 0.3s' }} />
-                          </div>
-                          <div style={{ fontSize: 10, color: '#4b5563', marginTop: 3 }}>{s.pct}%</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Actions */}
-                    {isDeleting ? (
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <span style={{ fontSize: 11, color: '#f87171' }}>Delete &quot;{cycle.name}&quot;?</span>
-                        <button onClick={() => deleteCycle(cycle.id)}
-                          style={{ padding: '4px 10px', fontSize: 11, background: '#5c2020', color: '#f87171', border: '1px solid #7c2020', borderRadius: 5, cursor: 'pointer' }}>Yes</button>
-                        <button onClick={() => setCycleDeleteConfirm(null)}
-                          style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 5, cursor: 'pointer' }}>No</button>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        {cycle.status === 'draft' && (
-                          <>
-                            <button onClick={() => openEditCycle(cycle)}
-                              style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: '#9ca3af', border: '1px solid #2a2d3e', borderRadius: 6, cursor: 'pointer' }}>Edit</button>
-                            <button onClick={() => cycleAction(cycle.id, 'publish')}
-                              style={{ padding: '5px 12px', fontSize: 11, background: '#0d2b1f', color: '#34d399', border: '1px solid #1a4a35', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>▶ Publish</button>
-                            <button onClick={() => setCycleDeleteConfirm(cycle.id)}
-                              style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 6, cursor: 'pointer' }}>Delete</button>
-                          </>
-                        )}
-                        {cycle.status === 'active' && (
-                          <>
-                            <button onClick={() => openEditCycle(cycle)}
-                              style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: '#9ca3af', border: '1px solid #2a2d3e', borderRadius: 6, cursor: 'pointer' }}>Edit</button>
-                            <button onClick={() => cycleAction(cycle.id, 'close')}
-                              style={{ padding: '5px 12px', fontSize: 11, background: '#1f1c0d', color: '#f59e0b', border: '1px solid #92400e', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>■ Close Cycle</button>
-                          </>
-                        )}
-                        {cycle.status === 'closed' && (
-                          <button onClick={() => cycleAction(cycle.id, 'reopen')}
-                            style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3e', borderRadius: 6, cursor: 'pointer' }}>Reopen</button>
-                        )}
-                      </div>
-                    )}
-                  </div>
+        {/* ── EMPLOYEE CYCLES TAB ── */}
+        {cyclesTab === 'employee' && (
+          <>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+              {[
+                { title: 'Active',          value: employeeCycles.filter(c => !['complete','pending'].includes(c.phase)).length, color: '#34d399', bg: '#0d1a13', border: '#1a4a35' },
+                { title: 'Awaiting Admin',  value: pendingConfirmCount, color: '#f472b6', bg: '#1a0d1a', border: '#5c1a5c' },
+                { title: 'Complete',        value: employeeCycles.filter(c => c.phase === 'complete').length, color: '#6b7280', bg: '#13151f', border: '#1e2130' },
+                { title: 'Total',           value: employeeCycles.length, color: '#f0f2fa', bg: '#13151f', border: '#1e2130' },
+              ].map(s => (
+                <div key={s.title} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10, padding: '12px 18px', minWidth: 100 }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.value}</div>
+                  <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{s.title}</div>
                 </div>
+              ))}
+            </div>
+
+            {employeeCycles.length === 0 ? (
+              <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '60px 32px', textAlign: 'center' }}>
+                <div style={{ fontSize: 40, marginBottom: 14 }}>📅</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>No employee cycles yet</div>
+                <p style={{ fontSize: 13, color: '#4b5563', maxWidth: 420, margin: '0 auto', lineHeight: 1.7 }}>
+                  Cycles are created automatically when an employee&apos;s anniversary is 30 days away. The daily cron job checks at 8am.
+                </p>
               </div>
-            )
-          })}
-        </div>
+            ) : (
+              <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      {['Employee', 'Manager', 'Anniversary', 'Phase', 'SA', 'Review', 'Signed', 'Actions'].map(h => (
+                        <th key={h} style={th}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {employeeCycles.map((ec, i) => {
+                      const emp = users.find(u => u.id === ec.employee_id)
+                      const mgr = emp?.manager_id ? users.find(u => u.id === emp.manager_id) : null
+                      const pm = EMP_PHASE_META[ec.phase] ?? EMP_PHASE_META.pending
+                      const PHASES = ['pending', 'sa_open', 'review_open', 'meeting', 'signed', 'complete']
+                      const stepIdx = PHASES.indexOf(ec.phase)
+                      const isConfirming = confirmingCycle === ec.id
+
+                      return (
+                        <tr key={ec.id} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(13,15,26,0.4)' }}>
+                          <td style={td}>
+                            <div style={{ fontWeight: 500, color: '#e5e7eb', fontSize: 13 }}>{emp?.name || emp?.email || '—'}</div>
+                            {emp?.position && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 1 }}>{emp.position}</div>}
+                          </td>
+                          <td style={{ ...td, color: '#9ca3af', fontSize: 12 }}>{mgr ? (mgr.name || mgr.email) : '—'}</td>
+                          <td style={td}>
+                            <div style={{ fontSize: 12, color: '#c4c9d4', fontWeight: 500 }}>
+                              {new Date(ec.trigger_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </div>
+                            <div style={{ fontSize: 10, color: '#4b5563', marginTop: 2 }}>Year {ec.anniversary_year - new Date(emp?.start_date ?? ec.trigger_date).getFullYear()}</div>
+                          </td>
+                          <td style={td}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: pm.bg, color: pm.color, border: `1px solid ${pm.border}`, width: 'fit-content' }}>{pm.label}</span>
+                              {/* Mini step dots */}
+                              <div style={{ display: 'flex', gap: 3, marginTop: 2 }}>
+                                {PHASES.slice(1).map((p, pi) => (
+                                  <div key={p} style={{ width: 6, height: 6, borderRadius: '50%', background: pi < stepIdx ? '#34d399' : pi === stepIdx - 1 ? pm.color : '#2a2d3a' }} />
+                                ))}
+                              </div>
+                            </div>
+                          </td>
+                          <td style={td}>
+                            <span style={{ fontSize: 11, color: ec.sa_submitted_at ? '#34d399' : '#4b5563' }}>
+                              {ec.sa_submitted_at ? `✓ ${fmtTS(ec.sa_submitted_at)}` : '—'}
+                            </span>
+                          </td>
+                          <td style={td}>
+                            <span style={{ fontSize: 11, color: ec.review_exported_at ? '#34d399' : '#4b5563' }}>
+                              {ec.review_exported_at ? `✓ ${fmtTS(ec.review_exported_at)}` : '—'}
+                            </span>
+                          </td>
+                          <td style={td}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              <span style={{ fontSize: 10, color: ec.manager_signed_at ? '#34d399' : '#4b5563' }}>{ec.manager_signed_at ? `✓ Mgr ${fmtTS(ec.manager_signed_at)}` : '— Manager'}</span>
+                              <span style={{ fontSize: 10, color: ec.employee_signed_at ? '#34d399' : '#4b5563' }}>{ec.employee_signed_at ? `✓ Emp ${fmtTS(ec.employee_signed_at)}` : '— Employee'}</span>
+                            </div>
+                          </td>
+                          <td style={td}>
+                            {ec.phase === 'signed' && !ec.admin_confirmed_at && (
+                              isConfirming ? (
+                                <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                                  <span style={{ fontSize: 10, color: '#f472b6' }}>Confirm?</span>
+                                  <button onClick={() => confirmEmployeeCycleComplete(ec.id)} style={{ padding: '3px 8px', fontSize: 10, background: '#3b0764', color: '#f472b6', border: '1px solid #7c2060', borderRadius: 5, cursor: 'pointer' }}>Yes</button>
+                                  <button onClick={() => setConfirmingCycle(null)} style={{ padding: '3px 8px', fontSize: 10, background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 5, cursor: 'pointer' }}>No</button>
+                                </div>
+                              ) : (
+                                <button onClick={() => setConfirmingCycle(ec.id)}
+                                  style={{ padding: '5px 10px', fontSize: 11, background: '#1a0d1a', color: '#f472b6', border: '1px solid #5c1a5c', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
+                                  ✓ Confirm Complete
+                                </button>
+                              )
+                            )}
+                            {ec.phase === 'complete' && (
+                              <span style={{ fontSize: 11, color: '#34d399' }}>✓ {fmtTS(ec.admin_confirmed_at)}</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
       </div>
     )
   }

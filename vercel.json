@@ -14,6 +14,15 @@
     },
     "app/api/performance-review/redraft-goal/route.ts": {
       "maxDuration": 30
+    },
+    "app/api/cron/anniversary-check/route.ts": {
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/anniversary-check",
+      "schedule": "0 8 * * *"
+    }
+  ]
 }
