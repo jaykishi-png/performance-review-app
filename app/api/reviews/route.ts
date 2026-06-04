@@ -18,7 +18,7 @@ export async function GET() {
     const serviceClient = createServiceClient()
 
     if (role === 'admin') {
-      const { data, error } = await serviceClient.from('reviews').select('*').order('saved_at', { ascending: false })
+      const { data, error } = await serviceClient.from('reviews').select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id').order('saved_at', { ascending: false })
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
       return NextResponse.json({ reviews: data ?? [] })
     }
@@ -35,10 +35,22 @@ export async function GET() {
       })
     }
 
-    // Manager/employee: own reviews only
+    // Employee: fetch reviews where employee_id = user.id AND manager has signed
+    if (role === 'employee') {
+      const { data, error } = await serviceClient
+        .from('reviews')
+        .select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id')
+        .eq('employee_id', user.id)
+        .not('manager_signed_at', 'is', null)
+        .order('updated_at', { ascending: false })
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ reviews: data ?? [] })
+    }
+
+    // Manager: own reviews only
     const { data, error } = await serviceClient
       .from('reviews')
-      .select('*')
+      .select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id')
       .eq('user_id', user.id)
       .order('saved_at', { ascending: false })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -75,6 +87,7 @@ export async function POST(req: NextRequest) {
       drive_doc_id: body.driveDocId ?? null,
       comparison_report: body.comparisonReport ?? null,
       updated_at: body.savedAt,
+      employee_id: body.employeeId ?? null,
     })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })

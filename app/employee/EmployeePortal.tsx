@@ -233,6 +233,22 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   const [goalSaving, setGoalSaving] = useState(false)
   // Notifications
   const [showNotifications, setShowNotifications] = useState(false)
+  const [managerReviews, setManagerReviews] = useState<Array<{
+    id: string
+    employee_name: string
+    employee_position: string
+    overall_score: number | null
+    drive_url: string | null
+    manager_signed_at: string
+    manager_signature: string
+    employee_signed_at: string | null
+    employee_signature: string | null
+    updated_at: string
+  }>>([])
+  const [signingId, setSigningId] = useState<string | null>(null)
+  const [signName, setSignName] = useState('')
+  const [signLoading, setSignLoading] = useState(false)
+  const [signError, setSignError] = useState('')
 
   // AI draft state — competency examples: key = `${compIdx}-${exIdx}`
   type CompAIState = { showPrompt: boolean; context: string; loading: boolean; error: string }
@@ -397,6 +413,37 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     setGoalsLoading(true)
     fetch('/api/goals').then(r => r.json()).then(d => { if (d.goals) setGoals(d.goals) }).finally(() => setGoalsLoading(false))
   }, [page])
+
+  // Fetch manager reviews when Reviews page opens
+  useEffect(() => {
+    if (page !== 'reviews') return
+    fetch('/api/reviews')
+      .then(r => r.json())
+      .then(data => { if (data.reviews) setManagerReviews(data.reviews) })
+      .catch(() => {})
+  }, [page])
+
+  async function handleEmployeeSign(reviewId: string) {
+    if (!signName.trim()) return
+    setSignLoading(true)
+    setSignError('')
+    try {
+      const res = await fetch('/api/reviews/employee-sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewId, employeeSignature: signName.trim() }),
+      })
+      const data = await res.json() as { ok?: boolean; signedAt?: string; error?: string }
+      if (!res.ok) throw new Error(data.error ?? 'Failed')
+      setManagerReviews(prev => prev.map(r => r.id === reviewId ? { ...r, employee_signed_at: data.signedAt ?? new Date().toISOString(), employee_signature: signName.trim() } : r))
+      setSigningId(null)
+      setSignName('')
+    } catch (e) {
+      setSignError(String(e))
+    } finally {
+      setSignLoading(false)
+    }
+  }
 
   async function createGoal() {
     if (!goalForm.title.trim()) return
@@ -850,11 +897,58 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         )}
 
         <div style={{ fontWeight: 600, fontSize: 11, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '24px 0 10px' }}>Manager Performance Reviews</div>
-        <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '32px' }}>
-          <div style={{ fontSize: 32, marginBottom: 10 }}>📄</div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>Coming soon</div>
-          <p style={{ margin: 0, fontSize: 12, color: '#4b5563', lineHeight: 1.6 }}>When your manager completes and shares your annual performance review, it will appear here with your rating and Drive link.</p>
-        </div>
+        {managerReviews.length === 0 ? (
+          <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '32px' }}>
+            <div style={{ fontSize: 32, marginBottom: 10 }}>📄</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>No reviews yet</div>
+            <p style={{ margin: 0, fontSize: 12, color: '#4b5563', lineHeight: 1.6 }}>When your manager completes and signs your performance review, it will appear here.</p>
+          </div>
+        ) : managerReviews.map(r => (
+          <div key={r.id} style={{ ...card, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#e5e7eb', marginBottom: 4 }}>{new Date(r.manager_signed_at).getFullYear()} Performance Review</div>
+                {r.employee_position && <div style={{ fontSize: 12, color: '#6b7280' }}>{r.employee_position}</div>}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                {r.drive_url && <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}><ExternalLink size={12} /> Drive</a>}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>
+                <span style={{ color: '#4b5563' }}>Manager signed: </span>
+                <span style={{ color: '#34d399' }}>✓ {r.manager_signature} · {new Date(r.manager_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              </div>
+              {r.employee_signed_at ? (
+                <div style={{ fontSize: 12, color: '#6b7280' }}>
+                  <span style={{ color: '#4b5563' }}>Your signature: </span>
+                  <span style={{ color: '#34d399' }}>✓ {r.employee_signature} · {new Date(r.employee_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                </div>
+              ) : (
+                <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: '#1f1a0d', color: '#f59e0b', border: '1px solid #92400e' }}>Awaiting your signature</span>
+              )}
+            </div>
+            {!r.employee_signed_at && (
+              signingId === r.id ? (
+                <div style={{ background: '#0a0c14', border: '1px solid #2a2d3a', borderRadius: 10, padding: '16px' }}>
+                  <p style={{ margin: '0 0 10px', fontSize: 13, color: '#9ca3af' }}>By signing, you acknowledge that you have reviewed this performance evaluation and discussed it with your manager.</p>
+                  <input value={signName} onChange={e => setSignName(e.target.value)} placeholder="Type your full name to sign" style={{ width: '100%', background: '#0d0f1a', border: '1px solid #2a2d3a', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: '#e5e7eb', outline: 'none', boxSizing: 'border-box', marginBottom: 10 }} />
+                  {signError && <p style={{ margin: '0 0 8px', fontSize: 12, color: '#f87171' }}>{signError}</p>}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => { setSigningId(null); setSignName(''); setSignError('') }} style={{ flex: 1, padding: '9px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={() => handleEmployeeSign(r.id)} disabled={!signName.trim() || signLoading} style={{ flex: 2, padding: '9px', background: signName.trim() && !signLoading ? 'linear-gradient(135deg,#4f46e5,#7c3aed)' : '#1e2130', color: signName.trim() && !signLoading ? '#fff' : '#4b5563', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: signName.trim() && !signLoading ? 'pointer' : 'not-allowed' }}>
+                      {signLoading ? 'Signing…' : '✍️ Sign & Acknowledge'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => { setSigningId(r.id); setSignName(''); setSignError('') }} style={{ padding: '8px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  ✍️ Sign &amp; Acknowledge
+                </button>
+              )
+            )}
+          </div>
+        ))}
       </div>
     )
   }

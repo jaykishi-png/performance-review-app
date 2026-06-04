@@ -193,6 +193,9 @@ interface SavedReview {
   driveUrl?: string        // Google Doc link once generated
   driveDocId?: string
   comparisonReport?: string // saved AI comparison report
+  employeeId?: string
+  managerSignedAt?: string
+  managerSignature?: string
 }
 
 /** Returns true if a step's required fields are filled — independent of current position. */
@@ -1854,6 +1857,7 @@ function renderComparisonReport(report: string): React.ReactNode {
 function StepOutput({
   form, driveFolderId, savedDriveUrl, savedDriveDocId, onDriveSaved,
   savedComparisonReport, onReportSaved,
+  reviewId, employeeId, managerSignedAt, managerSignature, onManagerSigned,
 }: {
   form: FormData
   driveFolderId?: string
@@ -1862,6 +1866,11 @@ function StepOutput({
   onDriveSaved?: (url: string, docId: string) => void
   savedComparisonReport?: string
   onReportSaved?: (report: string) => void
+  reviewId?: string
+  employeeId?: string
+  managerSignedAt?: string
+  managerSignature?: string
+  onManagerSigned?: (signedAt: string, sig: string) => void
 }) {
   const [driveStatus, setDriveStatus] = useState<'idle' | 'checking' | 'sending' | 'done' | 'error'>(
     savedDriveUrl ? 'checking' : 'idle'
@@ -1871,6 +1880,30 @@ function StepOutput({
   const [showManualLink, setShowManualLink] = useState(false)
   const [manualLinkValue, setManualLinkValue] = useState('')
   const [manualLinkError, setManualLinkError] = useState('')
+
+  const [sigName, setSigName] = useState('')
+  const [sigLoading, setSigLoading] = useState(false)
+  const [sigError, setSigError] = useState('')
+
+  async function handleSign() {
+    if (!sigName.trim() || !reviewId) return
+    setSigLoading(true)
+    setSigError('')
+    try {
+      const res = await fetch('/api/reviews/manager-sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewId, managerSignature: sigName.trim() }),
+      })
+      const data = await res.json() as { ok?: boolean; signedAt?: string; error?: string }
+      if (!res.ok) throw new Error(data.error ?? 'Failed')
+      onManagerSigned?.(data.signedAt ?? new Date().toISOString(), sigName.trim())
+    } catch (e) {
+      setSigError(String(e))
+    } finally {
+      setSigLoading(false)
+    }
+  }
 
   function handleSaveManualLink() {
     const val = manualLinkValue.trim()
@@ -2364,6 +2397,45 @@ function StepOutput({
         )}
       </div>
 
+      {driveStatus === 'done' && reviewId && (
+        <div style={{ marginTop: 24, background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 16 }}>✍️</span>
+            <span style={{ fontWeight: 700, fontSize: 14, color: '#f0f2fa' }}>Sign &amp; Confirm Meeting</span>
+          </div>
+          {managerSignedAt ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                <span style={{ color: '#34d399', fontSize: 13 }}>✓ Signed by {managerSignature} · {new Date(managerSignedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+              </div>
+              {employeeId && <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>The employee has been notified to sign their copy.</p>}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <p style={{ margin: 0, fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>
+                By signing, you confirm that you have completed the 1:1 meeting with this employee and reviewed this document with them.
+              </p>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Your Full Name</div>
+                <input
+                  value={sigName}
+                  onChange={e => setSigName(e.target.value)}
+                  placeholder="Type your full name to sign"
+                  style={{ width: '100%', background: '#0a0c14', border: '1px solid #2a2d3a', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: '#e5e7eb', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+              {sigError && <p style={{ margin: 0, fontSize: 12, color: '#f87171' }}>{sigError}</p>}
+              <button
+                onClick={handleSign}
+                disabled={!sigName.trim() || sigLoading}
+                style={{ padding: '10px 20px', background: sigName.trim() && !sigLoading ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', color: sigName.trim() && !sigLoading ? '#fff' : '#4b5563', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: sigName.trim() && !sigLoading ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 8 }}>
+                {sigLoading ? 'Signing…' : '✍️ Sign & Notify Employee'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Self-Review Comparison ── */}
       <div className="rounded-xl border border-purple-900/40 bg-purple-950/10 p-5 space-y-4">
         {/* Header */}
@@ -2612,6 +2684,7 @@ export function PerformanceReviewForm() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const reviewIdRef = useRef('')
   const [currentReviewId, setCurrentReviewId] = useState('')
+  const [currentEmployeeId, setCurrentEmployeeId] = useState('')
   const [showProfile, setShowProfile] = useState(false)
   const [profileName, setProfileName] = useState('')
   const [profileEmail, setProfileEmail] = useState('')
@@ -2631,6 +2704,9 @@ export function PerformanceReviewForm() {
       driveUrl: (r.drive_url as string) || undefined,
       driveDocId: (r.drive_doc_id as string) || undefined,
       comparisonReport: (r.comparison_report as string) || undefined,
+      employeeId: (r.employee_id as string) || undefined,
+      managerSignedAt: (r.manager_signed_at as string) || undefined,
+      managerSignature: (r.manager_signature as string) || undefined,
     }
   }
 
@@ -2744,6 +2820,9 @@ export function PerformanceReviewForm() {
         driveUrl: existing?.driveUrl,
         driveDocId: existing?.driveDocId,
         comparisonReport: existing?.comparisonReport,
+        employeeId: existing?.employeeId || (currentEmployeeId || undefined),
+        managerSignedAt: existing?.managerSignedAt,
+        managerSignature: existing?.managerSignature,
       }
       upsertSave(save)
       setSaves(getSaves())
@@ -2773,6 +2852,7 @@ export function PerformanceReviewForm() {
     const newId = crypto.randomUUID()
     reviewIdRef.current = newId
     setCurrentReviewId(newId)
+    setCurrentEmployeeId('')
     setForm(defaultForm())
     setStep(0)
     setMaxStep(0)
@@ -2794,6 +2874,17 @@ export function PerformanceReviewForm() {
       setSaves(getSaves())
     }
     apiPatchReview(reviewIdRef.current, { drive_url: url || null, drive_doc_id: docId || null })
+  }
+
+  function handleManagerSigned(signedAt: string, sig: string) {
+    const existing = getSaves()
+    const idx = existing.findIndex(s => s.id === reviewIdRef.current)
+    if (idx >= 0) {
+      existing[idx].managerSignedAt = signedAt
+      existing[idx].managerSignature = sig
+      localStorage.setItem(SAVES_KEY, JSON.stringify(existing))
+      setSaves(getSaves())
+    }
   }
 
   function handleReportSaved(report: string) {
@@ -3464,7 +3555,7 @@ export function PerformanceReviewForm() {
                     )}
                     {hasReview && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: '#0d0f1a', color: '#6b7280', border: '1px solid #1e2130' }}>Review started</span>}
                   </div>
-                  <button onClick={() => { handleNewReview(); update({ employeeName: r.name || r.email, employeePosition: r.position || '' }); setActivePage('reviews') }}
+                  <button onClick={() => { handleNewReview(); update({ employeeName: r.name || r.email, employeePosition: r.position || '' }); setCurrentEmployeeId(r.id); setActivePage('reviews') }}
                     style={{ padding: '7px 16px', background: sa?.status === 'submitted' ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', color: sa?.status === 'submitted' ? '#fff' : '#6b7280', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                     {sa?.status === 'submitted' ? '✨ Start Review' : 'Start Review'}
                   </button>
@@ -3671,6 +3762,11 @@ export function PerformanceReviewForm() {
               onDriveSaved={handleDriveSaved}
               savedComparisonReport={saves.find(s => s.id === currentReviewId)?.comparisonReport}
               onReportSaved={handleReportSaved}
+              reviewId={currentReviewId}
+              employeeId={currentEmployeeId || saves.find(s => s.id === currentReviewId)?.employeeId || ''}
+              managerSignedAt={saves.find(s => s.id === currentReviewId)?.managerSignedAt}
+              managerSignature={saves.find(s => s.id === currentReviewId)?.managerSignature}
+              onManagerSigned={handleManagerSigned}
             />
           )}
         </div>

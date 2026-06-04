@@ -37,7 +37,7 @@ export default async function AdminPage() {
   // Fetch all reviews — redact comparison_report for dev_admin
   const { data: reviewsRaw } = await serviceClient
     .from('reviews')
-    .select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at')
+    .select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature')
     .order('updated_at', { ascending: false })
 
   const reviews = (reviewsRaw ?? []).map(r => ({
@@ -58,6 +58,8 @@ export default async function AdminPage() {
         id: string; user_id: string; employee_name: string; employee_position: string;
         step: number; max_step: number; drive_url: string | null; drive_doc_id: string | null;
         comparison_report: string | null; saved_at: string; updated_at: string;
+        manager_signed_at: string | null; employee_signed_at: string | null;
+        manager_signature: string | null; employee_signature: string | null;
       }[]}
     />
   )

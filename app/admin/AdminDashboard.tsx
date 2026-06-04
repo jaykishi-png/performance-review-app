@@ -21,7 +21,9 @@ type SelfAssessmentStatus = { employee_id: string; status: string; submitted_at:
 type ReviewRecord = {
   id: string; user_id: string; employee_name: string; employee_position: string
   step: number; max_step: number; drive_url: string | null; drive_doc_id: string | null
-  comparison_report: string | null; saved_at: string; updated_at: string
+  comparison_report: string | null; saved_at: string; updated_at: string;
+  manager_signed_at: string | null; employee_signed_at: string | null;
+  manager_signature: string | null; employee_signature: string | null;
 }
 
 type Props = {
@@ -545,7 +547,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>{['Employee', 'Position', 'Manager', 'Progress', 'Status', 'Drive', 'Comparison', 'Last Updated', 'Actions'].map(h => (
+                <tr>{['Employee', 'Position', 'Manager', 'Progress', 'Status', 'Signatures', 'Drive', 'Comparison', 'Last Updated', 'Actions'].map(h => (
                   <th key={h} style={th}>{h}</th>
                 ))}</tr>
               </thead>
@@ -593,6 +595,18 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                         <span style={{ padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>
                           {sm.label}
                         </span>
+                      </td>
+
+                      {/* Signatures */}
+                      <td style={td}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <span style={{ fontSize: 11, color: r.manager_signed_at ? '#34d399' : '#4b5563' }}>
+                            {r.manager_signed_at ? `✓ Mgr ${new Date(r.manager_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : '— Manager'}
+                          </span>
+                          <span style={{ fontSize: 11, color: r.employee_signed_at ? '#34d399' : '#4b5563' }}>
+                            {r.employee_signed_at ? `✓ Emp ${new Date(r.employee_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : '— Employee'}
+                          </span>
+                        </div>
                       </td>
 
                       {/* Drive link */}
