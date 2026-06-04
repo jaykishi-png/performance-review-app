@@ -37,28 +37,31 @@ export default async function EmployeePage() {
     manager = managerData as { name: string | null; email: string } | null
   }
 
-  // Fetch active review cycle
-  const { data: activeCycleRow } = await serviceClient
-    .from('employee_review_cycles')
-    .select('id, phase, sa_open_at, sa_close_at, review_open_at, review_close_at, meeting_open_at, meeting_close_at, trigger_date, anniversary_year')
-    .eq('employee_id', user.id)
-    .not('phase', 'eq', 'complete')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  const activeCycle = activeCycleRow as {
+  // Fetch active review cycle (graceful fallback if table doesn't exist yet)
+  let activeCycle: {
     id: string; phase: string; sa_open_at: string; sa_close_at: string
     review_open_at: string; review_close_at: string; meeting_open_at: string; meeting_close_at: string
     trigger_date: string; anniversary_year: number
-  } | null
+  } | null = null
+  let unreadCount = 0
+  try {
+    const { data: activeCycleRow } = await serviceClient
+      .from('employee_review_cycles')
+      .select('id, phase, sa_open_at, sa_close_at, review_open_at, review_close_at, meeting_open_at, meeting_close_at, trigger_date, anniversary_year')
+      .eq('employee_id', user.id)
+      .not('phase', 'eq', 'complete')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    activeCycle = activeCycleRow as typeof activeCycle
 
-  // Unread notifications count
-  const { count: unreadCount } = await serviceClient
-    .from('notifications')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .is('read_at', null)
+    const { count } = await serviceClient
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .is('read_at', null)
+    unreadCount = count ?? 0
+  } catch { /* tables not yet created */ }
 
   // Fetch existing self-review
   const { data: srRow } = await serviceClient

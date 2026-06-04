@@ -54,6 +54,8 @@ export default async function AdminPage() {
     .from('employee_review_cycles')
     .select('*')
     .order('created_at', { ascending: false })
+    .then(r => r)
+    .catch(() => ({ data: [] }))
 
   return (
     <AdminDashboard
