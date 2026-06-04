@@ -2722,11 +2722,10 @@ function OutputBlock({
   )
 }
 
-// Reviews with a drive URL or manager signature are treated as 100% complete
-// regardless of form_data completeness (handles reviews created in older versions).
 function reviewPct(save: SavedReview): number {
   if (save.driveUrl || save.managerSignedAt) return 100
-  if (!save.form) return 0
+  // null form_data with an employee name = legacy review saved before form_data existed
+  if (!save.form) return save.employeeName ? 100 : 0
   const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, save.form)).length
   return Math.round((filled / (STEPS.length - 1)) * 100)
 }
@@ -2793,7 +2792,7 @@ export function PerformanceReviewForm() {
       step: (r.step as number) ?? 0,
       maxStep: (r.max_step as number) ?? 0,
       savedAt: (r.saved_at as string) ?? new Date().toISOString(),
-      form: (r.form_data as FormData) ?? defaultForm(),
+      form: (r.form_data as FormData) ?? null as unknown as FormData,
       driveUrl: (r.drive_url as string) || undefined,
       driveDocId: (r.drive_doc_id as string) || undefined,
       comparisonReport: (r.comparison_report as string) || undefined,
@@ -3340,7 +3339,7 @@ export function PerformanceReviewForm() {
           {/* Performance Reviews nav item — dropdown */}
           {(() => {
             const active = activePage === 'reviews'
-            const inProgressSaves = saves.filter(save => reviewPct(save) < 100)
+            const inProgressSaves = saves.filter(save => { const p = reviewPct(save); return p > 0 && p < 100 })
             return (
               <div style={{ marginBottom: 2 }}>
                 {/* Row: clicking icon/label sets page, clicking chevron toggles dropdown */}
