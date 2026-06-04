@@ -216,7 +216,10 @@ function isStepComplete(stepIndex: number, form: FormData): boolean {
 const SAVES_KEY = 'manager-perf-review-saves'
 
 function getSaves(): SavedReview[] {
-  try { return JSON.parse(localStorage.getItem(SAVES_KEY) ?? '[]') }
+  try {
+    const raw = JSON.parse(localStorage.getItem(SAVES_KEY) ?? '[]')
+    return Array.isArray(raw) ? raw.filter((s: SavedReview) => s && s.form) : []
+  }
   catch { return [] }
 }
 
