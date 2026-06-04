@@ -50,12 +50,14 @@ export default async function AdminPage() {
     .select('*')
     .order('created_at', { ascending: false })
 
-  const { data: employeeCycles } = await serviceClient
-    .from('employee_review_cycles')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .then(r => r)
-    .catch(() => ({ data: [] }))
+  let employeeCycles: unknown[] = []
+  try {
+    const { data } = await serviceClient
+      .from('employee_review_cycles')
+      .select('*')
+      .order('created_at', { ascending: false })
+    employeeCycles = data ?? []
+  } catch { /* table not yet created */ }
 
   return (
     <AdminDashboard
