@@ -108,6 +108,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'admin' | 'manager' | 'employee'>('employee')
   const [inviteManagerId, setInviteManagerId] = useState('')
+  const [invitePosition, setInvitePosition] = useState('')
+  const [inviteStartDate, setInviteStartDate] = useState('')
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteLink, setInviteLink] = useState('')
   const [inviteEmailSent, setInviteEmailSent] = useState(false)
@@ -206,7 +208,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     try {
       const res = await fetch('/api/admin/invite', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: inviteEmail, role: inviteRole, managerId: inviteRole === 'employee' ? inviteManagerId || null : null }),
+        body: JSON.stringify({ email: inviteEmail, role: inviteRole, managerId: inviteRole === 'employee' ? inviteManagerId || null : null, position: invitePosition || null, startDate: inviteStartDate || null }),
       })
       const data = await res.json()
       if (data.inviteLink) { setInviteLink(data.inviteLink); setInviteEmailSent(!!data.emailSent) }
@@ -865,7 +867,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {!inviteEmailSent && <button onClick={() => navigator.clipboard.writeText(inviteLink)} style={{ flex: 1, padding: '10px', background: '#1e2130', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Copy Link</button>}
-                  <button onClick={() => { setShowInviteModal(false); setInviteEmail(''); setInviteLink(''); setInviteManagerId(''); setInviteEmailSent(false) }}
+                  <button onClick={() => { setShowInviteModal(false); setInviteEmail(''); setInviteLink(''); setInviteManagerId(''); setInvitePosition(''); setInviteStartDate(''); setInviteEmailSent(false) }}
                     style={{ flex: 1, padding: '10px', background: inviteEmailSent ? 'linear-gradient(135deg,#4f46e5,#7c3aed)' : 'transparent', color: inviteEmailSent ? '#fff' : '#6b7280', border: inviteEmailSent ? 'none' : '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, fontWeight: inviteEmailSent ? 600 : 400, cursor: 'pointer' }}>Done</button>
                 </div>
               </>
@@ -895,8 +897,18 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                     </select>
                   </div>
                 )}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+                  <div>
+                    <label style={lbl}>Position <span style={{ color: '#374151', fontWeight: 400, textTransform: 'none' }}>(optional)</span></label>
+                    <input value={invitePosition} onChange={e => setInvitePosition(e.target.value)} placeholder="e.g. Video Editor" style={inp} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Start Date <span style={{ color: '#374151', fontWeight: 400, textTransform: 'none' }}>(optional)</span></label>
+                    <input type="date" value={inviteStartDate} onChange={e => setInviteStartDate(e.target.value)} style={inp} />
+                  </div>
+                </div>
                 <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-                  <button onClick={() => { setShowInviteModal(false); setInviteEmail(''); setInviteManagerId('') }} style={{ flex: 1, padding: '11px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={() => { setShowInviteModal(false); setInviteEmail(''); setInviteManagerId(''); setInvitePosition(''); setInviteStartDate('') }} style={{ flex: 1, padding: '11px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
                   <button onClick={sendInvite} disabled={!inviteEmail || inviteLoading}
                     style={{ flex: 2, padding: '11px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: !inviteEmail || inviteLoading ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                     {inviteLoading ? 'Sending…' : '✉️ Send Invitation'}

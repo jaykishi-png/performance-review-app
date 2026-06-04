@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { email, role, managerId } = await request.json()
+  const { email, role, managerId, position, startDate } = await request.json()
   if (!email || !role) return NextResponse.json({ error: 'Missing email or role' }, { status: 400 })
 
   const token = crypto.randomUUID().replace(/-/g, '')
@@ -31,6 +31,8 @@ export async function POST(request: Request) {
     role,
     invited_by: user.id,
     manager_id: managerId || null,
+    position: position || null,
+    start_date: startDate || null,
     token,
     expires_at: expiresAt,
     accepted_at: null,
