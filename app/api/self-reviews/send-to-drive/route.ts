@@ -237,7 +237,7 @@ function blocksToRequests(blocks: Block[]): { fullText: string; requests: docs_v
             namedStyleType: named ?? 'NORMAL_TEXT',
             spaceAbove: block.heading === 'HEADING_1' ? { magnitude: 12, unit: 'PT' } : { magnitude: 4, unit: 'PT' },
             spaceBelow: { magnitude: block.spaceAfter ?? (block.heading ? 4 : 0), unit: 'PT' },
-            indentStart: block.indent ? { magnitude: block.indent, unit: 'EMU' } : undefined,
+            indentStart: block.indent ? { magnitude: block.indent, unit: 'PT' } : undefined,
           },
           fields: 'namedStyleType,spaceAbove,spaceBelow' + (block.indent ? ',indentStart' : ''),
         },
