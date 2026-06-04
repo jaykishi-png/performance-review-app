@@ -200,8 +200,9 @@ interface SavedReview {
 
 /** Returns true if a step's required fields are filled — independent of current position. */
 function isStepComplete(stepIndex: number, form: FormData): boolean {
+  if (!form) return false
   switch (stepIndex) {
-    case 0: return !!(form.employeeName.trim() && form.supervisorName.trim())
+    case 0: return !!(form.employeeName?.trim() && form.supervisorName?.trim())
     case 1: return !!(form.competencyOne.competency && form.competencyOne.examples[0].trim())
     case 2: return !!(form.competencyTwo.competency && form.competencyTwo.examples[0].trim())
     case 3: return !!(form.competencyThree.competency && form.competencyThree.examples[0].trim())
