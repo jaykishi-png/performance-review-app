@@ -45,6 +45,11 @@ export default async function AdminPage() {
     comparison_report: role === 'dev_admin' ? null : r.comparison_report,
   }))
 
+  const { data: cycles } = await serviceClient
+    .from('review_cycles')
+    .select('*')
+    .order('created_at', { ascending: false })
+
   return (
     <AdminDashboard
       currentUser={{ id: user.id, email: user.email!, role: role as 'admin' | 'dev_admin' }}
@@ -60,6 +65,12 @@ export default async function AdminPage() {
         comparison_report: string | null; saved_at: string; updated_at: string;
         manager_signed_at: string | null; employee_signed_at: string | null;
         manager_signature: string | null; employee_signature: string | null;
+      }[]}
+      cycles={(cycles ?? []) as {
+        id: string; name: string; description: string | null; status: 'draft' | 'active' | 'closed';
+        sa_open: string | null; sa_close: string | null; review_open: string | null; review_close: string | null;
+        created_by: string | null; published_at: string | null; closed_at: string | null;
+        created_at: string; updated_at: string;
       }[]}
     />
   )

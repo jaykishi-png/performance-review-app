@@ -25,6 +25,12 @@ type ReviewRecord = {
   manager_signed_at: string | null; employee_signed_at: string | null;
   manager_signature: string | null; employee_signature: string | null;
 }
+type CycleRecord = {
+  id: string; name: string; description: string | null; status: 'draft' | 'active' | 'closed'
+  sa_open: string | null; sa_close: string | null; review_open: string | null; review_close: string | null
+  created_by: string | null; published_at: string | null; closed_at: string | null
+  created_at: string; updated_at: string
+}
 
 type Props = {
   currentUser: { id: string; email: string; role: 'admin' | 'dev_admin' }
@@ -32,6 +38,7 @@ type Props = {
   invites: InviteRecord[]
   selfAssessments: SelfAssessmentStatus[]
   reviews: ReviewRecord[]
+  cycles: CycleRecord[]
 }
 
 type Page = 'dashboard' | 'users' | 'reviews' | 'cycles' | 'analytics' | 'audit' | 'settings'
@@ -98,7 +105,7 @@ const STATUS_META = {
   not_started: { label: 'Not Started', color: '#6b7280', bg: '#13151f', border: '#2a2d3a' },
 }
 
-export default function AdminDashboard({ currentUser, users, invites, selfAssessments, reviews }: Props) {
+export default function AdminDashboard({ currentUser, users, invites, selfAssessments, reviews, cycles }: Props) {
   const router = useRouter()
   const isDevAdmin = currentUser.role === 'dev_admin'
 
@@ -139,6 +146,81 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
       setSAData(data.selfReview ?? null)
     } catch { setSAData(null) }
     finally { setSALoading(false) }
+  }
+
+  // Cycles state
+  const [showCycleModal, setShowCycleModal] = useState(false)
+  const [editingCycle, setEditingCycle] = useState<CycleRecord | null>(null)
+  const [cycleName, setCycleName] = useState('')
+  const [cycleDescription, setCycleDescription] = useState('')
+  const [cycleSaOpen, setCycleSaOpen] = useState('')
+  const [cycleSaClose, setCycleSaClose] = useState('')
+  const [cycleReviewOpen, setCycleReviewOpen] = useState('')
+  const [cycleReviewClose, setCycleReviewClose] = useState('')
+  const [cycleLoading, setCycleLoading] = useState(false)
+  const [cycleDeleteConfirm, setCycleDeleteConfirm] = useState<string | null>(null)
+
+  function openNewCycle() {
+    setEditingCycle(null)
+    setCycleName(''); setCycleDescription(''); setCycleSaOpen(''); setCycleSaClose(''); setCycleReviewOpen(''); setCycleReviewClose('')
+    setShowCycleModal(true)
+  }
+  function openEditCycle(c: CycleRecord) {
+    setEditingCycle(c)
+    setCycleName(c.name); setCycleDescription(c.description ?? ''); setCycleSaOpen(c.sa_open ?? ''); setCycleSaClose(c.sa_close ?? ''); setCycleReviewOpen(c.review_open ?? ''); setCycleReviewClose(c.review_close ?? '')
+    setShowCycleModal(true)
+  }
+  async function saveCycle() {
+    if (!cycleName.trim()) return
+    setCycleLoading(true)
+    try {
+      const body = { name: cycleName, description: cycleDescription, sa_open: cycleSaOpen, sa_close: cycleSaClose, review_open: cycleReviewOpen, review_close: cycleReviewClose }
+      if (editingCycle) {
+        await fetch('/api/admin/cycles', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editingCycle.id, ...body }) })
+      } else {
+        await fetch('/api/admin/cycles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      }
+      setShowCycleModal(false)
+      router.refresh()
+    } finally { setCycleLoading(false) }
+  }
+  async function cycleAction(id: string, action: 'publish' | 'close' | 'reopen') {
+    await fetch('/api/admin/cycles', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action }) })
+    router.refresh()
+  }
+  async function deleteCycle(id: string) {
+    await fetch('/api/admin/cycles', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    setCycleDeleteConfirm(null)
+    router.refresh()
+  }
+
+  function cycleCompletionStats(cycle: CycleRecord) {
+    const totalEmployees = activeUsers.filter(u => u.role === 'employee').length
+    let saCount = 0
+    if (cycle.sa_open && cycle.sa_close) {
+      const open = new Date(cycle.sa_open)
+      const close = new Date(cycle.sa_close + 'T23:59:59')
+      saCount = selfAssessments.filter(s => {
+        if (s.status !== 'submitted' || !s.submitted_at) return false
+        const d = new Date(s.submitted_at)
+        return d >= open && d <= close
+      }).length
+    } else {
+      saCount = selfAssessments.filter(s => s.status === 'submitted').length
+    }
+    let reviewCount = 0
+    if (cycle.review_open && cycle.review_close) {
+      const open = new Date(cycle.review_open)
+      const close = new Date(cycle.review_close + 'T23:59:59')
+      reviewCount = reviews.filter(r => {
+        if (!r.drive_url) return false
+        const d = new Date(r.updated_at)
+        return d >= open && d <= close
+      }).length
+    } else {
+      reviewCount = reviews.filter(r => r.drive_url).length
+    }
+    return { saCount, reviewCount, totalEmployees }
   }
 
   // Reviews page state
@@ -720,6 +802,183 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     )
   }
 
+  const CYCLE_STATUS_META = {
+    draft:  { label: 'Draft',  color: '#9ca3af', bg: '#13151f', border: '#2a2d3a' },
+    active: { label: 'Active', color: '#34d399', bg: '#0d1a13', border: '#1a4a35' },
+    closed: { label: 'Closed', color: '#6b7280', bg: '#13151f', border: '#1e2130' },
+  }
+
+  function renderCycles() {
+    const draftCount  = cycles.filter(c => c.status === 'draft').length
+    const activeCount = cycles.filter(c => c.status === 'active').length
+    const closedCount = cycles.filter(c => c.status === 'closed').length
+
+    function fmtDate(d: string | null) {
+      if (!d) return '—'
+      return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    }
+    function fmtDateRange(open: string | null, close: string | null) {
+      if (!open && !close) return 'No dates set'
+      if (open && close) return `${fmtDate(open)} → ${fmtDate(close)}`
+      if (open) return `Opens ${fmtDate(open)}`
+      return `Closes ${fmtDate(close)}`
+    }
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div>
+            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Review Cycles</h1>
+            <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Define and manage organization-wide review windows.</p>
+          </div>
+          <button onClick={openNewCycle}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+            <Plus size={14} /> New Cycle
+          </button>
+        </div>
+
+        {/* Stats strip */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+          {[
+            { title: 'Draft',  value: draftCount,  ...CYCLE_STATUS_META.draft  },
+            { title: 'Active', value: activeCount, ...CYCLE_STATUS_META.active },
+            { title: 'Closed', value: closedCount, ...CYCLE_STATUS_META.closed },
+            { title: 'Total',  value: cycles.length, color: '#f0f2fa', bg: '#13151f', border: '#1e2130' },
+          ].map(s => (
+            <div key={s.title} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10, padding: '12px 18px', minWidth: 80 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{s.title}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Empty state */}
+        {cycles.length === 0 && (
+          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '60px 32px', textAlign: 'center' }}>
+            <div style={{ fontSize: 40, marginBottom: 14 }}>🔄</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>No review cycles yet</div>
+            <p style={{ fontSize: 13, color: '#4b5563', maxWidth: 400, margin: '0 auto 20px', lineHeight: 1.7 }}>
+              Create a named cycle like &quot;2025 Annual Review&quot; to define windows for self-assessments and manager reviews.
+            </p>
+            <button onClick={openNewCycle}
+              style={{ padding: '9px 20px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              + Create First Cycle
+            </button>
+          </div>
+        )}
+
+        {/* Cycle cards */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {cycles.map(cycle => {
+            const sm = CYCLE_STATUS_META[cycle.status]
+            const stats = cycleCompletionStats(cycle)
+            const saPercent = stats.totalEmployees > 0 ? Math.round((stats.saCount / stats.totalEmployees) * 100) : 0
+            const revPercent = stats.totalEmployees > 0 ? Math.round((stats.reviewCount / stats.totalEmployees) * 100) : 0
+            const isDeleting = cycleDeleteConfirm === cycle.id
+
+            return (
+              <div key={cycle.id} style={{ background: '#13151f', border: `1px solid ${cycle.status === 'active' ? '#1a4a35' : '#1e2130'}`, borderRadius: 12, padding: '20px 24px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+
+                  {/* Left: meta */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+                      {cycle.status === 'active' && (
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#34d399', display: 'inline-block', boxShadow: '0 0 6px #34d399' }} />
+                      )}
+                      <span style={{ fontSize: 15, fontWeight: 700, color: '#f0f2fa' }}>{cycle.name}</span>
+                      <span style={{ padding: '2px 9px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>
+                        {sm.label.toUpperCase()}
+                      </span>
+                      {cycle.published_at && (
+                        <span style={{ fontSize: 11, color: '#4b5563' }}>Published {new Date(cycle.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      )}
+                      {cycle.closed_at && (
+                        <span style={{ fontSize: 11, color: '#4b5563' }}>Closed {new Date(cycle.closed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      )}
+                    </div>
+                    {cycle.description && (
+                      <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6b7280', lineHeight: 1.5 }}>{cycle.description}</p>
+                    )}
+
+                    {/* Date windows */}
+                    <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                      <div style={{ background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '8px 14px', minWidth: 220 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Self-Assessment Window</div>
+                        <div style={{ fontSize: 12, color: '#c4c9d4' }}>{fmtDateRange(cycle.sa_open, cycle.sa_close)}</div>
+                      </div>
+                      <div style={{ background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '8px 14px', minWidth: 220 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Manager Review Window</div>
+                        <div style={{ fontSize: 12, color: '#c4c9d4' }}>{fmtDateRange(cycle.review_open, cycle.review_close)}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: completion + actions */}
+                  <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
+
+                    {/* Completion */}
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      {[
+                        { label: 'SAs Submitted', count: stats.saCount, total: stats.totalEmployees, pct: saPercent, color: '#818cf8' },
+                        { label: 'Reviews Exported', count: stats.reviewCount, total: stats.totalEmployees, pct: revPercent, color: '#34d399' },
+                      ].map(s => (
+                        <div key={s.label} style={{ background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '8px 14px', textAlign: 'center', minWidth: 110 }}>
+                          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>{s.label}</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: s.color, marginBottom: 5 }}>{s.count}<span style={{ fontSize: 11, color: '#4b5563', fontWeight: 400 }}>/{s.total}</span></div>
+                          <div style={{ width: '100%', height: 4, background: '#1e2130', borderRadius: 2, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${s.pct}%`, background: s.color, borderRadius: 2, transition: 'width 0.3s' }} />
+                          </div>
+                          <div style={{ fontSize: 10, color: '#4b5563', marginTop: 3 }}>{s.pct}%</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Actions */}
+                    {isDeleting ? (
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span style={{ fontSize: 11, color: '#f87171' }}>Delete &quot;{cycle.name}&quot;?</span>
+                        <button onClick={() => deleteCycle(cycle.id)}
+                          style={{ padding: '4px 10px', fontSize: 11, background: '#5c2020', color: '#f87171', border: '1px solid #7c2020', borderRadius: 5, cursor: 'pointer' }}>Yes</button>
+                        <button onClick={() => setCycleDeleteConfirm(null)}
+                          style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 5, cursor: 'pointer' }}>No</button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {cycle.status === 'draft' && (
+                          <>
+                            <button onClick={() => openEditCycle(cycle)}
+                              style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: '#9ca3af', border: '1px solid #2a2d3e', borderRadius: 6, cursor: 'pointer' }}>Edit</button>
+                            <button onClick={() => cycleAction(cycle.id, 'publish')}
+                              style={{ padding: '5px 12px', fontSize: 11, background: '#0d2b1f', color: '#34d399', border: '1px solid #1a4a35', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>▶ Publish</button>
+                            <button onClick={() => setCycleDeleteConfirm(cycle.id)}
+                              style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 6, cursor: 'pointer' }}>Delete</button>
+                          </>
+                        )}
+                        {cycle.status === 'active' && (
+                          <>
+                            <button onClick={() => openEditCycle(cycle)}
+                              style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: '#9ca3af', border: '1px solid #2a2d3e', borderRadius: 6, cursor: 'pointer' }}>Edit</button>
+                            <button onClick={() => cycleAction(cycle.id, 'close')}
+                              style={{ padding: '5px 12px', fontSize: 11, background: '#1f1c0d', color: '#f59e0b', border: '1px solid #92400e', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>■ Close Cycle</button>
+                          </>
+                        )}
+                        {cycle.status === 'closed' && (
+                          <button onClick={() => cycleAction(cycle.id, 'reopen')}
+                            style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3e', borderRadius: 6, cursor: 'pointer' }}>Reopen</button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
   function renderPlaceholder(title: string, description: string, icon: string, items: string[]) {
     return (
       <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
@@ -834,16 +1093,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
         {page === 'reviews' && renderReviews()}
 
-        {page === 'cycles' && renderPlaceholder(
-          'Review Cycles', 'Define and manage organization-wide review windows.',
-          '🔄', [
-            'Create named review cycles (e.g. "2025 Annual Review")',
-            'Set open and close dates for self-assessment submission',
-            'Publish cycles to notify all employees',
-            'Track completion rates per cycle',
-            'Close cycles and archive completed reviews',
-          ]
-        )}
+        {page === 'cycles' && renderCycles()}
 
         {page === 'analytics' && renderPlaceholder(
           'Analytics', 'Organization-wide performance data and reporting.',
@@ -955,6 +1205,70 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Create / Edit Cycle Modal ── */}
+      {showCycleModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
+          onClick={e => { if (e.target === e.currentTarget) setShowCycleModal(false) }}>
+          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 16, padding: '32px', width: 480 }}>
+            <h2 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: '#f0f2fa' }}>
+              {editingCycle ? 'Edit Review Cycle' : 'New Review Cycle'}
+            </h2>
+            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>
+              {editingCycle ? 'Update the cycle details below.' : 'Create a named review window for your organization.'}
+            </p>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={lbl}>Cycle Name <span style={{ color: '#f87171' }}>*</span></label>
+              <input value={cycleName} onChange={e => setCycleName(e.target.value)} placeholder="e.g. 2025 Annual Review" autoFocus style={inp} />
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={lbl}>Description <span style={{ color: '#374151', fontWeight: 400, textTransform: 'none' }}>(optional)</span></label>
+              <input value={cycleDescription} onChange={e => setCycleDescription(e.target.value)} placeholder="Brief description of this cycle…" style={inp} />
+            </div>
+
+            <div style={{ marginBottom: 6 }}>
+              <label style={lbl}>Self-Assessment Window</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ ...lbl, fontSize: 9, marginBottom: 4 }}>Opens</label>
+                  <input type="date" value={cycleSaOpen} onChange={e => setCycleSaOpen(e.target.value)} style={inp} />
+                </div>
+                <div>
+                  <label style={{ ...lbl, fontSize: 9, marginBottom: 4 }}>Closes</label>
+                  <input type="date" value={cycleSaClose} onChange={e => setCycleSaClose(e.target.value)} style={inp} />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={lbl}>Manager Review Window</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ ...lbl, fontSize: 9, marginBottom: 4 }}>Opens</label>
+                  <input type="date" value={cycleReviewOpen} onChange={e => setCycleReviewOpen(e.target.value)} style={inp} />
+                </div>
+                <div>
+                  <label style={{ ...lbl, fontSize: 9, marginBottom: 4 }}>Closes</label>
+                  <input type="date" value={cycleReviewClose} onChange={e => setCycleReviewClose(e.target.value)} style={inp} />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowCycleModal(false)}
+                style={{ flex: 1, padding: '11px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={saveCycle} disabled={!cycleName.trim() || cycleLoading}
+                style={{ flex: 2, padding: '11px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: !cycleName.trim() || cycleLoading ? 0.5 : 1 }}>
+                {cycleLoading ? 'Saving…' : editingCycle ? 'Save Changes' : 'Create Cycle'}
+              </button>
+            </div>
           </div>
         </div>
       )}
