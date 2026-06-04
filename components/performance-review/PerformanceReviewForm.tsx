@@ -813,24 +813,88 @@ async function aiDraftSingleExample(
 
 // ─── Step components ──────────────────────────────────────────────────────────
 
+type DbTeamMemberForStep = { id: string; name: string | null; email: string; start_date: string | null; position: string | null; division: string | null; pronouns: string | null }
+
+function computeAppraisalPeriod(startDate: string): string {
+  const start = new Date(startDate + 'T00:00:00')
+  if (isNaN(start.getTime())) return ''
+  const today = new Date()
+  // Find the anniversary that just passed
+  let anniversaryYear = today.getFullYear()
+  const thisYearAnniversary = new Date(anniversaryYear, start.getMonth(), start.getDate())
+  if (thisYearAnniversary > today) anniversaryYear -= 1
+  const periodStart = new Date(anniversaryYear, start.getMonth(), start.getDate())
+  const periodEnd = new Date(anniversaryYear + 1, start.getMonth(), start.getDate())
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  return `${fmt(periodStart)} – ${fmt(periodEnd)}`
+}
+
 function StepInfo({
   form,
   update,
   directReports,
+  dbTeam,
+  managerName,
 }: {
   form: FormData
   update: (p: Partial<FormData>) => void
   directReports: DirectReport[]
+  dbTeam?: DbTeamMemberForStep[]
+  managerName?: string
 }) {
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+
+  function selectDbEmployee(r: DbTeamMemberForStep) {
+    const patch: Partial<FormData> = {
+      employeeName: r.name ?? '',
+      employeePosition: r.position ?? '',
+      employeeDivision: r.division ?? '',
+      employeePronouns: r.pronouns ?? '',
+      reviewDate: today,
+    }
+    if (managerName) patch.supervisorName = managerName
+    if (r.start_date) patch.appraisalPeriod = computeAppraisalPeriod(r.start_date)
+    update(patch)
+  }
+
+  // DB team takes priority over localStorage direct reports for the quick-select
+  const showDbTeam = dbTeam && dbTeam.length > 0
+
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold text-gray-100 mb-1">Employee Information</h2>
-        <p className="text-[12px] text-gray-500">Basic details for the review header.</p>
+        <p className="text-[12px] text-gray-500">Select an employee to auto-fill their info, or enter manually.</p>
       </div>
 
-      {/* Quick-select from direct reports */}
-      {directReports.length > 0 && (
+      {/* Quick-select: DB team members (preferred) or localStorage direct reports */}
+      {showDbTeam ? (
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Select from My Team</p>
+          <div className="flex flex-wrap gap-2">
+            {dbTeam!.map(r => {
+              const isSelected = form.employeeName === (r.name ?? '')
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => selectDbEmployee(r)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-left transition-all ${
+                    isSelected
+                      ? 'border-purple-600 bg-purple-900/30 text-purple-200'
+                      : 'border-[#1e2030] bg-[#0b0d14] text-gray-400 hover:border-purple-700/50 hover:text-gray-200'
+                  }`}
+                >
+                  <span className="text-[13px]">👤</span>
+                  <span className="text-[12px] font-medium leading-none">{r.name}</span>
+                  {r.position && <span className="text-[10px] text-gray-600">{r.position}</span>}
+                </button>
+              )
+            })}
+          </div>
+          <div className="border-t border-[#1e2030] pt-3" />
+        </div>
+      ) : directReports.length > 0 && (
         <div className="space-y-2">
           <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Select from My Team</p>
           <div className="flex flex-wrap gap-2">
@@ -849,9 +913,7 @@ function StepInfo({
                 >
                   <span className="text-[13px]">👤</span>
                   <span className="text-[12px] font-medium leading-none">{r.name}</span>
-                  {r.position && (
-                    <span className="text-[10px] text-gray-600">{r.position}</span>
-                  )}
+                  {r.position && <span className="text-[10px] text-gray-600">{r.position}</span>}
                 </button>
               )
             })}
@@ -2680,7 +2742,7 @@ export function PerformanceReviewForm() {
   const [selfAssessments, setSelfAssessments] = useState<{ employee_id: string; status: string; submitted_at: string | null }[]>([])
   const selfAssessmentMap = Object.fromEntries(selfAssessments.map(s => [s.employee_id, s]))
   // DB-backed team (from profiles where manager_id = user.id)
-  type DbTeamMember = { id: string; name: string | null; email: string; role: string; is_active: boolean; start_date: string | null; position: string | null }
+  type DbTeamMember = { id: string; name: string | null; email: string; role: string; is_active: boolean; start_date: string | null; position: string | null; division: string | null; pronouns: string | null }
   const [dbTeam, setDbTeam] = useState<DbTeamMember[]>([])
   const [dbTeamSaMap, setDbTeamSaMap] = useState<Record<string, { employee_id: string; status: string; submitted_at: string | null }>>({})
   const [managerGlossarySearch, setManagerGlossarySearch] = useState('')
@@ -3774,7 +3836,7 @@ export function PerformanceReviewForm() {
 
         {/* Step content */}
         <div className="bg-[#0d0f1a] rounded-2xl border border-[#1e2030] p-6 mb-6">
-          {step === 0 && <StepInfo form={form} update={update} directReports={directReports} />}
+          {step === 0 && <StepInfo form={form} update={update} directReports={directReports} dbTeam={dbTeam} managerName={profileName || undefined} />}
           {step === 1 && <StepCompetency form={form} update={update} index={1} type="positive" />}
           {step === 2 && <StepCompetency form={form} update={update} index={2} type="positive" />}
           {step === 3 && <StepCompetency form={form} update={update} index={3} type="constructive" />}

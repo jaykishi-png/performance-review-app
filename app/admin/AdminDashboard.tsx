@@ -12,7 +12,7 @@ import {
 
 type UserRecord = {
   id: string; name: string | null; email: string; role: string
-  is_active: boolean; manager_id: string | null; start_date: string | null; created_at: string; position: string | null
+  is_active: boolean; manager_id: string | null; start_date: string | null; created_at: string; position: string | null; division: string | null; pronouns: string | null
 }
 type InviteRecord = {
   id: string; email: string; role: string; created_at: string; expires_at: string; accepted_at: string | null
@@ -136,6 +136,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [editingManager, setEditingManager] = useState<string | null>(null)
   const [editingStartDate, setEditingStartDate] = useState<string | null>(null)
   const [editingPosition, setEditingPosition] = useState<string | null>(null)
+  const [editingDivision, setEditingDivision] = useState<string | null>(null)
+  const [editingPronouns, setEditingPronouns] = useState<string | null>(null)
   const [userSearch, setUserSearch] = useState('')
   const [userRoleFilter, setUserRoleFilter] = useState<string>('all')
   const [reminderCopied, setReminderCopied] = useState<string | null>(null)
@@ -478,7 +480,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         {/* Users table */}
         <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflow: 'hidden', marginBottom: 24 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr>{['Name / Email', 'Role', 'Position', 'Manager', 'Start Date', 'Self-Assessment', 'Status', 'Actions'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+            <thead><tr>{['Name / Email', 'Role', 'Position', 'Division', 'Pronouns', 'Manager', 'Start Date', 'Self-Assessment', 'Status', 'Actions'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {filteredUsers.map((u, i) => (
                 <tr key={u.id} style={{ opacity: u.is_active ? 1 : 0.5, background: i % 2 === 0 ? 'transparent' : 'rgba(13,15,26,0.4)' }}>
@@ -519,6 +521,46 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                         style={{ fontSize: 12, color: u.position ? '#9ca3af' : '#374151', cursor: 'pointer' }}
                         title="Click to set position">
                         {u.position || <span style={{ color: '#f59e0b', fontSize: 11 }}>No position ✏️</span>}
+                      </span>
+                    )}
+                  </td>
+                  <td style={td}>
+                    {editingDivision === u.id ? (
+                      <input
+                        defaultValue={u.division ?? ''}
+                        onBlur={e => { updateField(u.id, { division: e.target.value || null }); setEditingDivision(null) }}
+                        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setEditingDivision(null) }}
+                        autoFocus
+                        placeholder="e.g. Creative"
+                        style={{ background: '#0d0f1a', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 6, padding: '4px 8px', fontSize: 12, width: 130 }}
+                      />
+                    ) : (
+                      <span onClick={() => setEditingDivision(u.id)}
+                        style={{ fontSize: 12, color: u.division ? '#9ca3af' : '#374151', cursor: 'pointer' }}
+                        title="Click to set division">
+                        {u.division || <span style={{ color: '#4b5563', fontSize: 11 }}>— ✏️</span>}
+                      </span>
+                    )}
+                  </td>
+                  <td style={td}>
+                    {editingPronouns === u.id ? (
+                      <select
+                        defaultValue={u.pronouns ?? ''}
+                        onBlur={e => { updateField(u.id, { pronouns: e.target.value || null }); setEditingPronouns(null) }}
+                        onChange={e => { updateField(u.id, { pronouns: e.target.value || null }); setEditingPronouns(null) }}
+                        autoFocus
+                        style={{ background: '#0d0f1a', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}
+                      >
+                        <option value="">— None —</option>
+                        <option value="he/him">he/him</option>
+                        <option value="she/her">she/her</option>
+                        <option value="they/them">they/them</option>
+                      </select>
+                    ) : (
+                      <span onClick={() => setEditingPronouns(u.id)}
+                        style={{ fontSize: 12, color: u.pronouns ? '#a78bfa' : '#374151', cursor: 'pointer' }}
+                        title="Click to set pronouns">
+                        {u.pronouns || <span style={{ color: '#4b5563', fontSize: 11 }}>— ✏️</span>}
                       </span>
                     )}
                   </td>
