@@ -2722,6 +2722,15 @@ function OutputBlock({
   )
 }
 
+// Reviews with a drive URL or manager signature are treated as 100% complete
+// regardless of form_data completeness (handles reviews created in older versions).
+function reviewPct(save: SavedReview): number {
+  if (save.driveUrl || save.managerSignedAt) return 100
+  if (!save.form) return 0
+  const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, save.form)).length
+  return Math.round((filled / (STEPS.length - 1)) * 100)
+}
+
 // ─── Main form ────────────────────────────────────────────────────────────────
 
 export function PerformanceReviewForm() {
@@ -2784,7 +2793,7 @@ export function PerformanceReviewForm() {
       step: (r.step as number) ?? 0,
       maxStep: (r.max_step as number) ?? 0,
       savedAt: (r.saved_at as string) ?? new Date().toISOString(),
-      form: r.form_data as FormData,
+      form: (r.form_data as FormData) ?? defaultForm(),
       driveUrl: (r.drive_url as string) || undefined,
       driveDocId: (r.drive_doc_id as string) || undefined,
       comparisonReport: (r.comparison_report as string) || undefined,
@@ -2879,6 +2888,13 @@ export function PerformanceReviewForm() {
       } catch { /* non-critical */ }
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When the manager's profile name loads, backfill supervisorName if it's still empty
+  useEffect(() => {
+    if (profileName) {
+      setForm(prev => prev.supervisorName ? prev : { ...prev, supervisorName: profileName })
+    }
+  }, [profileName]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep maxStep as the high-water mark — never goes backward
   useEffect(() => {
@@ -3324,10 +3340,7 @@ export function PerformanceReviewForm() {
           {/* Performance Reviews nav item — dropdown */}
           {(() => {
             const active = activePage === 'reviews'
-            const inProgressSaves = saves.filter(save => {
-              const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, save.form)).length
-              return filled < STEPS.length - 1
-            })
+            const inProgressSaves = saves.filter(save => reviewPct(save) < 100)
             return (
               <div style={{ marginBottom: 2 }}>
                 {/* Row: clicking icon/label sets page, clicking chevron toggles dropdown */}
@@ -3357,8 +3370,7 @@ export function PerformanceReviewForm() {
                   <div style={{ marginTop: 2, marginBottom: 2 }}>
                     {inProgressSaves.map(save => {
                       const isActive = save.id === currentReviewId
-                      const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, save.form)).length
-                      const pct = Math.round((filled / (STEPS.length - 1)) * 100)
+                      const pct = reviewPct(save)
                       const isConfirming = confirmDeleteId === save.id
                       return (
                         <div key={save.id} className="group"
@@ -3391,10 +3403,9 @@ export function PerformanceReviewForm() {
                           ) : (
                             <button onClick={e => { e.stopPropagation(); setConfirmDeleteId(save.id) }}
                               title="Delete review"
-                              style={{ opacity: 0, padding: '3px', background: 'transparent', border: 'none', color: '#6b7280', cursor: 'pointer', borderRadius: 4, display: 'flex', alignItems: 'center', flexShrink: 0, transition: 'opacity 0.1s' }}
-                              className="group-hover:opacity-100"
-                              onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = '#f87171' }}
-                              onMouseLeave={e => { e.currentTarget.style.opacity = '0'; e.currentTarget.style.color = '#6b7280' }}>
+                              style={{ padding: '3px', background: 'transparent', border: 'none', color: '#4b5563', cursor: 'pointer', borderRadius: 4, display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                              onMouseEnter={e => { e.currentTarget.style.color = '#f87171' }}
+                              onMouseLeave={e => { e.currentTarget.style.color = '#4b5563' }}>
                               <Trash2 size={11} />
                             </button>
                           )}
@@ -3471,10 +3482,7 @@ export function PerformanceReviewForm() {
           {/* Notifications */}
           {(() => {
             const active = activePage === 'notifications'
-            const notifCount = saves.filter(s => {
-              const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, s.form)).length
-              return filled > 0 && filled < STEPS.length - 1
-            }).length
+            const notifCount = saves.filter(s => { const p = reviewPct(s); return p > 0 && p < 100 }).length
             return (
               <button onClick={() => setActivePage('notifications')} title={sidebarCollapsed ? 'Notifications' : undefined}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
@@ -3551,8 +3559,7 @@ export function PerformanceReviewForm() {
                 <div style={{ fontSize: 14, color: '#9ca3af' }}>No reviews yet. Create your first one.</div>
               </div>
             ) : saves.map(save => {
-              const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, save.form)).length
-              const pct = Math.round((filled / (STEPS.length - 1)) * 100)
+              const pct = reviewPct(save)
               const isConfirming = confirmDeleteId === save.id
               return (
                 <div key={save.id}
@@ -3709,13 +3716,12 @@ export function PerformanceReviewForm() {
                 }
               })
               // In-progress reviews
-              saves.filter(s => { const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, s.form)).length; return filled > 0 && filled < STEPS.length - 1 }).forEach(s => {
-                const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, s.form)).length
-                const pct = Math.round((filled / (STEPS.length - 1)) * 100)
+              saves.filter(s => { const p = reviewPct(s); return p > 0 && p < 100 }).forEach(s => {
+                const pct = reviewPct(s)
                 items.push({ icon: '✏️', color: '#f59e0b', label: `${s.employeeName}'s review is ${pct}% complete`, detail: 'This review is in progress and hasn\'t been exported yet.', action: () => { handleLoad(s); setActivePage('reviews') } })
               })
               // Completed reviews not yet exported
-              saves.filter(s => { const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, s.form)).length; return filled === STEPS.length - 1 && !s.driveUrl }).forEach(s => {
+              saves.filter(s => reviewPct(s) === 100 && !s.driveUrl).forEach(s => {
                 items.push({ icon: '✅', color: '#34d399', label: `${s.employeeName}'s review is complete — not yet exported`, detail: 'All steps are done. Export to Google Drive to share with the employee.', action: () => { handleLoad(s); setActivePage('reviews') } })
               })
               if (items.length === 0) return (
