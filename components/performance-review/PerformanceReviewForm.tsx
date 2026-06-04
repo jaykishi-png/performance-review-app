@@ -831,10 +831,6 @@ function computeAppraisalPeriod(startDate: string): string {
 
 function StepInfo({
   form,
-  update,
-  directReports,
-  dbTeam,
-  managerName,
 }: {
   form: FormData
   update: (p: Partial<FormData>) => void
@@ -842,137 +838,30 @@ function StepInfo({
   dbTeam?: DbTeamMemberForStep[]
   managerName?: string
 }) {
-  const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-
-  function selectDbEmployee(r: DbTeamMemberForStep) {
-    const patch: Partial<FormData> = {
-      employeeName: r.name ?? '',
-      employeePosition: r.position ?? '',
-      employeeDivision: r.division ?? '',
-      employeePronouns: r.pronouns ?? '',
-      reviewDate: today,
-    }
-    if (managerName) patch.supervisorName = managerName
-    if (r.start_date) patch.appraisalPeriod = computeAppraisalPeriod(r.start_date)
-    update(patch)
-  }
-
-  // DB team takes priority over localStorage direct reports for the quick-select
-  const showDbTeam = dbTeam && dbTeam.length > 0
+  const fields = [
+    { label: 'Employee Name',        value: form.employeeName },
+    { label: 'Position / Title',     value: form.employeePosition },
+    { label: 'Division',             value: form.employeeDivision },
+    { label: 'Supervisor',           value: form.supervisorName },
+    { label: 'Appraisal Period',     value: form.appraisalPeriod },
+    { label: 'Review Date',          value: form.reviewDate },
+    { label: 'Pronouns',             value: form.employeePronouns },
+  ]
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-gray-100 mb-1">Employee Information</h2>
-        <p className="text-[12px] text-gray-500">Select an employee to auto-fill their info, or enter manually.</p>
+        <h2 className="text-lg font-semibold text-gray-100 mb-1">Confirm Employee Information</h2>
+        <p className="text-[12px] text-gray-500">Review the details below before continuing. To make changes, contact your admin.</p>
       </div>
 
-      {/* Quick-select: DB team members (preferred) or localStorage direct reports */}
-      {showDbTeam ? (
-        <div className="space-y-2">
-          <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Select from My Team</p>
-          <div className="flex flex-wrap gap-2">
-            {dbTeam!.map(r => {
-              const isSelected = form.employeeName === (r.name ?? '')
-              return (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => selectDbEmployee(r)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-left transition-all ${
-                    isSelected
-                      ? 'border-purple-600 bg-purple-900/30 text-purple-200'
-                      : 'border-[#1e2030] bg-[#0b0d14] text-gray-400 hover:border-purple-700/50 hover:text-gray-200'
-                  }`}
-                >
-                  <span className="text-[13px]">👤</span>
-                  <span className="text-[12px] font-medium leading-none">{r.name}</span>
-                  {r.position && <span className="text-[10px] text-gray-600">{r.position}</span>}
-                </button>
-              )
-            })}
+      <div className="grid grid-cols-2 gap-3">
+        {fields.map(f => (
+          <div key={f.label} className="bg-[#13151f] border border-[#1e2130] rounded-xl px-4 py-3">
+            <div className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider mb-1">{f.label}</div>
+            <div className="text-[13px] font-medium text-gray-200">{f.value || <span className="text-gray-600 font-normal">—</span>}</div>
           </div>
-          <div className="border-t border-[#1e2030] pt-3" />
-        </div>
-      ) : directReports.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Select from My Team</p>
-          <div className="flex flex-wrap gap-2">
-            {directReports.map(r => {
-              const isSelected = form.employeeName === r.name && form.employeePosition === r.position && form.employeeDivision === r.division
-              return (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => update({ employeeName: r.name, employeePosition: r.position, employeeDivision: r.division, employeePronouns: r.pronouns ?? '' })}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-left transition-all ${
-                    isSelected
-                      ? 'border-purple-600 bg-purple-900/30 text-purple-200'
-                      : 'border-[#1e2030] bg-[#0b0d14] text-gray-400 hover:border-purple-700/50 hover:text-gray-200'
-                  }`}
-                >
-                  <span className="text-[13px]">👤</span>
-                  <span className="text-[12px] font-medium leading-none">{r.name}</span>
-                  {r.position && <span className="text-[10px] text-gray-600">{r.position}</span>}
-                </button>
-              )
-            })}
-          </div>
-          <div className="border-t border-[#1e2030] pt-3" />
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label>Employee Name</Label>
-          <Input value={form.employeeName} onChange={v => update({ employeeName: v })} placeholder="Full name" />
-        </div>
-        <div>
-          <Label>Employee Position / Title</Label>
-          <Input value={form.employeePosition} onChange={v => update({ employeePosition: v })} placeholder="e.g. Video Editor" />
-        </div>
-        <div>
-          <Label>Employee Division</Label>
-          <Input value={form.employeeDivision} onChange={v => update({ employeeDivision: v })} placeholder="e.g. Creative Production" />
-        </div>
-        <div>
-          <Label>Supervisor Name (You)</Label>
-          <Input value={form.supervisorName} onChange={v => update({ supervisorName: v })} placeholder="Your full name" />
-        </div>
-        <div>
-          <Label>Appraisal Period</Label>
-          <Input value={form.appraisalPeriod} onChange={v => update({ appraisalPeriod: v })} placeholder="e.g. May 2025 – May 2026" />
-        </div>
-        <div>
-          <Label>Review Date</Label>
-          <Input value={form.reviewDate} onChange={v => update({ reviewDate: v })} placeholder="e.g. May 28, 2026" />
-        </div>
-        <div className="col-span-2">
-          <Label>Pronouns <span className="normal-case font-normal text-gray-600 ml-1">— used by AI when drafting examples &amp; goals</span></Label>
-          <div className="flex items-center gap-2 flex-wrap mt-1">
-            {['he/him', 'she/her', 'they/them'].map(p => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => update({ employeePronouns: form.employeePronouns === p ? '' : p })}
-                className={`px-3 py-1.5 rounded-lg text-[11px] border transition-all ${
-                  form.employeePronouns === p
-                    ? 'border-purple-600 bg-purple-900/30 text-purple-200'
-                    : 'border-[#1e2030] text-gray-500 hover:text-gray-300 hover:border-[#2a2d3a]'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-            <input
-              value={['he/him', 'she/her', 'they/them', ''].includes(form.employeePronouns) ? '' : form.employeePronouns}
-              onChange={e => update({ employeePronouns: e.target.value })}
-              onFocus={() => { if (['he/him', 'she/her', 'they/them'].includes(form.employeePronouns)) update({ employeePronouns: '' }) }}
-              placeholder="Custom…"
-              className="flex-1 min-w-[80px] bg-[#0d0f1a] border border-[#1e2030] rounded-xl px-3 py-2 text-sm text-gray-200 placeholder-gray-700 focus:outline-none focus:border-purple-700/60 transition-colors"
-            />
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   )
