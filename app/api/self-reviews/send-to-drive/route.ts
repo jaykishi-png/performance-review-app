@@ -115,21 +115,20 @@ function buildBlocks(d: SelfAssessmentData): Block[] {
   d.competencies.forEach((comp, i) => {
     if (!comp.term) return
     const typeLabel = TYPE_LABELS[comp.type] || 'POSITIVE'
-    // Competency header: 14pt #333333 normal weight — matches Doc 2 h3 .c3
     p(`COMPETENCY ${ORDINALS[i]}  ·  ${typeLabel}:  ${comp.term}`, { fontSize: 14, color: DARK_GRAY, spaceBefore: 4, spaceAfter: 4 })
-    // Definition: 10pt #737373 italic, hanging indent (margin-left 36pt, first-line -36pt)
+    // hangIndent is halved because Docs API doubles it in CSS text-indent output
     if (comp.definition) {
-      p(comp.definition, { fontSize: 10, color: MID_GRAY, italic: true, indent: 36, hangIndent: -36 })
+      p(comp.definition, { fontSize: 10, color: MID_GRAY, italic: true, indent: 36, hangIndent: -18, spaceBefore: 4 })
     }
     p('')
     p('Examples:', { bold: true, fontSize: 10 })
     const filled = comp.examples.filter(e => e?.trim())
     if (filled.length > 0) {
       filled.forEach((ex, j) => {
-        p(`${j + 1}.  ${ex.trim()}`, { fontSize: 10, indent: 18, hangIndent: -18 })
+        p(`${j + 1}.  ${ex.trim()}`, { fontSize: 10, indent: 18, hangIndent: -9, spaceBefore: 4 })
       })
     } else {
-      p('1.  —', { fontSize: 10, color: MID_GRAY, indent: 18, hangIndent: -18 })
+      p('1.  —', { fontSize: 10, color: MID_GRAY, indent: 18, hangIndent: -9, spaceBefore: 4 })
     }
     p('')
   })
@@ -145,10 +144,10 @@ function buildBlocks(d: SelfAssessmentData): Block[] {
       p(`${i + 1}.  ${goal.description.trim()}`, { bold: true, fontSize: 11 })
       if (goal.outcome) {
         const outcomeLabel = goal.outcome.charAt(0).toUpperCase() + goal.outcome.slice(1)
-        p(`Outcome:  ${outcomeLabel}`, { fontSize: 10, italic: true, indent: 18, hangIndent: -18 })
+        p(`Outcome:  ${outcomeLabel}`, { fontSize: 10, indent: 18, hangIndent: -9, spaceBefore: 4 })
       }
       if (goal.reasoning?.trim()) {
-        p(`Reason:  ${goal.reasoning.trim()}`, { fontSize: 10, indent: 18, hangIndent: -18 })
+        p(`Reason:  ${goal.reasoning.trim()}`, { fontSize: 10, indent: 18, hangIndent: -9, spaceBefore: 4 })
       }
       p('')
     })
@@ -178,7 +177,7 @@ function buildBlocks(d: SelfAssessmentData): Block[] {
     filledNextGoals.forEach((goal, i) => {
       p(`${i + 1}.  Goal:  ${goal.goal.trim()}`, { bold: true, fontSize: 11 })
       if (goal.objective?.trim()) {
-        p(`Objective / Roadmap:  ${goal.objective.trim()}`, { fontSize: 10, indent: 18, hangIndent: -18 })
+        p(`Objective / Roadmap:  ${goal.objective.trim()}`, { fontSize: 10, indent: 18, hangIndent: -9, spaceBefore: 4 })
       }
       p('')
     })
@@ -192,9 +191,7 @@ function buildBlocks(d: SelfAssessmentData): Block[] {
   p('')
   p(`Employee Name:  ${d.employeeName}`, { fontSize: 11 })
   p('')
-  p('Employee Signature:  ___________________________________', { fontSize: 11 })
-  p('')
-  p('Date Signed:  ________________', { fontSize: 11 })
+  p('Employee Signature:  ___________________________________      Date Signed:  ________________', { fontSize: 11 })
 
   return blocks
 }
