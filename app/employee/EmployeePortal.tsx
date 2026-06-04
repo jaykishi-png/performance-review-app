@@ -24,7 +24,7 @@ type Goal = {
 }
 type CompetencyType = 'positive' | 'constructive' | 'choice'
 type Competency = { type: CompetencyType; term: string; examples: [string, string, string] }
-type GoalItem = { description: string; outcome: 'successful' | 'unsuccessful' | ''; reasoning: string }
+type GoalItem = { description: string; outcome: 'successful' | 'unsuccessful' | 'ongoing' | ''; reasoning: string }
 type NextYearGoal = { goal: string; objective: string }
 
 type SelfReview = {
@@ -634,10 +634,10 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
               <div style={{ fontWeight: 600, fontSize: 11, color: '#10b981', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{i + 1}. Goal / Objective / Accomplishment</div>
               <div style={{ marginBottom: 10 }}><div style={lbl}>Description</div><textarea value={g.description} onChange={e => updateGoal(i, 'description', e.target.value)} disabled={isSubmitted} rows={2} placeholder="Describe your goal, objective, or accomplishment…" style={{ ...inp, resize: 'vertical' }} /></div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10 }}>
-                <div><div style={lbl}>Outcome</div><select value={g.outcome} onChange={e => updateGoal(i, 'outcome', e.target.value)} disabled={isSubmitted} style={{ ...inp, appearance: 'none' }}><option value="">— Select —</option><option value="successful">✓ Successful</option><option value="unsuccessful">✗ Unsuccessful</option></select></div>
+                <div><div style={lbl}>Outcome</div><select value={g.outcome} onChange={e => updateGoal(i, 'outcome', e.target.value)} disabled={isSubmitted} style={{ ...inp, appearance: 'none' }}><option value="">— Select —</option><option value="successful">✓ Successful</option><option value="unsuccessful">✗ Unsuccessful</option><option value="ongoing">↻ Ongoing</option></select></div>
                 <div>
                   <div style={lbl}>Reason / Explanation</div>
-                  <input value={g.reasoning} onChange={e => updateGoal(i, 'reasoning', e.target.value)} disabled={isSubmitted} placeholder="Why successful or unsuccessful?" style={inp} />
+                  <input value={g.reasoning} onChange={e => updateGoal(i, 'reasoning', e.target.value)} disabled={isSubmitted} placeholder="Why successful, unsuccessful, or still in progress?" style={inp} />
                   {!isSubmitted && (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
                       {goalAI[i]?.error && <span style={{ fontSize: 10, color: '#f87171' }}>{goalAI[i].error}</span>}
