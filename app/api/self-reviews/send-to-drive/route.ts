@@ -36,33 +36,39 @@ function getAuth(token: string) {
 // ── Document builder types ─────────────────────────────────────────────────────
 interface Block {
   text: string
-  heading?: 'HEADING_1' | 'HEADING_2' | 'HEADING_3'
   bold?: boolean
   italic?: boolean
   fontSize?: number
   color?: { red: number; green: number; blue: number }
-  spaceAfter?: number
-  indent?: number
+  indent?: number       // indentStart in PT
+  hangIndent?: number   // indentFirstLine negative offset (hanging indent) in PT
+  center?: boolean
+  spaceBefore?: number  // paddingTop in PT
+  spaceAfter?: number   // paddingBottom in PT
+  fontFamily?: string
 }
 
 const STAR_LABELS: Record<number, { label: string; description: string }> = {
-  5: { label: 'Outstanding',           description: 'Consistently exceeds performance requirements.' },
+  5: { label: 'Outstanding',              description: 'Consistently exceeds performance requirements.' },
   4: { label: 'Exceeds Job Requirements', description: 'Meets and at times exceeds performance requirements (above average).' },
-  3: { label: 'Meets Expectations',    description: 'Job requirements are being met at a satisfactory level.' },
-  2: { label: 'Needs Improvement',     description: 'Does not consistently meet the expected job requirements.' },
-  1: { label: 'Unsatisfactory',        description: 'Demonstrates an unacceptable level of skills and competencies.' },
+  3: { label: 'Meets Expectations',       description: 'Job requirements are being met at a satisfactory level.' },
+  2: { label: 'Needs Improvement',        description: 'Does not consistently meet the expected job requirements.' },
+  1: { label: 'Unsatisfactory',           description: 'Demonstrates an unacceptable level of skills and competencies.' },
 }
 
 const ORDINALS = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE']
 const TYPE_LABELS: Record<string, string> = {
-  positive: 'Positive',
-  constructive: 'Constructive',
-  choice: 'Your Choice',
+  positive:     'POSITIVE',
+  constructive: 'CONSTRUCTIVE',
+  choice:       'POSITIVE',
 }
 
-const RUSH_PURPLE = { red: 0.31, green: 0.18, blue: 0.56 }
-const DARK_GRAY   = { red: 0.2,  green: 0.2,  blue: 0.2  }
-const MID_GRAY    = { red: 0.45, green: 0.45, blue: 0.45 }
+// Colors from Doc 2 (filled template)
+const RUSH_PURPLE = { red: 79/255,  green: 46/255,  blue: 143/255 } // #4f2e8f
+const DARK_GRAY   = { red: 51/255,  green: 51/255,  blue: 51/255  } // #333333
+const MID_GRAY    = { red: 115/255, green: 115/255, blue: 115/255 } // #737373
+const FONT        = 'Poppins'
+const DIVIDER     = '─'.repeat(62)
 
 // ── Build document blocks from self-assessment data ────────────────────────────
 interface SelfAssessmentData {
@@ -79,205 +85,176 @@ interface SelfAssessmentData {
 
 function buildBlocks(d: SelfAssessmentData): Block[] {
   const blocks: Block[] = []
+  const p = (text: string, opts: Omit<Block, 'text'> = {}): void => { blocks.push({ text, fontFamily: FONT, ...opts }) }
 
   // ── Header ─────────────────────────────────────────────────────────────────
-  blocks.push({ text: 'Rush Media', heading: 'HEADING_1', color: RUSH_PURPLE, fontSize: 24 })
-  blocks.push({ text: 'Employee Self-Assessment', heading: 'HEADING_2', color: DARK_GRAY, fontSize: 16 })
-  blocks.push({ text: '' })
-
-  // Policy disclaimer (appears before info block, matching template)
-  blocks.push({
-    text: 'All employees will have an annual performance review on or around the date of their work anniversary. Merit increases are determined by several factors including financial health, Company profitability, job performance, and consumer price index. A positive performance review does not guarantee a pay raise or continued employment.',
-    fontSize: 10, color: MID_GRAY, italic: true,
-  })
-  blocks.push({ text: '' })
-  blocks.push({ text: '______________________________________________________________________', color: MID_GRAY, fontSize: 9 })
-  blocks.push({ text: '' })
+  p('Rush Media', { bold: true, italic: true, fontSize: 11, color: MID_GRAY })
+  p('Employee Self-Assessment', { bold: true, fontSize: 22, color: RUSH_PURPLE, center: true, spaceBefore: 12, spaceAfter: 4 })
+  p('')
 
   // Info block
-  const info: [string, string][] = [
-    ['Employee Name',    d.employeeName],
-    ['Employee Position', d.employeePosition],
-    ['Supervisor Name',  d.supervisorName],
-    ['Appraisal Period', d.appraisalPeriod],
-    ['Date Completed',   d.dateCompleted],
-  ]
-  for (const [label, value] of info) {
-    blocks.push({ text: `${label}:   ${value || '—'}`, fontSize: 11 })
-  }
-  blocks.push({ text: '' })
-  blocks.push({ text: '______________________________________________________________________', color: MID_GRAY, fontSize: 9 })
-  blocks.push({ text: '' })
+  p(`Employee Name:  ${d.employeeName || '—'}`, { fontSize: 11 })
+  p(`Position:  ${d.employeePosition || '—'}`, { fontSize: 11 })
+  p(`Supervisor:  ${d.supervisorName || '—'}`, { fontSize: 11 })
+  p(`Appraisal Period:  ${d.appraisalPeriod || '—'}`, { fontSize: 11 })
+  p(`Date Completed:  ${d.dateCompleted || '—'}`, { fontSize: 11 })
+  p('')
+
+  // Divider
+  p(DIVIDER, { fontSize: 9, color: MID_GRAY })
+
+  // Disclaimer
+  p('All employees will have an annual performance review on or around the date of their work anniversary. Merit increases are determined by several factors including financial health, Company profitability, job performance, and consumer price index. A positive performance review does not guarantee a pay raise or continued employment.', { fontSize: 9, color: MID_GRAY, italic: true })
+  p('')
 
   // ── Part One ────────────────────────────────────────────────────────────────
-  blocks.push({ text: 'PART ONE — COMPETENCY EVALUATION', heading: 'HEADING_2', color: RUSH_PURPLE })
-  blocks.push({
-    text: 'Consider what is working about your performance and where improvements can be made. Five competency words have been evaluated below, with specific examples for each. Please review the Competency Glossary of Terms for definitions.',
-    fontSize: 10, color: MID_GRAY, italic: true,
-  })
-  blocks.push({ text: '' })
+  p('PART ONE — COMPETENCY EVALUATION', { bold: true, fontSize: 19, color: RUSH_PURPLE, spaceBefore: 4, spaceAfter: 4 })
+  p('Consider what is working about your performance and where improvements can be made. Five competency words have been evaluated below, with specific examples for each. Please review the Competency Glossary of Terms for definitions.', { fontSize: 10, color: MID_GRAY, italic: true })
+  p('')
 
   d.competencies.forEach((comp, i) => {
     if (!comp.term) return
-    const typeLabel = TYPE_LABELS[comp.type] || comp.type
-    blocks.push({
-      text: `COMPETENCY ${ORDINALS[i]} (${typeLabel.toLowerCase()}):   ${comp.term}`,
-      bold: true, fontSize: 12, color: DARK_GRAY,
-    })
+    const typeLabel = TYPE_LABELS[comp.type] || 'POSITIVE'
+    // Competency header: 14pt #333333 normal weight — matches Doc 2 h3 .c3
+    p(`COMPETENCY ${ORDINALS[i]}  ·  ${typeLabel}:  ${comp.term}`, { fontSize: 14, color: DARK_GRAY, spaceBefore: 4, spaceAfter: 4 })
+    // Definition: 10pt #737373 italic, hanging indent (margin-left 36pt, first-line -36pt)
     if (comp.definition) {
-      blocks.push({ text: comp.definition, fontSize: 10, color: MID_GRAY, italic: true, indent: 18 })
+      p(comp.definition, { fontSize: 10, color: MID_GRAY, italic: true, indent: 36, hangIndent: -36 })
     }
-    blocks.push({ text: '' })
-    blocks.push({ text: 'EXPLANATION:', bold: true, fontSize: 10, color: DARK_GRAY })
+    p('')
+    p('Examples:', { bold: true, fontSize: 10 })
     const filled = comp.examples.filter(e => e?.trim())
     if (filled.length > 0) {
       filled.forEach((ex, j) => {
-        blocks.push({ text: `${j + 1}.   ${ex.trim()}`, fontSize: 10, indent: 18 })
+        p(`${j + 1}.  ${ex.trim()}`, { fontSize: 10, indent: 18, hangIndent: -18 })
       })
     } else {
-      blocks.push({ text: '1.   —', fontSize: 10, color: MID_GRAY, indent: 18 })
+      p('1.  —', { fontSize: 10, color: MID_GRAY, indent: 18, hangIndent: -18 })
     }
-    blocks.push({ text: '' })
+    p('')
   })
-
-  blocks.push({ text: '______________________________________________________________________', color: MID_GRAY, fontSize: 9 })
-  blocks.push({ text: '' })
 
   // ── Part Two ────────────────────────────────────────────────────────────────
-  blocks.push({ text: 'PART TWO — GOALS, OBJECTIVES & ACCOMPLISHMENTS', heading: 'HEADING_2', color: RUSH_PURPLE })
-  blocks.push({
-    text: 'Indicate your progress and the successful or unsuccessful completion of your goals or objectives, and explain why.',
-    fontSize: 10, color: MID_GRAY, italic: true,
-  })
-  blocks.push({ text: '' })
+  p('PART TWO — GOALS, OBJECTIVES & ACCOMPLISHMENTS', { bold: true, fontSize: 19, color: RUSH_PURPLE, spaceBefore: 4, spaceAfter: 4 })
+  p('Indicate your progress and the successful or unsuccessful completion of your goals or objectives, and explain why.', { fontSize: 10, color: MID_GRAY, italic: true })
+  p('')
 
   const filledGoals = d.goalsObjectives.filter(g => g.description?.trim())
   if (filledGoals.length > 0) {
     filledGoals.forEach((goal, i) => {
-      blocks.push({ text: `${i + 1}.   ${goal.description.trim()}`, bold: true, fontSize: 11 })
+      p(`${i + 1}.  ${goal.description.trim()}`, { bold: true, fontSize: 11 })
       if (goal.outcome) {
         const outcomeLabel = goal.outcome.charAt(0).toUpperCase() + goal.outcome.slice(1)
-        blocks.push({ text: `Outcome:   ${outcomeLabel}`, fontSize: 10, italic: true, indent: 18 })
+        p(`Outcome:  ${outcomeLabel}`, { fontSize: 10, italic: true, indent: 18, hangIndent: -18 })
       }
       if (goal.reasoning?.trim()) {
-        blocks.push({ text: `Reason:   ${goal.reasoning.trim()}`, fontSize: 10, indent: 18 })
+        p(`Reason:  ${goal.reasoning.trim()}`, { fontSize: 10, indent: 18, hangIndent: -18 })
       }
-      blocks.push({ text: '' })
+      p('')
     })
   } else {
-    blocks.push({ text: 'No goals or objectives recorded.', fontSize: 10, color: MID_GRAY, italic: true })
-    blocks.push({ text: '' })
+    p('No goals or objectives recorded.', { fontSize: 10, color: MID_GRAY, italic: true })
+    p('')
   }
 
-  // Overall rating
-  blocks.push({ text: 'OVERALL PERFORMANCE EVALUATION SUMMARY:', bold: true, fontSize: 11 })
-  blocks.push({ text: '' })
+  p('OVERALL PERFORMANCE RATING', { bold: true, fontSize: 11 })
   if (d.overallRating && STAR_LABELS[d.overallRating]) {
     const stars = '★'.repeat(d.overallRating) + '☆'.repeat(5 - d.overallRating)
     const rating = STAR_LABELS[d.overallRating]
-    blocks.push({ text: `OVERALL SCORE:   ${stars}  ${d.overallRating}/5 — ${rating.label}`, bold: true, fontSize: 12, color: RUSH_PURPLE })
-    blocks.push({ text: rating.description, fontSize: 10, color: MID_GRAY, italic: true })
+    p(`${stars}  ${d.overallRating} / 5  —  ${rating.label}`, { bold: true, fontSize: 13, color: RUSH_PURPLE })
+    p(rating.description, { fontSize: 10, color: MID_GRAY, italic: true })
   } else {
-    blocks.push({ text: 'OVERALL SCORE:   Not rated.', fontSize: 11, color: MID_GRAY })
+    p('Not rated.', { fontSize: 10, color: MID_GRAY })
   }
-  blocks.push({ text: '' })
-  blocks.push({ text: '______________________________________________________________________', color: MID_GRAY, fontSize: 9 })
-  blocks.push({ text: '' })
+  p('')
 
   // ── Part Three ──────────────────────────────────────────────────────────────
-  blocks.push({ text: "PART THREE — NEXT YEAR'S GOALS & OBJECTIVES", heading: 'HEADING_2', color: RUSH_PURPLE })
-  blocks.push({
-    text: "Identify goals you anticipate or want to complete over the next review period, along with objectives on how you plan to reach them. These are subject to change based on your evaluation discussion with your manager.",
-    fontSize: 10, color: MID_GRAY, italic: true,
-  })
-  blocks.push({ text: '' })
+  p("PART THREE — NEXT YEAR'S GOALS & OBJECTIVES", { bold: true, fontSize: 19, color: RUSH_PURPLE, spaceBefore: 4, spaceAfter: 4 })
+  p('Identify goals you anticipate or want to complete over the next review period, along with objectives on how you plan to reach them. These are subject to change based on your evaluation discussion with your manager.', { fontSize: 10, color: MID_GRAY, italic: true })
+  p('')
 
   const filledNextGoals = d.nextYearGoals.filter(g => g.goal?.trim())
   if (filledNextGoals.length > 0) {
     filledNextGoals.forEach((goal, i) => {
-      blocks.push({ text: `${i + 1}.   ${goal.goal.trim()}`, bold: true, fontSize: 11 })
+      p(`${i + 1}.  Goal:  ${goal.goal.trim()}`, { bold: true, fontSize: 11 })
       if (goal.objective?.trim()) {
-        blocks.push({ text: `Objective / Roadmap:   ${goal.objective.trim()}`, fontSize: 10, indent: 18 })
+        p(`Objective / Roadmap:  ${goal.objective.trim()}`, { fontSize: 10, indent: 18, hangIndent: -18 })
       }
-      blocks.push({ text: '' })
+      p('')
     })
   } else {
-    blocks.push({ text: 'No next-year goals recorded.', fontSize: 10, color: MID_GRAY, italic: true })
-    blocks.push({ text: '' })
+    p('No next-year goals recorded.', { fontSize: 10, color: MID_GRAY, italic: true })
+    p('')
   }
 
   // ── Signature block ─────────────────────────────────────────────────────────
-  blocks.push({ text: '______________________________________________________________________', color: MID_GRAY, fontSize: 9 })
-  blocks.push({ text: '' })
-  blocks.push({ text: `Employee Name:   ${d.employeeName}`, fontSize: 11 })
-  blocks.push({ text: '' })
-  blocks.push({ text: 'Employee Signature:   ___________________________________', fontSize: 11 })
-  blocks.push({ text: '' })
-  blocks.push({ text: 'Date Signed:   ________________', fontSize: 11 })
+  p(DIVIDER, { fontSize: 9, color: MID_GRAY })
+  p('')
+  p(`Employee Name:  ${d.employeeName}`, { fontSize: 11 })
+  p('')
+  p('Employee Signature:  ___________________________________', { fontSize: 11 })
+  p('')
+  p('Date Signed:  ________________', { fontSize: 11 })
 
   return blocks
 }
 
 // ── Convert blocks → Google Docs batchUpdate requests ──────────────────────────
 function blocksToRequests(blocks: Block[]): { fullText: string; requests: docs_v1.Schema$Request[] } {
-  // Build full text string and track segment positions
   let fullText = ''
   const segments: Array<{ start: number; end: number; block: Block }> = []
 
   for (const block of blocks) {
-    const start = fullText.length + 1 // +1 for doc start index offset
+    const start = fullText.length + 1
     fullText += block.text + '\n'
     const end = fullText.length + 1
     segments.push({ start, end, block })
   }
 
   const requests: docs_v1.Schema$Request[] = []
-
-  // Insert all text at index 1
   requests.push({ insertText: { location: { index: 1 }, text: fullText } })
 
-  // Apply paragraph and text styles in reverse order (highest index first)
   for (const { start, end, block } of [...segments].reverse()) {
     if (start >= end) continue
 
     // Paragraph style
-    if (block.heading || block.spaceAfter || block.indent) {
-      const named = block.heading as docs_v1.Schema$ParagraphStyle['namedStyleType']
+    const hasParagraphStyle = block.center || block.spaceBefore !== undefined || block.spaceAfter !== undefined || block.indent || block.hangIndent
+    if (hasParagraphStyle) {
+      const paraStyle: docs_v1.Schema$ParagraphStyle = { namedStyleType: 'NORMAL_TEXT' }
+      const paraFields: string[] = ['namedStyleType']
+
+      if (block.center) { paraStyle.alignment = 'CENTER'; paraFields.push('alignment') }
+      if (block.spaceBefore !== undefined) { paraStyle.spaceAbove = { magnitude: block.spaceBefore, unit: 'PT' }; paraFields.push('spaceAbove') }
+      if (block.spaceAfter !== undefined)  { paraStyle.spaceBelow = { magnitude: block.spaceAfter,  unit: 'PT' }; paraFields.push('spaceBelow') }
+      if (block.indent)     { paraStyle.indentStart     = { magnitude: block.indent,     unit: 'PT' }; paraFields.push('indentStart') }
+      if (block.hangIndent) { paraStyle.indentFirstLine = { magnitude: block.hangIndent, unit: 'PT' }; paraFields.push('indentFirstLine') }
+
       requests.push({
         updateParagraphStyle: {
           range: { startIndex: start, endIndex: end },
-          paragraphStyle: {
-            namedStyleType: named ?? 'NORMAL_TEXT',
-            spaceAbove: block.heading === 'HEADING_1' ? { magnitude: 12, unit: 'PT' } : { magnitude: 4, unit: 'PT' },
-            spaceBelow: { magnitude: block.spaceAfter ?? (block.heading ? 4 : 0), unit: 'PT' },
-            indentStart: block.indent ? { magnitude: block.indent, unit: 'PT' } : undefined,
-          },
-          fields: 'namedStyleType,spaceAbove,spaceBelow' + (block.indent ? ',indentStart' : ''),
+          paragraphStyle: paraStyle,
+          fields: paraFields.join(','),
         },
       })
     }
 
     // Text style
-    const hasTextStyle = block.bold || block.italic || block.fontSize || block.color
+    const hasTextStyle = block.bold !== undefined || block.italic !== undefined || block.fontSize || block.color || block.fontFamily
     if (hasTextStyle) {
       const textStyle: docs_v1.Schema$TextStyle = {}
-      if (block.bold !== undefined)   textStyle.bold = block.bold
-      if (block.italic !== undefined) textStyle.italic = block.italic
-      if (block.fontSize)             textStyle.fontSize = { magnitude: block.fontSize, unit: 'PT' }
-      if (block.color)                textStyle.foregroundColor = { color: { rgbColor: block.color } }
+      const textFields: string[] = []
 
-      const fields = [
-        block.bold !== undefined ? 'bold' : '',
-        block.italic !== undefined ? 'italic' : '',
-        block.fontSize ? 'fontSize' : '',
-        block.color ? 'foregroundColor' : '',
-      ].filter(Boolean).join(',')
+      if (block.bold      !== undefined) { textStyle.bold      = block.bold;      textFields.push('bold') }
+      if (block.italic    !== undefined) { textStyle.italic    = block.italic;    textFields.push('italic') }
+      if (block.fontSize)                { textStyle.fontSize  = { magnitude: block.fontSize, unit: 'PT' }; textFields.push('fontSize') }
+      if (block.color)                   { textStyle.foregroundColor = { color: { rgbColor: block.color } }; textFields.push('foregroundColor') }
+      if (block.fontFamily)              { textStyle.weightedFontFamily = { fontFamily: block.fontFamily }; textFields.push('weightedFontFamily') }
 
       requests.push({
         updateTextStyle: {
-          range: { startIndex: start, endIndex: end - 1 }, // -1 to exclude \n
+          range: { startIndex: start, endIndex: end - 1 },
           textStyle,
-          fields,
+          fields: textFields.join(','),
         },
       })
     }
