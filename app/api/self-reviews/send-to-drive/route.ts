@@ -80,31 +80,33 @@ interface SelfAssessmentData {
 function buildBlocks(d: SelfAssessmentData): Block[] {
   const blocks: Block[] = []
 
-  // ── Cover / header ──────────────────────────────────────────────────────────
-  blocks.push({ text: 'Rush Media', bold: true, fontSize: 11, color: MID_GRAY, italic: true })
-  blocks.push({ text: 'Employee Self-Assessment', heading: 'HEADING_1', color: RUSH_PURPLE, fontSize: 22 })
+  // ── Header ─────────────────────────────────────────────────────────────────
+  blocks.push({ text: 'Rush Media', heading: 'HEADING_1', color: RUSH_PURPLE, fontSize: 24 })
+  blocks.push({ text: 'Employee Self-Assessment', heading: 'HEADING_2', color: DARK_GRAY, fontSize: 16 })
   blocks.push({ text: '' })
 
-  // Info table as plain text block pairs
-  const info = [
-    ['Employee Name',  d.employeeName],
-    ['Position',       d.employeePosition],
-    ['Supervisor',     d.supervisorName],
-    ['Appraisal Period', d.appraisalPeriod],
-    ['Date Completed', d.dateCompleted],
-  ]
-  for (const [label, value] of info) {
-    blocks.push({ text: `${label}:  ${value || '—'}`, bold: false, fontSize: 11 })
-  }
-  blocks.push({ text: '' })
-  blocks.push({ text: '──────────────────────────────────────────────────────────────', color: MID_GRAY, fontSize: 9 })
-  blocks.push({ text: '' })
-
-  // Policy disclaimer
+  // Policy disclaimer (appears before info block, matching template)
   blocks.push({
     text: 'All employees will have an annual performance review on or around the date of their work anniversary. Merit increases are determined by several factors including financial health, Company profitability, job performance, and consumer price index. A positive performance review does not guarantee a pay raise or continued employment.',
-    fontSize: 9, color: MID_GRAY, italic: true,
+    fontSize: 10, color: MID_GRAY, italic: true,
   })
+  blocks.push({ text: '' })
+  blocks.push({ text: '______________________________________________________________________', color: MID_GRAY, fontSize: 9 })
+  blocks.push({ text: '' })
+
+  // Info block
+  const info: [string, string][] = [
+    ['Employee Name',    d.employeeName],
+    ['Employee Position', d.employeePosition],
+    ['Supervisor Name',  d.supervisorName],
+    ['Appraisal Period', d.appraisalPeriod],
+    ['Date Completed',   d.dateCompleted],
+  ]
+  for (const [label, value] of info) {
+    blocks.push({ text: `${label}:   ${value || '—'}`, fontSize: 11 })
+  }
+  blocks.push({ text: '' })
+  blocks.push({ text: '______________________________________________________________________', color: MID_GRAY, fontSize: 9 })
   blocks.push({ text: '' })
 
   // ── Part One ────────────────────────────────────────────────────────────────
@@ -119,22 +121,27 @@ function buildBlocks(d: SelfAssessmentData): Block[] {
     if (!comp.term) return
     const typeLabel = TYPE_LABELS[comp.type] || comp.type
     blocks.push({
-      text: `COMPETENCY ${ORDINALS[i]}  ·  ${typeLabel.toUpperCase()}:  ${comp.term}`,
-      heading: 'HEADING_3', color: DARK_GRAY,
+      text: `COMPETENCY ${ORDINALS[i]} (${typeLabel.toLowerCase()}):   ${comp.term}`,
+      bold: true, fontSize: 12, color: DARK_GRAY,
     })
     if (comp.definition) {
-      blocks.push({ text: comp.definition, fontSize: 10, color: MID_GRAY, italic: true, indent: 720 })
+      blocks.push({ text: comp.definition, fontSize: 10, color: MID_GRAY, italic: true, indent: 18 })
     }
     blocks.push({ text: '' })
+    blocks.push({ text: 'EXPLANATION:', bold: true, fontSize: 10, color: DARK_GRAY })
     const filled = comp.examples.filter(e => e?.trim())
     if (filled.length > 0) {
-      blocks.push({ text: 'Examples:', bold: true, fontSize: 10 })
       filled.forEach((ex, j) => {
-        blocks.push({ text: `${j + 1}.  ${ex.trim()}`, fontSize: 10, indent: 360 })
+        blocks.push({ text: `${j + 1}.   ${ex.trim()}`, fontSize: 10, indent: 18 })
       })
+    } else {
+      blocks.push({ text: '1.   —', fontSize: 10, color: MID_GRAY, indent: 18 })
     }
     blocks.push({ text: '' })
   })
+
+  blocks.push({ text: '______________________________________________________________________', color: MID_GRAY, fontSize: 9 })
+  blocks.push({ text: '' })
 
   // ── Part Two ────────────────────────────────────────────────────────────────
   blocks.push({ text: 'PART TWO — GOALS, OBJECTIVES & ACCOMPLISHMENTS', heading: 'HEADING_2', color: RUSH_PURPLE })
@@ -147,12 +154,13 @@ function buildBlocks(d: SelfAssessmentData): Block[] {
   const filledGoals = d.goalsObjectives.filter(g => g.description?.trim())
   if (filledGoals.length > 0) {
     filledGoals.forEach((goal, i) => {
-      blocks.push({ text: `${i + 1}.  ${goal.description.trim()}`, bold: true, fontSize: 11 })
+      blocks.push({ text: `${i + 1}.   ${goal.description.trim()}`, bold: true, fontSize: 11 })
       if (goal.outcome) {
-        blocks.push({ text: `Outcome:  ${goal.outcome.charAt(0).toUpperCase() + goal.outcome.slice(1)}`, fontSize: 10, indent: 360 })
+        const outcomeLabel = goal.outcome.charAt(0).toUpperCase() + goal.outcome.slice(1)
+        blocks.push({ text: `Outcome:   ${outcomeLabel}`, fontSize: 10, italic: true, indent: 18 })
       }
       if (goal.reasoning?.trim()) {
-        blocks.push({ text: `Reason:  ${goal.reasoning.trim()}`, fontSize: 10, indent: 360 })
+        blocks.push({ text: `Reason:   ${goal.reasoning.trim()}`, fontSize: 10, indent: 18 })
       }
       blocks.push({ text: '' })
     })
@@ -162,15 +170,18 @@ function buildBlocks(d: SelfAssessmentData): Block[] {
   }
 
   // Overall rating
-  blocks.push({ text: 'OVERALL PERFORMANCE RATING', bold: true, fontSize: 11 })
+  blocks.push({ text: 'OVERALL PERFORMANCE EVALUATION SUMMARY:', bold: true, fontSize: 11 })
+  blocks.push({ text: '' })
   if (d.overallRating && STAR_LABELS[d.overallRating]) {
     const stars = '★'.repeat(d.overallRating) + '☆'.repeat(5 - d.overallRating)
     const rating = STAR_LABELS[d.overallRating]
-    blocks.push({ text: `${stars}  ${d.overallRating} / 5  —  ${rating.label}`, bold: true, fontSize: 13, color: RUSH_PURPLE })
+    blocks.push({ text: `OVERALL SCORE:   ${stars}  ${d.overallRating}/5 — ${rating.label}`, bold: true, fontSize: 12, color: RUSH_PURPLE })
     blocks.push({ text: rating.description, fontSize: 10, color: MID_GRAY, italic: true })
   } else {
-    blocks.push({ text: 'Not rated.', fontSize: 10, color: MID_GRAY })
+    blocks.push({ text: 'OVERALL SCORE:   Not rated.', fontSize: 11, color: MID_GRAY })
   }
+  blocks.push({ text: '' })
+  blocks.push({ text: '______________________________________________________________________', color: MID_GRAY, fontSize: 9 })
   blocks.push({ text: '' })
 
   // ── Part Three ──────────────────────────────────────────────────────────────
@@ -184,9 +195,9 @@ function buildBlocks(d: SelfAssessmentData): Block[] {
   const filledNextGoals = d.nextYearGoals.filter(g => g.goal?.trim())
   if (filledNextGoals.length > 0) {
     filledNextGoals.forEach((goal, i) => {
-      blocks.push({ text: `${i + 1}.  Goal:  ${goal.goal.trim()}`, bold: true, fontSize: 11 })
+      blocks.push({ text: `${i + 1}.   ${goal.goal.trim()}`, bold: true, fontSize: 11 })
       if (goal.objective?.trim()) {
-        blocks.push({ text: `Objective / Roadmap:  ${goal.objective.trim()}`, fontSize: 10, indent: 360 })
+        blocks.push({ text: `Objective / Roadmap:   ${goal.objective.trim()}`, fontSize: 10, indent: 18 })
       }
       blocks.push({ text: '' })
     })
@@ -196,11 +207,13 @@ function buildBlocks(d: SelfAssessmentData): Block[] {
   }
 
   // ── Signature block ─────────────────────────────────────────────────────────
-  blocks.push({ text: '──────────────────────────────────────────────────────────────', color: MID_GRAY, fontSize: 9 })
+  blocks.push({ text: '______________________________________________________________________', color: MID_GRAY, fontSize: 9 })
   blocks.push({ text: '' })
-  blocks.push({ text: `Employee Name:  ${d.employeeName}`, fontSize: 11 })
+  blocks.push({ text: `Employee Name:   ${d.employeeName}`, fontSize: 11 })
   blocks.push({ text: '' })
-  blocks.push({ text: 'Employee Signature:  ___________________________________     Date Signed:  ________________', fontSize: 11 })
+  blocks.push({ text: 'Employee Signature:   ___________________________________', fontSize: 11 })
+  blocks.push({ text: '' })
+  blocks.push({ text: 'Date Signed:   ________________', fontSize: 11 })
 
   return blocks
 }
