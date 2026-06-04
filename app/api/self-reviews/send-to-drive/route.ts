@@ -4,7 +4,6 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 export const maxDuration = 60
 
-// Blank self-assessment template (copy + fill approach, same as manager review)
 const SA_TEMPLATE_DOC_ID  = '14CTluQZ2yyLDrNLvx8fjtPycIZ9JFhxH_ukQzgsZqLE'
 const SA_FOLDER           = '1vj8HSp0QnBlfwCoLvtzz-z3uJkh_84hg'
 
@@ -44,8 +43,6 @@ interface TextRun {
   text: string
   startIndex: number
   endIndex: number
-  exactRange?: boolean  // true for non-textRun elements -- use actual indices as-is
-  isChip?: boolean      // true for richLink/dropdown chip elements
 }
 interface ReplaceOp { startIndex: number; endIndex: number; newText: string }
 
@@ -58,14 +55,6 @@ function flattenRuns(content: docs_v1.Schema$StructuralElement[]): TextRun[] {
           if (pe.startIndex == null || pe.endIndex == null) continue
           if (pe.textRun?.content) {
             runs.push({ text: pe.textRun.content, startIndex: pe.startIndex, endIndex: pe.endIndex })
-          } else if (pe.richLink && pe.endIndex > pe.startIndex) {
-            // Google Docs dropdown chips appear as richLink elements.
-            // Tag with isChip=true and replace by document position, not by title text,
-            // because the title may not match "SELECT ONE" reliably.
-            const title = (pe.richLink as { richLinkProperties?: { title?: string } }).richLinkProperties?.title ?? ''
-            runs.push({ text: title, startIndex: pe.startIndex, endIndex: pe.endIndex, exactRange: true, isChip: true })
-          } else if (pe.endIndex > pe.startIndex) {
-            runs.push({ text: ' ', startIndex: pe.startIndex, endIndex: pe.endIndex, exactRange: true })
           }
         }
       } else if (el.table?.tableRows) {
@@ -84,26 +73,18 @@ function flattenRuns(content: docs_v1.Schema$StructuralElement[]): TextRun[] {
 function findOccurrences(runs: TextRun[], searchText: string): { startIndex: number; endIndex: number }[] {
   const results: { startIndex: number; endIndex: number }[] = []
   for (const run of runs) {
-    if (run.isChip) continue  // chips are handled positionally, not by text match
-    if (run.exactRange) {
-      if (run.text.includes(searchText)) {
-        results.push({ startIndex: run.startIndex, endIndex: run.endIndex })
-      }
-    } else {
-      let pos = 0
-      while (true) {
-        const idx = run.text.indexOf(searchText, pos)
-        if (idx === -1) break
-        results.push({ startIndex: run.startIndex + idx, endIndex: run.startIndex + idx + searchText.length })
-        pos = idx + searchText.length
-      }
+    let pos = 0
+    while (true) {
+      const idx = run.text.indexOf(searchText, pos)
+      if (idx === -1) break
+      results.push({ startIndex: run.startIndex + idx, endIndex: run.startIndex + idx + searchText.length })
+      pos = idx + searchText.length
     }
   }
   return results.sort((a, b) => a.startIndex - b.startIndex)
 }
 
 function buildRequests(ops: ReplaceOp[]): docs_v1.Schema$Request[] {
-  // Deduplicate -- skip any op whose range overlaps an already-scheduled op
   const sorted = [...ops].sort((a, b) => b.startIndex - a.startIndex)
   const scheduled: { start: number; end: number }[] = []
   const reqs: docs_v1.Schema$Request[] = []
@@ -167,17 +148,13 @@ export async function POST(req: NextRequest) {
     const docData = await docs.documents.get({ documentId: docId })
     const runs = flattenRuns(docData.data.body?.content ?? [])
 
-    // Collect all chip (richLink/dropdown) elements in document order.
-    // Template order: [0] employee position, [1] supervisor name,
-    //                 [2-6] competency 1-5 terms, [7] overall score
-    const chipRuns = runs.filter(r => r.isChip).sort((a, b) => a.startIndex - b.startIndex)
-
     const ops: ReplaceOp[] = []
 
-    // 3. Replace fixed info fields
+    // 3. [NAME]
     const nameOccs = findOccurrences(runs, '[NAME]')
     if (nameOccs[0]) ops.push({ ...nameOccs[0], newText: body.employeeName || '--' })
 
+    // 4. [YYYY - YYYY...] appraisal period
     const periodOccs = findOccurrences(runs, '[YYYY - YYYY')
     if (periodOccs[0]) {
       const run = runs.find(r => r.startIndex <= periodOccs[0].startIndex && r.endIndex > periodOccs[0].startIndex)
@@ -194,20 +171,26 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Replace chip (SELECT ONE) elements by document position
-    if (chipRuns[0]) ops.push({ ...chipRuns[0], newText: body.employeePosition || '--' })
-    if (chipRuns[1]) ops.push({ ...chipRuns[1], newText: body.supervisorName || '--' })
+    // 5. Plain-text placeholders added to template in place of dropdown chips
+    const posOcc = findOccurrences(runs, '[POSITION]')
+    if (posOcc[0]) ops.push({ ...posOcc[0], newText: body.employeePosition || '--' })
 
+    const supOcc = findOccurrences(runs, '[SUPERVISOR]')
+    if (supOcc[0]) ops.push({ ...supOcc[0], newText: body.supervisorName || '--' })
+
+    const compPlaceholders = ['[COMP_1]', '[COMP_2]', '[COMP_3]', '[COMP_4]', '[COMP_5]']
     body.competencies.forEach((comp, i) => {
-      if (chipRuns[i + 2]) ops.push({ ...chipRuns[i + 2], newText: comp.term || '--' })
+      const occ = findOccurrences(runs, compPlaceholders[i])
+      if (occ[0]) ops.push({ ...occ[0], newText: comp.term || '--' })
     })
 
     const ratingText = body.overallRating && STAR_LABELS[body.overallRating]
       ? `${'★'.repeat(body.overallRating)}${'☆'.repeat(5 - body.overallRating)}  ${body.overallRating}/5 -- ${STAR_LABELS[body.overallRating]}`
       : 'Not rated'
-    if (chipRuns[7]) ops.push({ ...chipRuns[7], newText: ratingText })
+    const scoreOcc = findOccurrences(runs, '[OVERALL_SCORE]')
+    if (scoreOcc[0]) ops.push({ ...scoreOcc[0], newText: ratingText })
 
-    // 5. Replace [INSERT EXAMPLE] placeholders (15 total: 3 per competency)
+    // 6. [INSERT EXAMPLE] placeholders (15 total: 3 per competency)
     const exOccs = findOccurrences(runs, '[INSERT EXAMPLE]')
     let exIdx = 0
     body.competencies.forEach(comp => {
@@ -219,7 +202,7 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // 6. Fill goals (numbered items after the examples section)
+    // 7. Numbered goal items after the examples section
     function safeEnd(r: TextRun) {
       return r.text.endsWith('\n') ? r.endIndex - 1 : r.endIndex
     }
@@ -253,7 +236,7 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // 7. Apply all replacements
+    // 8. Apply all replacements
     const requests = buildRequests(ops)
     if (requests.length > 0) {
       const CHUNK = 50
@@ -267,7 +250,7 @@ export async function POST(req: NextRequest) {
 
     const docUrl = `https://docs.google.com/document/d/${docId}/edit`
 
-    // 8. Persist drive fields
+    // 9. Persist drive fields
     if (body.selfReviewId) {
       const serviceClient = createServiceClient()
       await serviceClient
