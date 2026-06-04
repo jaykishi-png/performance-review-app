@@ -238,8 +238,8 @@ function blocksToRequests(blocks: Block[]): { fullText: string; requests: docs_v
       })
     }
 
-    // Text style
-    const hasTextStyle = block.bold !== undefined || block.italic !== undefined || block.fontSize || block.color || block.fontFamily
+    // Text style — skip empty blocks (no characters to style)
+    const hasTextStyle = block.text.length > 0 && (block.bold !== undefined || block.italic !== undefined || block.fontSize || block.color || block.fontFamily)
     if (hasTextStyle) {
       const textStyle: docs_v1.Schema$TextStyle = {}
       const textFields: string[] = []
