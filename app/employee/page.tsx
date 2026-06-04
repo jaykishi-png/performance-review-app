@@ -13,19 +13,29 @@ export default async function EmployeePage() {
 
   const { data: profile, error: profileError } = await serviceClient
     .from('profiles')
-    .select('id, name, email, role, manager_id, manager:profiles!manager_id(name, email)')
+    .select('id, name, email, role, manager_id')
     .eq('id', user.id)
     .single()
 
   if (profileError) console.error('[employee/page] profile fetch error:', profileError)
   if (!profile) redirect('/login')
-  const p = profile as unknown as { id: string; name: string | null; email: string; role: string; manager_id: string | null; manager: { name: string | null; email: string }[] | null }
+  const p = profile as { id: string; name: string | null; email: string; role: string; manager_id: string | null }
 
   if (p.role === 'pending') redirect('/pending')
   if (p.role === 'admin') redirect('/admin')
   if (p.role === 'manager') redirect('/performance-review')
 
-  const manager = Array.isArray(p.manager) && p.manager.length > 0 ? p.manager[0] : null
+  // Fetch manager info via separate query (no FK constraint for join)
+  let manager: { name: string | null; email: string } | null = null
+  if (p.manager_id) {
+    const { data: managerData, error: managerError } = await serviceClient
+      .from('profiles')
+      .select('name, email')
+      .eq('id', p.manager_id)
+      .single()
+    if (managerError) console.error('[employee/page] manager fetch error — check SUPABASE_SERVICE_ROLE_KEY in Vercel env vars:', managerError)
+    manager = managerData as { name: string | null; email: string } | null
+  }
 
   // Fetch existing self-review
   const { data: srRow } = await serviceClient
