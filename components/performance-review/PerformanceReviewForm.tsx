@@ -2867,7 +2867,7 @@ export function PerformanceReviewForm() {
         const teamRes = await fetch('/api/team')
         if (teamRes.ok) {
           const teamData = await teamRes.json() as {
-            reports?: { id: string; name: string | null; email: string; role: string; is_active: boolean; start_date: string | null; position: string | null }[]
+            reports?: { id: string; name: string | null; email: string; role: string; is_active: boolean; start_date: string | null; position: string | null; division: string | null; pronouns: string | null }[]
             selfAssessments?: { employee_id: string; status: string; submitted_at: string | null }[]
           }
           if (teamData.reports) setDbTeam(teamData.reports)
