@@ -12,7 +12,7 @@ import {
 
 type UserRecord = {
   id: string; name: string | null; email: string; role: string
-  is_active: boolean; manager_id: string | null; start_date: string | null; created_at: string
+  is_active: boolean; manager_id: string | null; start_date: string | null; created_at: string; position: string | null
 }
 type InviteRecord = {
   id: string; email: string; role: string; created_at: string; expires_at: string; accepted_at: string | null
@@ -114,6 +114,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [editingUser, setEditingUser] = useState<string | null>(null)
   const [editingManager, setEditingManager] = useState<string | null>(null)
   const [editingStartDate, setEditingStartDate] = useState<string | null>(null)
+  const [editingPosition, setEditingPosition] = useState<string | null>(null)
   const [userSearch, setUserSearch] = useState('')
   const [userRoleFilter, setUserRoleFilter] = useState<string>('all')
   const [reminderCopied, setReminderCopied] = useState<string | null>(null)
@@ -354,7 +355,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         {/* Users table */}
         <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflow: 'hidden', marginBottom: 24 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr>{['Name / Email', 'Role', 'Manager', 'Start Date', 'Self-Assessment', 'Status', 'Actions'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+            <thead><tr>{['Name / Email', 'Role', 'Position', 'Manager', 'Start Date', 'Self-Assessment', 'Status', 'Actions'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {filteredUsers.map((u, i) => (
                 <tr key={u.id} style={{ opacity: u.is_active ? 1 : 0.5, background: i % 2 === 0 ? 'transparent' : 'rgba(13,15,26,0.4)' }}>
@@ -377,6 +378,24 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                         title={u.id !== currentUser.id ? 'Click to edit' : ''}>
                         {ROLE_LABELS[u.role] || u.role}
                         {u.id !== currentUser.id && !(isDevAdmin && (u.role === 'admin' || u.role === 'dev_admin')) && <span style={{ fontSize: 9 }}>✏️</span>}
+                      </span>
+                    )}
+                  </td>
+                  <td style={td}>
+                    {editingPosition === u.id ? (
+                      <input
+                        defaultValue={u.position ?? ''}
+                        onBlur={e => { updateField(u.id, { position: e.target.value || null }); setEditingPosition(null) }}
+                        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setEditingPosition(null) }}
+                        autoFocus
+                        placeholder="e.g. Video Editor"
+                        style={{ background: '#0d0f1a', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 6, padding: '4px 8px', fontSize: 12, width: 140 }}
+                      />
+                    ) : (
+                      <span onClick={() => setEditingPosition(u.id)}
+                        style={{ fontSize: 12, color: u.position ? '#9ca3af' : '#374151', cursor: 'pointer' }}
+                        title="Click to set position">
+                        {u.position || <span style={{ color: '#f59e0b', fontSize: 11 }}>No position ✏️</span>}
                       </span>
                     )}
                   </td>

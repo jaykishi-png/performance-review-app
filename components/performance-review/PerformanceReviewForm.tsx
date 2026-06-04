@@ -2604,7 +2604,7 @@ export function PerformanceReviewForm() {
   const [selfAssessments, setSelfAssessments] = useState<{ employee_id: string; status: string; submitted_at: string | null }[]>([])
   const selfAssessmentMap = Object.fromEntries(selfAssessments.map(s => [s.employee_id, s]))
   // DB-backed team (from profiles where manager_id = user.id)
-  type DbTeamMember = { id: string; name: string | null; email: string; role: string; is_active: boolean; start_date: string | null }
+  type DbTeamMember = { id: string; name: string | null; email: string; role: string; is_active: boolean; start_date: string | null; position: string | null }
   const [dbTeam, setDbTeam] = useState<DbTeamMember[]>([])
   const [dbTeamSaMap, setDbTeamSaMap] = useState<Record<string, { employee_id: string; status: string; submitted_at: string | null }>>({})
   const [managerGlossarySearch, setManagerGlossarySearch] = useState('')
@@ -2707,7 +2707,7 @@ export function PerformanceReviewForm() {
         const teamRes = await fetch('/api/team')
         if (teamRes.ok) {
           const teamData = await teamRes.json() as {
-            reports?: { id: string; name: string | null; email: string; role: string; is_active: boolean; start_date: string | null }[]
+            reports?: { id: string; name: string | null; email: string; role: string; is_active: boolean; start_date: string | null; position: string | null }[]
             selfAssessments?: { employee_id: string; status: string; submitted_at: string | null }[]
           }
           if (teamData.reports) setDbTeam(teamData.reports)
@@ -3464,7 +3464,7 @@ export function PerformanceReviewForm() {
                     )}
                     {hasReview && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: '#0d0f1a', color: '#6b7280', border: '1px solid #1e2130' }}>Review started</span>}
                   </div>
-                  <button onClick={() => { handleNewReview(); setActivePage('reviews') }}
+                  <button onClick={() => { handleNewReview(); update({ employeeName: r.name || r.email, employeePosition: r.position || '' }); setActivePage('reviews') }}
                     style={{ padding: '7px 16px', background: sa?.status === 'submitted' ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', color: sa?.status === 'submitted' ? '#fff' : '#6b7280', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                     {sa?.status === 'submitted' ? '✨ Start Review' : 'Start Review'}
                   </button>

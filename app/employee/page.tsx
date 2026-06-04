@@ -13,13 +13,13 @@ export default async function EmployeePage() {
 
   const { data: profile, error: profileError } = await serviceClient
     .from('profiles')
-    .select('id, name, email, role, manager_id')
+    .select('id, name, email, role, manager_id, position')
     .eq('id', user.id)
     .single()
 
   if (profileError) console.error('[employee/page] profile fetch error:', profileError)
   if (!profile) redirect('/login')
-  const p = profile as { id: string; name: string | null; email: string; role: string; manager_id: string | null }
+  const p = profile as { id: string; name: string | null; email: string; role: string; manager_id: string | null; position: string | null }
 
   if (p.role === 'pending') redirect('/pending')
   if (p.role === 'admin') redirect('/admin')
@@ -68,6 +68,7 @@ export default async function EmployeePage() {
   return (
     <EmployeePortal
       profile={p}
+      position={p.position}
       manager={manager}
       initialSelfReview={selfReview}
       selfReviewId={r?.id as string ?? null}

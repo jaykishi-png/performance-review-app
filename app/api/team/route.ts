@@ -15,7 +15,7 @@ export async function GET() {
     // Fetch direct reports from profiles
     const { data: reports } = await serviceClient
       .from('profiles')
-      .select('id, name, email, role, is_active, start_date')
+      .select('id, name, email, role, is_active, start_date, position')
       .eq('manager_id', user.id)
       .eq('is_active', true)
       .order('name', { ascending: true })

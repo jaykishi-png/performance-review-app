@@ -40,7 +40,7 @@ type SelfReview = {
   overall_comments?: string
 }
 
-type Profile = { id: string; name: string | null; email: string; role: string; manager_id: string | null }
+type Profile = { id: string; name: string | null; email: string; role: string; manager_id: string | null; position: string | null }
 type Manager = { name: string | null; email: string } | null
 
 // ── Static data ───────────────────────────────────────────────────────────────
@@ -170,6 +170,7 @@ function isStepComplete(stepIdx: number, r: SelfReview): boolean {
 
 type Props = {
   profile: Profile
+  position?: string | null
   manager: Manager
   initialSelfReview: Partial<SelfReview> | null
   initialDriveUrl?: string | null
@@ -178,7 +179,7 @@ type Props = {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function EmployeePortal({ profile, manager, initialSelfReview, initialDriveUrl, selfReviewId }: Props) {
+export default function EmployeePortal({ profile, position, manager, initialSelfReview, initialDriveUrl, selfReviewId }: Props) {
   const router = useRouter()
   const [page, setPage] = useState<Page>('self-assessment')
   const [collapsed, setCollapsed] = useState(false)
@@ -366,7 +367,7 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
         body: JSON.stringify({
           selfReviewId: selfReviewId ?? review.id,
           employeeName: profileName || profile.email,
-          employeePosition: '', supervisorName: manager?.name || manager?.email || '',
+          employeePosition: position || '', supervisorName: manager?.name || manager?.email || '',
           appraisalPeriod: `${yr - 1} - ${yr}`,
           dateCompleted: today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
           competencies: review.competencies.map(c => ({ ...c, examples: c.examples as string[], definition: COMPETENCY_TERMS.find(t => t.term === c.term)?.definition ?? '' })),
@@ -511,8 +512,8 @@ export default function EmployeePortal({ profile, manager, initialSelfReview, in
           </div>
         </div>
         <div style={card}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            {[['Your Name', profileName || profile.email], ['Email', profile.email]].map(([l, v]) => (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+            {([['Your Name', profileName || profile.email], ['Position', position || '—'], ['Email', profile.email]] as [string, string][]).map(([l, v]) => (
               <div key={l}><div style={lbl}>{l}</div><div style={{ fontSize: 14, color: '#e5e7eb' }}>{v}</div></div>
             ))}
           </div>

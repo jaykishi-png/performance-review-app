@@ -20,7 +20,7 @@ export default async function AdminPage() {
 
   const { data: users } = await serviceClient
     .from('profiles')
-    .select('id, name, email, role, is_active, manager_id, start_date, created_at')
+    .select('id, name, email, role, is_active, manager_id, start_date, created_at, position')
     .order('created_at', { ascending: false })
 
   const { data: invites } = await serviceClient
@@ -50,7 +50,7 @@ export default async function AdminPage() {
       currentUser={{ id: user.id, email: user.email!, role: role as 'admin' | 'dev_admin' }}
       users={(users ?? []) as {
         id: string; name: string | null; email: string; role: string;
-        is_active: boolean; manager_id: string | null; start_date: string | null; created_at: string
+        is_active: boolean; manager_id: string | null; start_date: string | null; created_at: string; position: string | null
       }[]}
       invites={invites ?? []}
       selfAssessments={(selfAssessments ?? []) as { employee_id: string; status: string; submitted_at: string | null }[]}
