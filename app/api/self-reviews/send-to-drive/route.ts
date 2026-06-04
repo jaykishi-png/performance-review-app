@@ -81,9 +81,17 @@ function findOccurrences(runs: TextRun[], searchText: string): { startIndex: num
 }
 
 function buildRequests(ops: ReplaceOp[]): docs_v1.Schema$Request[] {
+  // Deduplicate — skip any op whose range overlaps an already-scheduled op
   const sorted = [...ops].sort((a, b) => b.startIndex - a.startIndex)
+  const scheduled: { start: number; end: number }[] = []
   const reqs: docs_v1.Schema$Request[] = []
+
   for (const op of sorted) {
+    if (op.startIndex >= op.endIndex) continue // skip empty/invalid range
+    const overlaps = scheduled.some(s => op.startIndex < s.end && op.endIndex > s.start)
+    if (overlaps) continue
+    scheduled.push({ start: op.startIndex, end: op.endIndex })
+
     if (op.startIndex < op.endIndex) {
       reqs.push({ deleteContentRange: { range: { startIndex: op.startIndex, endIndex: op.endIndex } } })
     }
@@ -147,21 +155,18 @@ export async function POST(req: NextRequest) {
     const nameOccs = findOccurrences(runs, '[NAME]')
     if (nameOccs[0]) ops.push({ ...nameOccs[0], newText: body.employeeName || '—' })
 
-    // Appraisal period: [YYYY - YYYY (with possible trailing chars)
-    // Template text is "[YYYY - YYYY-" per HTML analysis
-    const periodSearch = '[YYYY - YYYY'
-    const periodOccs = findOccurrences(runs, periodSearch)
+    // Appraisal period: find "[YYYY - YYYY" and extend to the closing ']' within the same run
+    const periodOccs = findOccurrences(runs, '[YYYY - YYYY')
     if (periodOccs[0]) {
-      // Find end of the full placeholder bracket
-      const run = runs.find(r => r.startIndex <= periodOccs[0].startIndex && r.endIndex >= periodOccs[0].startIndex)
+      const run = runs.find(r => r.startIndex <= periodOccs[0].startIndex && r.endIndex > periodOccs[0].startIndex)
       if (run) {
         const relStart = periodOccs[0].startIndex - run.startIndex
-        // Find the closing ']' or end of pattern
         const remaining = run.text.slice(relStart)
         const closeIdx = remaining.indexOf(']')
+        // Cap endIndex to run.endIndex to avoid overshooting
         const fullEnd = closeIdx !== -1
-          ? run.startIndex + relStart + closeIdx + 1
-          : periodOccs[0].endIndex + 2 // skip trailing dash+bracket if present
+          ? Math.min(run.startIndex + relStart + closeIdx + 1, run.endIndex)
+          : Math.min(periodOccs[0].endIndex + 2, run.endIndex)
         ops.push({ startIndex: periodOccs[0].startIndex, endIndex: fullEnd, newText: body.appraisalPeriod || '—' })
       } else {
         ops.push({ ...periodOccs[0], newText: body.appraisalPeriod || '—' })
@@ -202,35 +207,38 @@ export async function POST(req: NextRequest) {
     // Goals section items are standalone "1.", "2.", ... "5." runs (no example text)
     // We identify them as runs whose text is a single digit+period with no following
     // [INSERT EXAMPLE] text in the same paragraph region
-    const goalItems = runs.filter(r => /^\d\.\s*$/.test(r.text.replace('\n', '')))
-    // The first 5 such items (after all example items are accounted for) are goals,
-    // the next 3 are next-year goals. We find them by position after exOccs ends.
+    // Goal runs are standalone "1." items after the examples section.
+    // Strip trailing \n from endIndex — paragraph-end markers can't be deleted in table cells.
+    function safeEnd(r: TextRun) {
+      return r.text.endsWith('\n') ? r.endIndex - 1 : r.endIndex
+    }
+
+    const goalItems = runs.filter(r => /^\d\.\s*\n?$/.test(r.text) && r.endIndex > r.startIndex)
     const lastExamplePos = exOccs[exOccs.length - 1]?.endIndex ?? 0
 
     const goalsAndNextGoals = goalItems
       .filter(r => r.startIndex > lastExamplePos)
       .sort((a, b) => a.startIndex - b.startIndex)
 
-    // First 5 = goals section, next 3 = next year goals
-    const goalRuns   = goalsAndNextGoals.slice(0, 5)
+    const goalRuns     = goalsAndNextGoals.slice(0, 5)
     const nextGoalRuns = goalsAndNextGoals.slice(5, 8)
 
     const filledGoals = body.goalsObjectives.filter(g => g.description?.trim())
     filledGoals.forEach((goal, i) => {
-      if (goalRuns[i]) {
+      if (goalRuns[i] && safeEnd(goalRuns[i]) > goalRuns[i].startIndex) {
         const lines: string[] = [`${i + 1}.  ${goal.description.trim()}`]
         if (goal.outcome) lines.push(`  Outcome: ${goal.outcome.charAt(0).toUpperCase() + goal.outcome.slice(1)}`)
         if (goal.reasoning?.trim()) lines.push(`  Reason: ${goal.reasoning.trim()}`)
-        ops.push({ startIndex: goalRuns[i].startIndex, endIndex: goalRuns[i].endIndex, newText: lines.join('\n') })
+        ops.push({ startIndex: goalRuns[i].startIndex, endIndex: safeEnd(goalRuns[i]), newText: lines.join('\n') })
       }
     })
 
     const filledNextGoals = body.nextYearGoals.filter(g => g.goal?.trim())
     filledNextGoals.forEach((goal, i) => {
-      if (nextGoalRuns[i]) {
+      if (nextGoalRuns[i] && safeEnd(nextGoalRuns[i]) > nextGoalRuns[i].startIndex) {
         const lines: string[] = [`${i + 1}.  ${goal.goal.trim()}`]
         if (goal.objective?.trim()) lines.push(`  Objective / Roadmap: ${goal.objective.trim()}`)
-        ops.push({ startIndex: nextGoalRuns[i].startIndex, endIndex: nextGoalRuns[i].endIndex, newText: lines.join('\n') })
+        ops.push({ startIndex: nextGoalRuns[i].startIndex, endIndex: safeEnd(nextGoalRuns[i]), newText: lines.join('\n') })
       }
     })
 
