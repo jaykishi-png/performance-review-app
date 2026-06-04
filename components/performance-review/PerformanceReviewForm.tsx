@@ -2691,6 +2691,24 @@ export function PerformanceReviewForm() {
   const [profileRole, setProfileRole] = useState('')
   const [profileSaving, setProfileSaving] = useState(false)
 
+  // ── SA viewer ────────────────────────────────────────────────────────────────
+  type SAData = { competencies: {type:string;term:string;examples:string[]}[]; goals_objectives: {description:string;outcome:string;reasoning:string}[]; next_year_goals: {goal:string;objective:string}[]; overall_rating: number|null; submitted_at: string|null; drive_url: string|null }
+  const [viewingSA, setViewingSA] = useState<{employeeId:string;employeeName:string;position:string}|null>(null)
+  const [saData, setSAData] = useState<SAData|null>(null)
+  const [saLoading, setSALoading] = useState(false)
+
+  async function openSA(employeeId: string, employeeName: string, position: string) {
+    setViewingSA({ employeeId, employeeName, position })
+    setSAData(null)
+    setSALoading(true)
+    try {
+      const res = await fetch(`/api/self-reviews?employeeId=${employeeId}`)
+      const data = await res.json() as { selfReview: SAData | null }
+      setSAData(data.selfReview ?? null)
+    } catch { setSAData(null) }
+    finally { setSALoading(false) }
+  }
+
   // ── API helpers (server-side Supabase with service key — no RLS issues) ─────
   function dbRowToSave(r: Record<string, unknown>): SavedReview {
     return {
@@ -3555,10 +3573,18 @@ export function PerformanceReviewForm() {
                     )}
                     {hasReview && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: '#0d0f1a', color: '#6b7280', border: '1px solid #1e2130' }}>Review started</span>}
                   </div>
-                  <button onClick={() => { handleNewReview(); update({ employeeName: r.name || r.email, employeePosition: r.position || '' }); setCurrentEmployeeId(r.id); setActivePage('reviews') }}
-                    style={{ padding: '7px 16px', background: sa?.status === 'submitted' ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', color: sa?.status === 'submitted' ? '#fff' : '#6b7280', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                    {sa?.status === 'submitted' ? '✨ Start Review' : 'Start Review'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {sa?.status === 'submitted' && (
+                      <button onClick={() => openSA(r.id, r.name || r.email, r.position || '')}
+                        style={{ padding: '7px 14px', background: '#13151f', color: '#818cf8', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                        📋 View SA
+                      </button>
+                    )}
+                    <button onClick={() => { handleNewReview(); update({ employeeName: r.name || r.email, employeePosition: r.position || '' }); setCurrentEmployeeId(r.id); setActivePage('reviews') }}
+                      style={{ padding: '7px 16px', background: sa?.status === 'submitted' ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', color: sa?.status === 'submitted' ? '#fff' : '#6b7280', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      {sa?.status === 'submitted' ? '✨ Start Review' : 'Start Review'}
+                    </button>
+                  </div>
                 </div>
               )
             })}
@@ -3823,6 +3849,90 @@ export function PerformanceReviewForm() {
         </div>
         ))}
       </main>
+
+      {/* ── SA Viewer Modal ── */}
+      {viewingSA && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={e => { if (e.target === e.currentTarget) setViewingSA(null) }}>
+          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 16, width: '100%', maxWidth: 680, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+            {/* Header */}
+            <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #1e2130', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                  <span style={{ fontSize: 16 }}>📋</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: '#f0f2fa' }}>{viewingSA.employeeName}</span>
+                  {viewingSA.position && <span style={{ fontSize: 12, color: '#6b7280' }}>· {viewingSA.position}</span>}
+                </div>
+                <div style={{ fontSize: 12, color: '#4b5563' }}>Self-Assessment
+                  {saData?.submitted_at && <> · Submitted {new Date(saData.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</>}
+                  {saData?.overall_rating && <> · {'★'.repeat(saData.overall_rating)} {['','Needs Improvement','Below Expectations','Meets Expectations','Exceeds Expectations','Outstanding'][saData.overall_rating]}</>}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {saData?.drive_url && <a href={saData.drive_url} target="_blank" rel="noopener noreferrer" style={{ padding: '6px 12px', background: '#0d1a13', color: '#34d399', border: '1px solid #1a4a35', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>Drive ↗</a>}
+                <button onClick={() => setViewingSA(null)} style={{ width: 28, height: 28, borderRadius: '50%', background: '#1e2130', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+              </div>
+            </div>
+            {/* Body */}
+            <div style={{ overflowY: 'auto', padding: '20px 24px', flex: 1 }}>
+              {saLoading ? (
+                <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>Loading…</div>
+              ) : !saData ? (
+                <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>No submitted self-assessment found.</div>
+              ) : (
+                <>
+                  {/* Competencies */}
+                  {saData.competencies?.filter(c => c.term).length > 0 && (
+                    <div style={{ marginBottom: 24 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Competencies</div>
+                      {saData.competencies.filter(c => c.term).map((c, i) => {
+                        const color = c.type === 'positive' ? '#10b981' : c.type === 'constructive' ? '#f97316' : '#818cf8'
+                        return (
+                          <div key={i} style={{ background: '#0d1117', border: '1px solid #1e2130', borderLeft: `3px solid ${color}`, borderRadius: 8, padding: '12px 14px', marginBottom: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                              <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: color + '20', color, border: `1px solid ${color}40` }}>{c.type === 'positive' ? 'Positive' : c.type === 'constructive' ? 'Constructive' : 'Choice'}</span>
+                              <span style={{ fontWeight: 600, fontSize: 13, color: '#e5e7eb' }}>{c.term}</span>
+                            </div>
+                            {c.examples.filter(e => e.trim()).map((ex, ei) => (
+                              <div key={ei} style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6, marginBottom: 4, paddingLeft: 8, borderLeft: '2px solid #1e2130' }}>{ex}</div>
+                            ))}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                  {/* Goals */}
+                  {saData.goals_objectives?.filter(g => g.description.trim()).length > 0 && (
+                    <div style={{ marginBottom: 24 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Goals & Objectives</div>
+                      {saData.goals_objectives.filter(g => g.description.trim()).map((g, i) => (
+                        <div key={i} style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 8, padding: '12px 14px', marginBottom: 8 }}>
+                          <div style={{ fontSize: 13, color: '#e5e7eb', marginBottom: 6 }}>{g.description}</div>
+                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                            {g.outcome && <span style={{ fontSize: 11, color: g.outcome === 'successful' ? '#34d399' : g.outcome === 'ongoing' ? '#f59e0b' : '#f87171', fontWeight: 600 }}>{g.outcome === 'successful' ? '✓ Successful' : g.outcome === 'ongoing' ? '↻ Ongoing' : '✗ Unsuccessful'}</span>}
+                            {g.reasoning && <span style={{ fontSize: 11, color: '#6b7280' }}>{g.reasoning}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Next Year Goals */}
+                  {saData.next_year_goals?.filter(g => g.goal.trim()).length > 0 && (
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Next Year&apos;s Goals</div>
+                      {saData.next_year_goals.filter(g => g.goal.trim()).map((g, i) => (
+                        <div key={i} style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 8, padding: '12px 14px', marginBottom: 8 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{g.goal}</div>
+                          {g.objective && <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.5 }}>{g.objective}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

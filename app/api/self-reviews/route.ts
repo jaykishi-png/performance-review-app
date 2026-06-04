@@ -25,7 +25,8 @@ export async function GET(req: NextRequest) {
         .eq('id', user.id)
         .single()
 
-      const isAdmin = (currentProfile as { role: string } | null)?.role === 'admin'
+      const callerRole = (currentProfile as { role: string } | null)?.role
+      const isAdmin = callerRole === 'admin' || callerRole === 'dev_admin'
       const isManager = (profile as { manager_id: string } | null)?.manager_id === user.id
 
       if (!isAdmin && !isManager) {
