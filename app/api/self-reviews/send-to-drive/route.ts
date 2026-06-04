@@ -4,11 +4,19 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 export const maxDuration = 60
 
-// Self-assessment files land in the same Performance Reviews folder by default
-// The manager can also pass a custom folder ID in the request body
-const SELF_ASSESSMENT_FOLDER = '1vj8HSp0QnBlfwCoLvtzz-z3uJkh_84hg'
+// Blank self-assessment template (copy + fill approach, same as manager review)
+const SA_TEMPLATE_DOC_ID  = '14CTluQZ2yyLDrNLvx8fjtPycIZ9JFhxH_ukQzgsZqLE'
+const SA_FOLDER           = '1vj8HSp0QnBlfwCoLvtzz-z3uJkh_84hg'
 
-// ── Auth (same pattern as manager review) ─────────────────────────────────────
+const STAR_LABELS: Record<number, string> = {
+  5: 'Outstanding',
+  4: 'Exceeds Job Requirements',
+  3: 'Meets Expectations',
+  2: 'Needs Improvement',
+  1: 'Unsatisfactory',
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
 async function getAccessToken(): Promise<string> {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -21,9 +29,7 @@ async function getAccessToken(): Promise<string> {
     }),
   })
   const data = await res.json() as { access_token?: string; error?: string; error_description?: string }
-  if (!res.ok || !data.access_token) {
-    throw new Error(`Google token error: ${data.error} — ${data.error_description}`)
-  }
+  if (!res.ok || !data.access_token) throw new Error(`Google token error: ${data.error} — ${data.error_description}`)
   return data.access_token
 }
 
@@ -33,284 +39,216 @@ function getAuth(token: string) {
   return auth
 }
 
-// ── Document builder types ─────────────────────────────────────────────────────
-interface Block {
-  text: string
-  bold?: boolean
-  italic?: boolean
-  fontSize?: number
-  color?: { red: number; green: number; blue: number }
-  indent?: number       // indentStart in PT
-  hangIndent?: number   // indentFirstLine negative offset (hanging indent) in PT
-  center?: boolean
-  spaceBefore?: number  // paddingTop in PT
-  spaceAfter?: number   // paddingBottom in PT
-  fontFamily?: string
-}
+// ── Text run helpers (same pattern as manager review) ─────────────────────────
+interface TextRun { text: string; startIndex: number; endIndex: number }
+interface ReplaceOp { startIndex: number; endIndex: number; newText: string }
 
-const STAR_LABELS: Record<number, { label: string; description: string }> = {
-  5: { label: 'Outstanding',              description: 'Consistently exceeds performance requirements.' },
-  4: { label: 'Exceeds Job Requirements', description: 'Meets and at times exceeds performance requirements (above average).' },
-  3: { label: 'Meets Expectations',       description: 'Job requirements are being met at a satisfactory level.' },
-  2: { label: 'Needs Improvement',        description: 'Does not consistently meet the expected job requirements.' },
-  1: { label: 'Unsatisfactory',           description: 'Demonstrates an unacceptable level of skills and competencies.' },
-}
-
-const ORDINALS = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE']
-const TYPE_LABELS: Record<string, string> = {
-  positive:     'POSITIVE',
-  constructive: 'CONSTRUCTIVE',
-  choice:       'POSITIVE',
-}
-
-// Colors from Doc 2 (filled template)
-const RUSH_PURPLE = { red: 79/255,  green: 46/255,  blue: 143/255 } // #4f2e8f
-const DARK_GRAY   = { red: 51/255,  green: 51/255,  blue: 51/255  } // #333333
-const MID_GRAY    = { red: 115/255, green: 115/255, blue: 115/255 } // #737373
-const FONT        = 'Poppins'
-const DIVIDER     = '─'.repeat(62)
-
-// ── Build document blocks from self-assessment data ────────────────────────────
-interface SelfAssessmentData {
-  employeeName: string
-  employeePosition: string
-  supervisorName: string
-  appraisalPeriod: string
-  dateCompleted: string
-  competencies: Array<{ type: string; term: string; definition: string; examples: string[] }>
-  goalsObjectives: Array<{ description: string; outcome: string; reasoning: string }>
-  overallRating: number | null
-  nextYearGoals: Array<{ goal: string; objective: string }>
-}
-
-function buildBlocks(d: SelfAssessmentData): Block[] {
-  const blocks: Block[] = []
-  const p = (text: string, opts: Omit<Block, 'text'> = {}): void => { blocks.push({ text, fontFamily: FONT, ...opts }) }
-
-  // ── Header ─────────────────────────────────────────────────────────────────
-  p('Rush Media', { bold: true, italic: true, fontSize: 11, color: MID_GRAY })
-  p('Employee Self-Assessment', { bold: true, fontSize: 22, color: RUSH_PURPLE, center: true, spaceBefore: 12, spaceAfter: 4 })
-  p('')
-
-  // Info block
-  p(`Employee Name:  ${d.employeeName || '—'}`, { fontSize: 11 })
-  p(`Position:  ${d.employeePosition || '—'}`, { fontSize: 11 })
-  p(`Supervisor:  ${d.supervisorName || '—'}`, { fontSize: 11 })
-  p(`Appraisal Period:  ${d.appraisalPeriod || '—'}`, { fontSize: 11 })
-  p(`Date Completed:  ${d.dateCompleted || '—'}`, { fontSize: 11 })
-  p('')
-
-  // Divider
-  p(DIVIDER, { fontSize: 9, color: MID_GRAY })
-
-  // Disclaimer
-  p('All employees will have an annual performance review on or around the date of their work anniversary. Merit increases are determined by several factors including financial health, Company profitability, job performance, and consumer price index. A positive performance review does not guarantee a pay raise or continued employment.', { fontSize: 9, color: MID_GRAY, italic: true })
-  p('')
-
-  // ── Part One ────────────────────────────────────────────────────────────────
-  p('PART ONE — COMPETENCY EVALUATION', { bold: true, fontSize: 19, color: RUSH_PURPLE, spaceBefore: 4, spaceAfter: 4 })
-  p('Consider what is working about your performance and where improvements can be made. Five competency words have been evaluated below, with specific examples for each. Please review the Competency Glossary of Terms for definitions.', { fontSize: 10, color: MID_GRAY, italic: true })
-  p('')
-
-  d.competencies.forEach((comp, i) => {
-    if (!comp.term) return
-    const typeLabel = TYPE_LABELS[comp.type] || 'POSITIVE'
-    p(`COMPETENCY ${ORDINALS[i]}  ·  ${typeLabel}:  ${comp.term}`, { fontSize: 14, color: DARK_GRAY, spaceBefore: 4, spaceAfter: 4 })
-    // hangIndent is halved because Docs API doubles it in CSS text-indent output
-    if (comp.definition) {
-      p(comp.definition, { fontSize: 10, color: MID_GRAY, italic: true, indent: 36, hangIndent: -18, spaceBefore: 4 })
-    }
-    p('')
-    p('Examples:', { bold: true, fontSize: 10 })
-    const filled = comp.examples.filter(e => e?.trim())
-    if (filled.length > 0) {
-      filled.forEach((ex, j) => {
-        p(`${j + 1}.  ${ex.trim()}`, { fontSize: 10, indent: 18, hangIndent: -9, spaceBefore: 4 })
-      })
-    } else {
-      p('1.  —', { fontSize: 10, color: MID_GRAY, indent: 18, hangIndent: -9, spaceBefore: 4 })
-    }
-    p('')
-  })
-
-  // ── Part Two ────────────────────────────────────────────────────────────────
-  p('PART TWO — GOALS, OBJECTIVES & ACCOMPLISHMENTS', { bold: true, fontSize: 19, color: RUSH_PURPLE, spaceBefore: 4, spaceAfter: 4 })
-  p('Indicate your progress and the successful or unsuccessful completion of your goals or objectives, and explain why.', { fontSize: 10, color: MID_GRAY, italic: true })
-  p('')
-
-  const filledGoals = d.goalsObjectives.filter(g => g.description?.trim())
-  if (filledGoals.length > 0) {
-    filledGoals.forEach((goal, i) => {
-      p(`${i + 1}.  ${goal.description.trim()}`, { bold: true, fontSize: 11 })
-      if (goal.outcome) {
-        const outcomeLabel = goal.outcome.charAt(0).toUpperCase() + goal.outcome.slice(1)
-        p(`Outcome:  ${outcomeLabel}`, { fontSize: 10, indent: 18, hangIndent: -9, spaceBefore: 4 })
+function flattenRuns(content: docs_v1.Schema$StructuralElement[]): TextRun[] {
+  const runs: TextRun[] = []
+  function walk(els: docs_v1.Schema$StructuralElement[]) {
+    for (const el of els) {
+      if (el.paragraph?.elements) {
+        for (const pe of el.paragraph.elements) {
+          if (pe.textRun?.content && pe.startIndex != null && pe.endIndex != null) {
+            runs.push({ text: pe.textRun.content, startIndex: pe.startIndex, endIndex: pe.endIndex })
+          }
+        }
+      } else if (el.table?.tableRows) {
+        for (const row of el.table.tableRows ?? []) {
+          for (const cell of row.tableCells ?? []) {
+            walk(cell.content ?? [])
+          }
+        }
       }
-      if (goal.reasoning?.trim()) {
-        p(`Reason:  ${goal.reasoning.trim()}`, { fontSize: 10, indent: 18, hangIndent: -9, spaceBefore: 4 })
-      }
-      p('')
-    })
-  } else {
-    p('No goals or objectives recorded.', { fontSize: 10, color: MID_GRAY, italic: true })
-    p('')
-  }
-
-  p('OVERALL PERFORMANCE RATING', { bold: true, fontSize: 11 })
-  if (d.overallRating && STAR_LABELS[d.overallRating]) {
-    const stars = '★'.repeat(d.overallRating) + '☆'.repeat(5 - d.overallRating)
-    const rating = STAR_LABELS[d.overallRating]
-    p(`${stars}  ${d.overallRating} / 5  —  ${rating.label}`, { bold: true, fontSize: 13, color: RUSH_PURPLE })
-    p(rating.description, { fontSize: 10, color: MID_GRAY, italic: true })
-  } else {
-    p('Not rated.', { fontSize: 10, color: MID_GRAY })
-  }
-  p('')
-
-  // ── Part Three ──────────────────────────────────────────────────────────────
-  p("PART THREE — NEXT YEAR'S GOALS & OBJECTIVES", { bold: true, fontSize: 19, color: RUSH_PURPLE, spaceBefore: 4, spaceAfter: 4 })
-  p('Identify goals you anticipate or want to complete over the next review period, along with objectives on how you plan to reach them. These are subject to change based on your evaluation discussion with your manager.', { fontSize: 10, color: MID_GRAY, italic: true })
-  p('')
-
-  const filledNextGoals = d.nextYearGoals.filter(g => g.goal?.trim())
-  if (filledNextGoals.length > 0) {
-    filledNextGoals.forEach((goal, i) => {
-      p(`${i + 1}.  Goal:  ${goal.goal.trim()}`, { bold: true, fontSize: 11 })
-      if (goal.objective?.trim()) {
-        p(`Objective / Roadmap:  ${goal.objective.trim()}`, { fontSize: 10, indent: 18, hangIndent: -9, spaceBefore: 4 })
-      }
-      p('')
-    })
-  } else {
-    p('No next-year goals recorded.', { fontSize: 10, color: MID_GRAY, italic: true })
-    p('')
-  }
-
-  // ── Signature block ─────────────────────────────────────────────────────────
-  p(DIVIDER, { fontSize: 9, color: MID_GRAY })
-  p('')
-  p(`Employee Name:  ${d.employeeName}`, { fontSize: 11 })
-  p('')
-  p('Employee Signature:  ___________________________________      Date Signed:  ________________', { fontSize: 11 })
-
-  return blocks
-}
-
-// ── Convert blocks → Google Docs batchUpdate requests ──────────────────────────
-function blocksToRequests(blocks: Block[]): { fullText: string; requests: docs_v1.Schema$Request[] } {
-  let fullText = ''
-  const segments: Array<{ start: number; end: number; block: Block }> = []
-
-  for (const block of blocks) {
-    const start = fullText.length + 1
-    fullText += block.text + '\n'
-    const end = fullText.length + 1
-    segments.push({ start, end, block })
-  }
-
-  const requests: docs_v1.Schema$Request[] = []
-  requests.push({ insertText: { location: { index: 1 }, text: fullText } })
-
-  for (const { start, end, block } of [...segments].reverse()) {
-    if (start >= end) continue
-
-    // Paragraph style
-    const hasParagraphStyle = block.center || block.spaceBefore !== undefined || block.spaceAfter !== undefined || block.indent || block.hangIndent
-    if (hasParagraphStyle) {
-      const paraStyle: docs_v1.Schema$ParagraphStyle = { namedStyleType: 'NORMAL_TEXT' }
-      const paraFields: string[] = ['namedStyleType']
-
-      if (block.center) { paraStyle.alignment = 'CENTER'; paraFields.push('alignment') }
-      if (block.spaceBefore !== undefined) { paraStyle.spaceAbove = { magnitude: block.spaceBefore, unit: 'PT' }; paraFields.push('spaceAbove') }
-      if (block.spaceAfter !== undefined)  { paraStyle.spaceBelow = { magnitude: block.spaceAfter,  unit: 'PT' }; paraFields.push('spaceBelow') }
-      if (block.indent)     { paraStyle.indentStart     = { magnitude: block.indent,     unit: 'PT' }; paraFields.push('indentStart') }
-      if (block.hangIndent) { paraStyle.indentFirstLine = { magnitude: block.hangIndent, unit: 'PT' }; paraFields.push('indentFirstLine') }
-
-      requests.push({
-        updateParagraphStyle: {
-          range: { startIndex: start, endIndex: end },
-          paragraphStyle: paraStyle,
-          fields: paraFields.join(','),
-        },
-      })
-    }
-
-    // Text style — skip empty blocks (no characters to style)
-    const hasTextStyle = block.text.length > 0 && (block.bold !== undefined || block.italic !== undefined || block.fontSize || block.color || block.fontFamily)
-    if (hasTextStyle) {
-      const textStyle: docs_v1.Schema$TextStyle = {}
-      const textFields: string[] = []
-
-      if (block.bold      !== undefined) { textStyle.bold      = block.bold;      textFields.push('bold') }
-      if (block.italic    !== undefined) { textStyle.italic    = block.italic;    textFields.push('italic') }
-      if (block.fontSize)                { textStyle.fontSize  = { magnitude: block.fontSize, unit: 'PT' }; textFields.push('fontSize') }
-      if (block.color)                   { textStyle.foregroundColor = { color: { rgbColor: block.color } }; textFields.push('foregroundColor') }
-      if (block.fontFamily)              { textStyle.weightedFontFamily = { fontFamily: block.fontFamily }; textFields.push('weightedFontFamily') }
-
-      requests.push({
-        updateTextStyle: {
-          range: { startIndex: start, endIndex: end - 1 },
-          textStyle,
-          fields: textFields.join(','),
-        },
-      })
     }
   }
-
-  return { fullText, requests }
+  walk(content)
+  return runs.sort((a, b) => a.startIndex - b.startIndex)
 }
 
-// ── POST ───────────────────────────────────────────────────────────────────────
+function findOccurrences(runs: TextRun[], searchText: string): { startIndex: number; endIndex: number }[] {
+  const results: { startIndex: number; endIndex: number }[] = []
+  for (const run of runs) {
+    let pos = 0
+    while (true) {
+      const idx = run.text.indexOf(searchText, pos)
+      if (idx === -1) break
+      results.push({ startIndex: run.startIndex + idx, endIndex: run.startIndex + idx + searchText.length })
+      pos = idx + searchText.length
+    }
+  }
+  return results.sort((a, b) => a.startIndex - b.startIndex)
+}
+
+function buildRequests(ops: ReplaceOp[]): docs_v1.Schema$Request[] {
+  const sorted = [...ops].sort((a, b) => b.startIndex - a.startIndex)
+  const reqs: docs_v1.Schema$Request[] = []
+  for (const op of sorted) {
+    if (op.startIndex < op.endIndex) {
+      reqs.push({ deleteContentRange: { range: { startIndex: op.startIndex, endIndex: op.endIndex } } })
+    }
+    if (op.newText) {
+      reqs.push({ insertText: { location: { index: op.startIndex }, text: op.newText } })
+    }
+  }
+  return reqs
+}
+
+// ── POST ──────────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const body = await req.json() as SelfAssessmentData & {
+    const body = await req.json() as {
+      employeeName: string
+      employeePosition: string
+      supervisorName: string
+      appraisalPeriod: string
+      dateCompleted: string
+      competencies: Array<{ type: string; term: string; definition: string; examples: string[] }>
+      goalsObjectives: Array<{ description: string; outcome: string; reasoning: string }>
+      overallRating: number | null
+      nextYearGoals: Array<{ goal: string; objective: string }>
       selfReviewId?: string
       driveFolderId?: string
     }
 
-    const targetFolder = body.driveFolderId?.trim() || SELF_ASSESSMENT_FOLDER
+    const targetFolder = body.driveFolderId?.trim() || SA_FOLDER
 
     const accessToken = await getAccessToken()
     const auth  = getAuth(accessToken)
     const drive = google.drive({ version: 'v3', auth })
     const docs  = google.docs({ version: 'v1', auth })
 
-    // ── 1. Create new blank Google Doc ─────────────────────────────────────────
+    // ── 1. Copy the blank template ──────────────────────────────────────────
     const safeName   = (body.employeeName || 'Employee').replace(/[^a-zA-Z0-9]/g, '')
     const safePeriod = (body.appraisalPeriod || 'Period').replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '')
     const docTitle   = `${safeName}_SelfAssessment_${safePeriod}`
 
-    const createRes = await drive.files.create({
-      requestBody: {
-        name: docTitle,
-        mimeType: 'application/vnd.google-apps.document',
-        parents: [targetFolder],
-      },
+    const copyRes = await drive.files.copy({
+      fileId: SA_TEMPLATE_DOC_ID,
+      requestBody: { name: docTitle, parents: [targetFolder] },
       fields: 'id',
     })
-    const docId = createRes.data.id
-    if (!docId) throw new Error('Failed to create document — no ID returned.')
+    const docId = copyRes.data.id
+    if (!docId) throw new Error('Failed to copy template — no ID returned.')
 
-    // ── 2. Build and apply all content ─────────────────────────────────────────
-    const blocks = buildBlocks(body)
-    const { requests } = blocksToRequests(blocks)
+    // ── 2. Read all text runs from the copied document ──────────────────────
+    const docData = await docs.documents.get({ documentId: docId })
+    const runs = flattenRuns(docData.data.body?.content ?? [])
 
-    // Split into chunks of 50 requests to avoid API limits
-    const CHUNK = 50
-    for (let i = 0; i < requests.length; i += CHUNK) {
-      await docs.documents.batchUpdate({
-        documentId: docId,
-        requestBody: { requests: requests.slice(i, i + CHUNK) },
-      })
+    const ops: ReplaceOp[] = []
+
+    // ── 3. Replace fixed info fields ────────────────────────────────────────
+
+    // Employee name: [NAME]
+    const nameOccs = findOccurrences(runs, '[NAME]')
+    if (nameOccs[0]) ops.push({ ...nameOccs[0], newText: body.employeeName || '—' })
+
+    // Appraisal period: [YYYY - YYYY (with possible trailing chars)
+    // Template text is "[YYYY - YYYY-" per HTML analysis
+    const periodSearch = '[YYYY - YYYY'
+    const periodOccs = findOccurrences(runs, periodSearch)
+    if (periodOccs[0]) {
+      // Find end of the full placeholder bracket
+      const run = runs.find(r => r.startIndex <= periodOccs[0].startIndex && r.endIndex >= periodOccs[0].startIndex)
+      if (run) {
+        const relStart = periodOccs[0].startIndex - run.startIndex
+        // Find the closing ']' or end of pattern
+        const remaining = run.text.slice(relStart)
+        const closeIdx = remaining.indexOf(']')
+        const fullEnd = closeIdx !== -1
+          ? run.startIndex + relStart + closeIdx + 1
+          : periodOccs[0].endIndex + 2 // skip trailing dash+bracket if present
+        ops.push({ startIndex: periodOccs[0].startIndex, endIndex: fullEnd, newText: body.appraisalPeriod || '—' })
+      } else {
+        ops.push({ ...periodOccs[0], newText: body.appraisalPeriod || '—' })
+      }
+    }
+
+    // ── 4. Replace SELECT ONE instances in document order ───────────────────
+    // Order in template: [0] employee position, [1] supervisor name,
+    //                    [2-6] competency 1-5 terms, [7] overall score
+    const selectOccs = findOccurrences(runs, 'SELECT ONE')
+
+    if (selectOccs[0]) ops.push({ ...selectOccs[0], newText: body.employeePosition || '—' })
+    if (selectOccs[1]) ops.push({ ...selectOccs[1], newText: body.supervisorName || '—' })
+
+    body.competencies.forEach((comp, i) => {
+      if (selectOccs[i + 2]) ops.push({ ...selectOccs[i + 2], newText: comp.term || '—' })
+    })
+
+    // Overall score (selectOccs[7])
+    const ratingText = body.overallRating && STAR_LABELS[body.overallRating]
+      ? `${'★'.repeat(body.overallRating)}${'☆'.repeat(5 - body.overallRating)}  ${body.overallRating}/5 — ${STAR_LABELS[body.overallRating]}`
+      : 'Not rated'
+    if (selectOccs[7]) ops.push({ ...selectOccs[7], newText: ratingText })
+
+    // ── 5. Replace [INSERT EXAMPLE] placeholders (15 total: 3 per competency) ──
+    const exOccs = findOccurrences(runs, '[INSERT EXAMPLE]')
+    let exIdx = 0
+    body.competencies.forEach(comp => {
+      for (let j = 0; j < 3; j++) {
+        if (exOccs[exIdx]) {
+          ops.push({ ...exOccs[exIdx], newText: comp.examples[j]?.trim() || '' })
+        }
+        exIdx++
+      }
+    })
+
+    // ── 6. Fill goals (numbered items after instruction text) ────────────────
+    // Goals section items are standalone "1.", "2.", ... "5." runs (no example text)
+    // We identify them as runs whose text is a single digit+period with no following
+    // [INSERT EXAMPLE] text in the same paragraph region
+    const goalItems = runs.filter(r => /^\d\.\s*$/.test(r.text.replace('\n', '')))
+    // The first 5 such items (after all example items are accounted for) are goals,
+    // the next 3 are next-year goals. We find them by position after exOccs ends.
+    const lastExamplePos = exOccs[exOccs.length - 1]?.endIndex ?? 0
+
+    const goalsAndNextGoals = goalItems
+      .filter(r => r.startIndex > lastExamplePos)
+      .sort((a, b) => a.startIndex - b.startIndex)
+
+    // First 5 = goals section, next 3 = next year goals
+    const goalRuns   = goalsAndNextGoals.slice(0, 5)
+    const nextGoalRuns = goalsAndNextGoals.slice(5, 8)
+
+    const filledGoals = body.goalsObjectives.filter(g => g.description?.trim())
+    filledGoals.forEach((goal, i) => {
+      if (goalRuns[i]) {
+        const lines: string[] = [`${i + 1}.  ${goal.description.trim()}`]
+        if (goal.outcome) lines.push(`  Outcome: ${goal.outcome.charAt(0).toUpperCase() + goal.outcome.slice(1)}`)
+        if (goal.reasoning?.trim()) lines.push(`  Reason: ${goal.reasoning.trim()}`)
+        ops.push({ startIndex: goalRuns[i].startIndex, endIndex: goalRuns[i].endIndex, newText: lines.join('\n') })
+      }
+    })
+
+    const filledNextGoals = body.nextYearGoals.filter(g => g.goal?.trim())
+    filledNextGoals.forEach((goal, i) => {
+      if (nextGoalRuns[i]) {
+        const lines: string[] = [`${i + 1}.  ${goal.goal.trim()}`]
+        if (goal.objective?.trim()) lines.push(`  Objective / Roadmap: ${goal.objective.trim()}`)
+        ops.push({ startIndex: nextGoalRuns[i].startIndex, endIndex: nextGoalRuns[i].endIndex, newText: lines.join('\n') })
+      }
+    })
+
+    // ── 7. Apply all replacements ───────────────────────────────────────────
+    const requests = buildRequests(ops)
+    if (requests.length > 0) {
+      const CHUNK = 50
+      for (let i = 0; i < requests.length; i += CHUNK) {
+        await docs.documents.batchUpdate({
+          documentId: docId,
+          requestBody: { requests: requests.slice(i, i + CHUNK) },
+        })
+      }
     }
 
     const docUrl = `https://docs.google.com/document/d/${docId}/edit`
 
-    // ── 3. Persist drive fields on the self_review row ─────────────────────────
+    // ── 8. Persist drive fields ─────────────────────────────────────────────
     if (body.selfReviewId) {
       const serviceClient = createServiceClient()
       await serviceClient
