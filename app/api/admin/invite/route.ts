@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const serviceClient = await createServiceClient()
+  const serviceClient = createServiceClient()
   const { data: profile } = await serviceClient
     .from('profiles').select('role, name').eq('id', user.id).single()
 

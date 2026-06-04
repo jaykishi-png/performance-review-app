@@ -8,7 +8,7 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
     const { data, error } = await serviceClient
       .from('employee_goals')
       .select('*')
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     }
     if (!body.title?.trim()) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
 
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
     const { data, error } = await serviceClient
       .from('employee_goals')
       .insert({
@@ -66,7 +66,7 @@ export async function PATCH(req: NextRequest) {
     const { id, ...updates } = body
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
     const { error } = await serviceClient
       .from('employee_goals')
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -90,7 +90,7 @@ export async function DELETE(req: NextRequest) {
     const { id } = await req.json() as { id: string }
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
     const { error } = await serviceClient
       .from('employee_goals')
       .delete()

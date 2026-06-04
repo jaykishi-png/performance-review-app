@@ -7,7 +7,7 @@ export default async function DevPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const serviceClient = await createServiceClient()
+  const serviceClient = createServiceClient()
   const { data: profile } = await serviceClient
     .from('profiles')
     .select('role, name, email')

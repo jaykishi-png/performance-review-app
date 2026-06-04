@@ -21,7 +21,7 @@ export async function GET() {
     let svcProfile = null
     let svcError = null
     try {
-      const serviceClient = await createServiceClient()
+      const serviceClient = createServiceClient()
       const { data, error } = await serviceClient
         .from('profiles')
         .select('id, email, role')

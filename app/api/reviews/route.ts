@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 async function getActorRole(userId: string): Promise<string> {
-  const serviceClient = await createServiceClient()
+  const serviceClient = createServiceClient()
   const { data } = await serviceClient.from('profiles').select('role').eq('id', userId).single()
   return (data as { role: string } | null)?.role ?? 'pending'
 }
@@ -15,7 +15,7 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const role = await getActorRole(user.id)
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
 
     if (role === 'admin') {
       const { data, error } = await serviceClient.from('reviews').select('*').order('saved_at', { ascending: false })
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
     const { error } = await serviceClient.from('reviews').upsert({
       id: body.id,
       user_id: user.id,
@@ -96,7 +96,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     const { id } = await req.json()
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
     const query = serviceClient.from('reviews').delete().eq('id', id)
     if (role !== 'admin') query.eq('user_id', user.id)
     const { error } = await query
@@ -120,7 +120,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const { id, ...fields } = await req.json()
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
     const query = serviceClient.from('reviews').update({ ...fields }).eq('id', id)
     if (role !== 'admin') query.eq('user_id', user.id)
     const { error } = await query

@@ -20,7 +20,7 @@ export function forbiddenResponse(message = 'Forbidden'): NextResponse {
 }
 
 export async function assertTeamRelationship(managerId: string, employeeId: string): Promise<void> {
-  const serviceClient = await createServiceClient()
+  const serviceClient = createServiceClient()
   const { data } = await serviceClient
     .from('profiles')
     .select('manager_id')
@@ -38,7 +38,7 @@ export async function canAccessEmployee(
 ): Promise<boolean> {
   if (role === 'admin' || role === 'dev_admin') return true
   if (role === 'manager') {
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
     const { data } = await serviceClient
       .from('profiles')
       .select('manager_id')

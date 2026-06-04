@@ -9,7 +9,7 @@ export default async function EmployeePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const serviceClient = await createServiceClient()
+  const serviceClient = createServiceClient()
 
   const { data: profile, error: profileError } = await serviceClient
     .from('profiles')

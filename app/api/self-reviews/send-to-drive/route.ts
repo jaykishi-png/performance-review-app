@@ -325,7 +325,7 @@ export async function POST(req: NextRequest) {
 
     // ── 3. Persist drive fields on the self_review row ─────────────────────────
     if (body.selfReviewId) {
-      const serviceClient = await createServiceClient()
+      const serviceClient = createServiceClient()
       await serviceClient
         .from('self_reviews')
         .update({ drive_doc_id: docId, drive_url: docUrl })

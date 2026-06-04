@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const name = req.nextUrl.searchParams.get('name')?.trim()
     if (!name) return NextResponse.json({ text: null })
 
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
 
     // Verify caller is a manager or admin
     const { data: callerProfile } = await serviceClient

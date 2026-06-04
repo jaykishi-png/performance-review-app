@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
     const employeeId = req.nextUrl.searchParams.get('employeeId')
 
     if (employeeId && employeeId !== user.id) {
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
 
     // Get manager_id from profile
     const { data: profile } = await serviceClient
@@ -124,7 +124,7 @@ export async function PATCH(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json() as Record<string, unknown>
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
 
     // Only allow patching safe fields — never status or content via this route
     const allowed = ['drive_url', 'drive_doc_id']

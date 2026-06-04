@@ -28,7 +28,7 @@ export default async function Home() {
     // Fallback: try service client
     try {
       const { createServiceClient } = await import('@/lib/supabase/server')
-      const serviceClient = await createServiceClient()
+      const serviceClient = createServiceClient()
       const { data: svcProfile } = await serviceClient
         .from('profiles')
         .select('role')

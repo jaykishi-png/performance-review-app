@@ -10,7 +10,7 @@ export default async function PendingPage() {
   if (!user) redirect('/login')
 
   // Re-check role with service client — if it changed since login, redirect immediately
-  const serviceClient = await createServiceClient()
+  const serviceClient = createServiceClient()
   const { data: profile } = await serviceClient
     .from('profiles')
     .select('role')

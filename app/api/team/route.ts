@@ -10,7 +10,7 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
 
     // Fetch direct reports from profiles
     const { data: reports } = await serviceClient

@@ -9,7 +9,7 @@ export async function PATCH(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
     const { data: actorProfile } = await serviceClient
       .from('profiles')
       .select('role')

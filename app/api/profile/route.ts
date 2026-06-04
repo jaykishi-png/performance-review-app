@@ -12,7 +12,7 @@ export async function PATCH(req: NextRequest) {
     const { name } = body as { name?: string }
     if (!name?.trim()) return NextResponse.json({ error: 'Name is required' }, { status: 400 })
 
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
     const { error } = await serviceClient
       .from('profiles')
       .update({ name: name.trim() })

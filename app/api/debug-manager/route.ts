@@ -10,7 +10,7 @@ export async function GET() {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'not authenticated', authError })
 
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
 
     const { data: profile, error: profileError } = await serviceClient
       .from('profiles')
