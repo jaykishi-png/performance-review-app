@@ -151,7 +151,7 @@ function mergeReview(saved: Partial<SelfReview> | null): SelfReview {
   }
 }
 
-function isStepComplete(stepIdx: number, r: SelfReview): boolean {
+function isStepComplete(stepIdx: number, r: SelfReview, driveUrl?: string | null): boolean {
   switch (stepIdx) {
     case 0: return true
     case 1: case 2: case 3: case 4:
@@ -162,6 +162,7 @@ function isStepComplete(stepIdx: number, r: SelfReview): boolean {
     }
     case 6: return !!(r.goals_objectives.some(g => g.description.trim()) && r.overall_rating)
     case 7: return r.next_year_goals.some(g => g.goal.trim())
+    case 8: return !!driveUrl
     default: return false
   }
 }
@@ -544,7 +545,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     return (
       <div style={{ display: 'flex', borderBottom: '1px solid #1e2130', padding: '0 28px', background: '#0d0f1a', overflowX: 'auto', flexShrink: 0, gap: 0 }}>
         {SA_STEPS.map((s, i) => {
-          const done = isStepComplete(i, review)
+          const done = isStepComplete(i, review, driveUrl)
           const active = step === i
           return (
             <button key={s.id} onClick={() => goStep(i)} style={{
