@@ -7,8 +7,10 @@ async function getActorRole(userId: string): Promise<string> {
   return (data as { role: string } | null)?.role ?? 'pending'
 }
 
-// GET — load reviews scoped by role
-export async function GET() {
+export const dynamic = 'force-dynamic'
+
+// GET — load reviews scoped by role. Pass ?id=xxx to fetch a single review with full form_data.
+export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -16,6 +18,19 @@ export async function GET() {
 
     const role = await getActorRole(user.id)
     const serviceClient = createServiceClient()
+
+    // Single-review fetch — always returns full form_data
+    const singleId = new URL(req.url).searchParams.get('id')
+    if (singleId) {
+      const query = serviceClient
+        .from('reviews')
+        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id')
+        .eq('id', singleId)
+      if (role !== 'admin') query.eq('user_id', user.id)
+      const { data, error } = await query.single()
+      if (error || !data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      return NextResponse.json({ review: data })
+    }
 
     if (role === 'admin') {
       const { data, error } = await serviceClient.from('reviews').select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id').order('saved_at', { ascending: false })

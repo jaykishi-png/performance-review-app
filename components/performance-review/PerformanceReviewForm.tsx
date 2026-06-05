@@ -2882,15 +2882,32 @@ export function PerformanceReviewForm() {
     return () => clearTimeout(timer)
   }, [form, step, maxStep]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function handleLoad(save: SavedReview) {
+  async function handleLoad(save: SavedReview) {
     reviewIdRef.current = save.id
     setCurrentReviewId(save.id)
-    // Guard: some legacy reviews have null form_data
-    setForm(save.form ?? { ...defaultForm(), employeeName: save.employeeName ?? '', employeePosition: save.employeePosition ?? '' })
     setStep(save.step ?? 0)
     setMaxStep(save.maxStep ?? save.step ?? 0)
     if (save.employeeId) setCurrentEmployeeId(save.employeeId)
     setSaveStatus('saved')
+
+    if (save.form) {
+      setForm(save.form)
+    } else {
+      // form_data is null in local state — fetch it fresh from the server
+      setForm({ ...defaultForm(), employeeName: save.employeeName ?? '', employeePosition: save.employeePosition ?? '' })
+      try {
+        const res = await fetch(`/api/reviews?id=${save.id}`)
+        if (res.ok) {
+          const { review } = await res.json() as { review: Record<string, unknown> }
+          if (review?.form_data) {
+            const freshForm = review.form_data as FormData
+            setForm(freshForm)
+            // Patch the in-memory saves so future loads don't re-fetch
+            setSaves(prev => prev.map(s => s.id === save.id ? { ...s, form: freshForm } : s))
+          }
+        }
+      } catch { /* non-critical — user sees empty form */ }
+    }
   }
 
   function handleDelete(id: string) {
