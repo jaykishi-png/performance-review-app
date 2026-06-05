@@ -2599,6 +2599,8 @@ export function PerformanceReviewForm() {
   const [meetingEmpSigLoading, setMeetingEmpSigLoading] = useState(false)
   const [meetingEmpSigError, setMeetingEmpSigError] = useState('')
   const [meetingEmpSigSuccess, setMeetingEmpSigSuccess] = useState(false)
+  const [meetingMgrSigLoading, setMeetingMgrSigLoading] = useState(false)
+  const [meetingMgrSigError, setMeetingMgrSigError] = useState('')
   const [meetingSubmitted, setMeetingSubmitted] = useState(false)
   const [meetingDriveStatus, setMeetingDriveStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle')
   const [meetingDriveError, setMeetingDriveError] = useState('')
@@ -3830,6 +3832,28 @@ export function PerformanceReviewForm() {
             finally { setMeetingSALoading(false) }
           }
 
+          async function handleMeetingMgrSign(result: SignatureResult) {
+            if (!effectiveMeetingId) return
+            setMeetingMgrSigLoading(true)
+            setMeetingMgrSigError('')
+            try {
+              const res = await fetch('/api/reviews/manager-sign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reviewId: effectiveMeetingId, managerSignature: encodeSignature(result) }),
+              })
+              const data = await res.json() as { ok?: boolean; signedAt?: string; error?: string }
+              if (!res.ok) throw new Error(data.error ?? 'Failed')
+              setSaves(prev => prev.map(s => s.id === effectiveMeetingId
+                ? { ...s, managerSignedAt: data.signedAt ?? new Date().toISOString(), managerSignature: encodeSignature(result) }
+                : s))
+            } catch (e) {
+              setMeetingMgrSigError(String(e))
+            } finally {
+              setMeetingMgrSigLoading(false)
+            }
+          }
+
           async function handleMeetingEmpSign(result: SignatureResult) {
             if (!effectiveMeetingId) return
             setMeetingEmpSigLoading(true)
@@ -4040,9 +4064,18 @@ export function PerformanceReviewForm() {
                           {/* Manager signature */}
                           <div>
                             <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Manager</div>
-                            <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
-                              <SignatureDisplay stored={mSave.managerSignature} date={mSave.managerSignedAt ?? undefined} />
-                            </div>
+                            {mSave.managerSignedAt ? (
+                              <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                                <SignatureDisplay stored={mSave.managerSignature} date={mSave.managerSignedAt} />
+                              </div>
+                            ) : (
+                              <SignaturePad
+                                onSign={handleMeetingMgrSign}
+                                loading={meetingMgrSigLoading}
+                                error={meetingMgrSigError}
+                                buttonLabel="✍️ Manager Sign"
+                              />
+                            )}
                           </div>
                           {/* Employee signature */}
                           <div>
