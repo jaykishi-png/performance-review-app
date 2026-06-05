@@ -819,7 +819,6 @@ function computeAppraisalPeriod(startDate: string): string {
   const start = new Date(startDate + 'T00:00:00')
   if (isNaN(start.getTime())) return ''
   const today = new Date()
-  // Find the anniversary that just passed
   let anniversaryYear = today.getFullYear()
   const thisYearAnniversary = new Date(anniversaryYear, start.getMonth(), start.getDate())
   if (thisYearAnniversary > today) anniversaryYear -= 1
@@ -827,6 +826,17 @@ function computeAppraisalPeriod(startDate: string): string {
   const periodEnd = new Date(anniversaryYear + 1, start.getMonth(), start.getDate())
   const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   return `${fmt(periodStart)} – ${fmt(periodEnd)}`
+}
+
+function computeReviewDate(startDate: string): string {
+  const start = new Date(startDate + 'T00:00:00')
+  if (isNaN(start.getTime())) return ''
+  const today = new Date()
+  let anniversaryYear = today.getFullYear()
+  const thisYearAnniversary = new Date(anniversaryYear, start.getMonth(), start.getDate())
+  if (thisYearAnniversary > today) anniversaryYear -= 1
+  const periodStart = new Date(anniversaryYear, start.getMonth(), start.getDate())
+  return periodStart.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
 function StepInfo({
@@ -2648,6 +2658,7 @@ export function PerformanceReviewForm() {
   const reviewIdRef = useRef('')
   const [currentReviewId, setCurrentReviewId] = useState('')
   const [currentEmployeeId, setCurrentEmployeeId] = useState('')
+  const [showEmployeePicker, setShowEmployeePicker] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [profileName, setProfileName] = useState('')
   const [profileEmail, setProfileEmail] = useState('')
@@ -2824,15 +2835,17 @@ export function PerformanceReviewForm() {
   function handleLoad(save: SavedReview) {
     reviewIdRef.current = save.id
     setCurrentReviewId(save.id)
-    setForm(save.form)
-    setStep(save.step)
-    setMaxStep(save.maxStep ?? save.step)
+    // Guard: some legacy reviews have null form_data
+    setForm(save.form ?? { ...defaultForm(), employeeName: save.employeeName ?? '', employeePosition: save.employeePosition ?? '' })
+    setStep(save.step ?? 0)
+    setMaxStep(save.maxStep ?? save.step ?? 0)
+    if (save.employeeId) setCurrentEmployeeId(save.employeeId)
     setSaveStatus('saved')
   }
 
   function handleDelete(id: string) {
     deleteSave(id)
-    setSaves(getSaves())
+    setSaves(prev => prev.filter(s => s.id !== id))
     apiDeleteReview(id)
   }
 
@@ -3210,7 +3223,7 @@ export function PerformanceReviewForm() {
 
         {/* New Review button */}
         <div style={{ padding: sidebarCollapsed ? '12px 8px' : '12px 12px', flexShrink: 0 }}>
-          <button onClick={handleNewReview} style={{
+          <button onClick={() => setShowEmployeePicker(true)} style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
             gap: 8, padding: sidebarCollapsed ? '8px' : '8px 12px',
             background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white',
@@ -3506,7 +3519,8 @@ export function PerformanceReviewForm() {
             ) : dbTeam.map(r => {
               const sa = dbTeamSaMap[r.id]
               const displayName = r.name || r.email
-              const hasReview = saves.some(s => s.employeeName === displayName || s.employeeName === r.name)
+              const existingReview = saves.find(s => s.employeeId === r.id) ?? saves.find(s => s.employeeName === displayName)
+              const hasReview = !!existingReview
               return (
                 <div key={r.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '16px 20px', marginBottom: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
@@ -3541,9 +3555,18 @@ export function PerformanceReviewForm() {
                         📋 View SA
                       </button>
                     )}
-                    <button onClick={() => { handleNewReview(); update({ employeeName: r.name || r.email, employeePosition: r.position || '' }); setCurrentEmployeeId(r.id); setActivePage('reviews') }}
-                      style={{ padding: '7px 16px', background: sa?.status === 'submitted' ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', color: sa?.status === 'submitted' ? '#fff' : '#6b7280', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                      {sa?.status === 'submitted' ? '✨ Start Review' : 'Start Review'}
+                    <button onClick={() => {
+                      if (existingReview) {
+                        handleLoad(existingReview)
+                      } else {
+                        handleNewReview()
+                        update({ employeeName: r.name || r.email, employeePosition: r.position || '', employeeDivision: r.division || '', employeePronouns: r.pronouns || '', supervisorName: profileName || '', appraisalPeriod: r.start_date ? computeAppraisalPeriod(r.start_date) : '', reviewDate: r.start_date ? computeReviewDate(r.start_date) : '' })
+                        setCurrentEmployeeId(r.id)
+                      }
+                      setActivePage('reviews')
+                    }}
+                      style={{ padding: '7px 16px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      {existingReview ? '▶ Continue Review' : sa?.status === 'submitted' ? '✨ Start Review' : 'Start Review'}
                     </button>
                   </div>
                 </div>
@@ -3600,7 +3623,7 @@ export function PerformanceReviewForm() {
               dbTeam.forEach(r => {
                 const sa = dbTeamSaMap[r.id]
                 if (sa?.status === 'submitted') {
-                  items.push({ icon: '📋', color: '#818cf8', label: `${r.name || r.email} submitted their self-assessment`, detail: `Submitted ${sa.submitted_at ? new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'recently'}. Start their review when ready.`, action: () => { handleNewReview(); setActivePage('reviews') } })
+                  items.push({ icon: '📋', color: '#818cf8', label: `${r.name || r.email} submitted their self-assessment`, detail: `Submitted ${sa.submitted_at ? new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'recently'}. Start their review when ready.`, action: () => { setShowEmployeePicker(true); setActivePage('reviews') } })
                 }
               })
               // In-progress reviews
@@ -3642,7 +3665,7 @@ export function PerformanceReviewForm() {
             <div style={{ textAlign: 'center' }}>
               <p style={{ fontSize: 18, fontWeight: 700, color: '#e5e7eb', margin: '0 0 8px' }}>No review open</p>
               <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 24px' }}>Select a review from the sidebar or create a new one.</p>
-              <button onClick={handleNewReview} style={{ padding: '10px 24px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <button onClick={() => setShowEmployeePicker(true)} style={{ padding: '10px 24px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                 + New Review
               </button>
             </div>
@@ -3799,7 +3822,7 @@ export function PerformanceReviewForm() {
             </button>
             <button
               type="button"
-              onClick={handleNewReview}
+              onClick={() => setShowEmployeePicker(true)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#1e2030] text-sm text-gray-400 hover:text-red-400 hover:border-red-800/50 transition-all"
             >
               Start New Review
@@ -3889,6 +3912,65 @@ export function PerformanceReviewForm() {
                   )}
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Employee Picker Modal ── */}
+      {showEmployeePicker && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setShowEmployeePicker(false)}>
+          <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 16, padding: '24px', width: 420, maxHeight: '80vh', display: 'flex', flexDirection: 'column', gap: 16 }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#f0f2fa' }}>Select Employee</h2>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280' }}>Choose who this review is for.</p>
+              </div>
+              <button onClick={() => setShowEmployeePicker(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>✕</button>
+            </div>
+            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {dbTeam.filter(r => r.is_active).length === 0 ? (
+                <p style={{ color: '#6b7280', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>No active team members found.</p>
+              ) : dbTeam.filter(r => r.is_active).map(r => (
+                <button key={r.id} onClick={() => {
+                  const existing = saves.find(s => s.employeeId === r.id) ?? saves.find(s => s.employeeName === (r.name || r.email))
+                  if (existing) {
+                    handleLoad(existing)
+                  } else {
+                    handleNewReview()
+                    update({
+                      employeeName: r.name || r.email,
+                      employeePosition: r.position || '',
+                      employeeDivision: r.division || '',
+                      employeePronouns: r.pronouns || '',
+                      supervisorName: profileName || '',
+                      appraisalPeriod: r.start_date ? computeAppraisalPeriod(r.start_date) : '',
+                      reviewDate: r.start_date ? computeReviewDate(r.start_date) : '',
+                    })
+                    setCurrentEmployeeId(r.id)
+                  }
+                  setActivePage('reviews')
+                  setShowEmployeePicker(false)
+                }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 10, cursor: 'pointer', textAlign: 'left', width: '100%' }}
+                  onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(79,70,229,0.5)'; (e.currentTarget as HTMLButtonElement).style.background = '#1e1f3a' }}
+                  onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#1e2130'; (e.currentTarget as HTMLButtonElement).style.background = '#13151f' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+                    {(r.name || r.email).charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb' }}>{r.name || r.email}</div>
+                    {r.position && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{r.position}{r.division ? ` · ${r.division}` : ''}</div>}
+                  </div>
+                  {saves.find(s => s.employeeId === r.id || s.employeeName === (r.name || r.email))
+                    ? <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: '#34d399', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 6, padding: '2px 7px' }}>In Progress</span>
+                    : dbTeamSaMap[r.id]?.status === 'submitted'
+                      ? <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: '#818cf8', background: 'rgba(79,70,229,0.15)', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 6, padding: '2px 7px' }}>SA Ready</span>
+                      : null
+                  }
+                </button>
+              ))}
             </div>
           </div>
         </div>
