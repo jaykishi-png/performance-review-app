@@ -123,8 +123,9 @@ export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sig
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    ctx.strokeStyle = '#2a2d3a'
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.strokeStyle = '#9ca3af'
     ctx.lineWidth = 1
     ctx.setLineDash([4, 4])
     ctx.beginPath()
