@@ -3849,7 +3849,7 @@ export function PerformanceReviewForm() {
         {/* ── 1:1 Meeting page ── */}
         {activePage === 'meeting' && (() => {
           // All saves that qualify as meeting records (manager has signed)
-          const meetingSaves = saves.filter(s => s.managerSignedAt || s.driveUrl)
+          const meetingSaves = saves.filter(s => s.managerSignedAt || s.driveUrl || s.maxStep >= 8)
 
           // ── LIST VIEW ──────────────────────────────────────────────────────────────
           if (!meetingDetailId) {
