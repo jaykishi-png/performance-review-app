@@ -48,10 +48,11 @@ async function renderTypedSignature(name: string): Promise<string> {
   canvas.width = 560
   canvas.height = 140
   const ctx = canvas.getContext('2d')!
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
 
   // Dashed baseline
-  ctx.strokeStyle = '#2a2d3a'
+  ctx.strokeStyle = '#9ca3af'
   ctx.lineWidth = 1
   ctx.setLineDash([4, 4])
   ctx.beginPath()
@@ -65,7 +66,7 @@ async function renderTypedSignature(name: string): Promise<string> {
 
   const baseSize = 58
   ctx.font = `${baseSize}px "Dancing Script", "Brush Script MT", "Segoe Script", cursive`
-  ctx.fillStyle = '#e5e7eb'
+  ctx.fillStyle = '#1f2937'
   ctx.textBaseline = 'alphabetic'
 
   // Scale down if the text overflows
@@ -149,7 +150,7 @@ export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sig
   function drawTo(pos: { x: number; y: number }) {
     const ctx = canvasRef.current?.getContext('2d')
     if (!ctx || !lastPos.current) return
-    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    ctx.strokeStyle = '#1f2937'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
     ctx.beginPath(); ctx.moveTo(lastPos.current.x, lastPos.current.y); ctx.lineTo(pos.x, pos.y); ctx.stroke()
     lastPos.current = pos
     setHasDrawn(true)
@@ -205,7 +206,7 @@ export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sig
       {mode === 'draw' ? (
         <>
           {/* Canvas */}
-          <div style={{ position: 'relative', background: '#0a0c14', border: '1px solid #2a2d3a', borderRadius: 10, overflow: 'hidden' }}>
+          <div style={{ position: 'relative', background: '#ffffff', border: '1px solid #2a2d3a', borderRadius: 10, overflow: 'hidden' }}>
             <canvas
               ref={canvasRef}
               width={560} height={140}
@@ -243,14 +244,14 @@ export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sig
           </div>
 
           {/* Cursive preview */}
-          <div style={{ position: 'relative', background: '#0a0c14', border: '1px solid #2a2d3a', borderRadius: 10, height: 116, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+          <div style={{ position: 'relative', background: '#ffffff', border: '1px solid #2a2d3a', borderRadius: 10, height: 116, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
             {/* baseline */}
             <div style={{ position: 'absolute', bottom: 24, left: 16, right: 16, borderBottom: '1px dashed #2a2d3a' }} />
             <div style={{
               paddingLeft: 20, paddingBottom: 8, width: '100%', overflow: 'hidden', whiteSpace: 'nowrap',
               fontFamily: '"Dancing Script", "Brush Script MT", "Segoe Script", cursive',
               fontSize: typedSig.length > 20 ? 'clamp(24px, 3.5vw, 40px)' : 48,
-              color: typedSig ? '#e5e7eb' : '#374151',
+              color: typedSig ? '#1f2937' : '#9ca3af',
               userSelect: 'none', pointerEvents: 'none',
             }}>
               {typedSig || 'Preview'}
