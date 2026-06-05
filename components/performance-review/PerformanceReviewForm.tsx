@@ -2601,6 +2601,9 @@ export function PerformanceReviewForm() {
   const [meetingEmpSigSuccess, setMeetingEmpSigSuccess] = useState(false)
   const [meetingMgrSigLoading, setMeetingMgrSigLoading] = useState(false)
   const [meetingMgrSigError, setMeetingMgrSigError] = useState('')
+  const [meetingMgrSigned, setMeetingMgrSigned] = useState(false)
+  const [meetingMgrSignedAt, setMeetingMgrSignedAt] = useState('')
+  const [meetingMgrSignature, setMeetingMgrSignature] = useState('')
   const [meetingSubmitted, setMeetingSubmitted] = useState(false)
   const [meetingDriveStatus, setMeetingDriveStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle')
   const [meetingDriveError, setMeetingDriveError] = useState('')
@@ -3844,8 +3847,12 @@ export function PerformanceReviewForm() {
               })
               const data = await res.json() as { ok?: boolean; signedAt?: string; error?: string }
               if (!res.ok) throw new Error(data.error ?? 'Failed')
+              const signedAt = data.signedAt ?? new Date().toISOString()
+              setMeetingMgrSigned(true)
+              setMeetingMgrSignedAt(signedAt)
+              setMeetingMgrSignature(encodeSignature(result))
               setSaves(prev => prev.map(s => s.id === effectiveMeetingId
-                ? { ...s, managerSignedAt: data.signedAt ?? new Date().toISOString(), managerSignature: encodeSignature(result) }
+                ? { ...s, managerSignedAt: signedAt, managerSignature: encodeSignature(result) }
                 : s))
             } catch (e) {
               setMeetingMgrSigError(String(e))
@@ -3878,7 +3885,7 @@ export function PerformanceReviewForm() {
           const mSave = currentMeetingSave
           const mForm = mSave?.form
           const mEmpSig = mSave ? reviewSignatures[mSave.id] : null
-          const mBothSigned = !!(mSave?.managerSignedAt && mEmpSig?.employee_signed_at)
+          const mBothSigned = !!(meetingMgrSigned && (mEmpSig?.employee_signed_at || meetingEmpSigSuccess))
 
           return (
             <div style={{ padding: '28px 32px', maxWidth: 1200, margin: '0 auto' }}>
@@ -4064,9 +4071,9 @@ export function PerformanceReviewForm() {
                           {/* Manager signature */}
                           <div>
                             <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Manager</div>
-                            {mSave.managerSignedAt ? (
+                            {meetingMgrSigned ? (
                               <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
-                                <SignatureDisplay stored={mSave.managerSignature} date={mSave.managerSignedAt} />
+                                <SignatureDisplay stored={meetingMgrSignature} date={meetingMgrSignedAt} />
                               </div>
                             ) : (
                               <SignaturePad
