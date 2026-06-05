@@ -859,6 +859,106 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             </button>
           </div>
         )}
+
+        {/* ── Signed Documents section ── */}
+        {(() => {
+          const fullyExecuted = reviews.filter(r => r.employee_signed_at && r.manager_signed_at)
+          const pendingEmpSig = reviews.filter(r => r.manager_signed_at && !r.employee_signed_at)
+          if (fullyExecuted.length === 0 && pendingEmpSig.length === 0) return null
+          return (
+            <div style={{ marginTop: 32 }}>
+              {/* Fully Executed */}
+              {fullyExecuted.length > 0 && (
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                    <div style={{ height: 2, flex: 1, background: '#1a4a35' }} />
+                    <div style={{ padding: '4px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 20, fontSize: 12, fontWeight: 700, color: '#34d399' }}>
+                      ✓ Fully Executed Reviews ({fullyExecuted.length})
+                    </div>
+                    <div style={{ height: 2, flex: 1, background: '#1a4a35' }} />
+                  </div>
+                  <div style={{ background: '#13151f', border: '1px solid #1a4a35', borderRadius: 12, overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr>{['Employee', 'Position', 'Manager', 'Mgr Signed', 'Emp Signed', 'Drive'].map(h => (
+                          <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #1a4a35' }}>{h}</th>
+                        ))}</tr>
+                      </thead>
+                      <tbody>
+                        {fullyExecuted.map((r, i) => {
+                          const manager = users.find(u => u.id === r.user_id)
+                          return (
+                            <tr key={r.id} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(13,43,31,0.3)' }}>
+                              <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500, color: '#e5e7eb' }}>{r.employee_name || '—'}</td>
+                              <td style={{ padding: '10px 14px', fontSize: 12, color: '#9ca3af' }}>{r.employee_position || '—'}</td>
+                              <td style={{ padding: '10px 14px', fontSize: 12, color: '#c4c9d4' }}>{manager ? (manager.name || manager.email) : '—'}</td>
+                              <td style={{ padding: '10px 14px', fontSize: 12, color: '#34d399' }}>✓ {r.manager_signed_at ? new Date(r.manager_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
+                              <td style={{ padding: '10px 14px', fontSize: 12, color: '#34d399' }}>✓ {r.employee_signed_at ? new Date(r.employee_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
+                              <td style={{ padding: '10px 14px' }}>
+                                {r.drive_url ? (
+                                  <a href={r.drive_url} target="_blank" rel="noopener noreferrer"
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}>
+                                    Open
+                                  </a>
+                                ) : <span style={{ fontSize: 11, color: '#374151' }}>—</span>}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Pending Employee Signature */}
+              {pendingEmpSig.length > 0 && (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                    <div style={{ height: 2, flex: 1, background: '#92400e' }} />
+                    <div style={{ padding: '4px 14px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 20, fontSize: 12, fontWeight: 700, color: '#f59e0b' }}>
+                      ⏳ Pending Employee Signature ({pendingEmpSig.length})
+                    </div>
+                    <div style={{ height: 2, flex: 1, background: '#92400e' }} />
+                  </div>
+                  <div style={{ background: '#13151f', border: '1px solid #92400e', borderRadius: 12, overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr>{['Employee', 'Position', 'Manager', 'Mgr Signed', 'Employee Status', 'Drive'].map(h => (
+                          <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #92400e' }}>{h}</th>
+                        ))}</tr>
+                      </thead>
+                      <tbody>
+                        {pendingEmpSig.map((r, i) => {
+                          const manager = users.find(u => u.id === r.user_id)
+                          return (
+                            <tr key={r.id} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(31,26,13,0.3)' }}>
+                              <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500, color: '#e5e7eb' }}>{r.employee_name || '—'}</td>
+                              <td style={{ padding: '10px 14px', fontSize: 12, color: '#9ca3af' }}>{r.employee_position || '—'}</td>
+                              <td style={{ padding: '10px 14px', fontSize: 12, color: '#c4c9d4' }}>{manager ? (manager.name || manager.email) : '—'}</td>
+                              <td style={{ padding: '10px 14px', fontSize: 12, color: '#34d399' }}>✓ {r.manager_signed_at ? new Date(r.manager_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
+                              <td style={{ padding: '10px 14px' }}>
+                                <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: '#1f1a0d', color: '#f59e0b', border: '1px solid #92400e' }}>Awaiting Signature</span>
+                              </td>
+                              <td style={{ padding: '10px 14px' }}>
+                                {r.drive_url ? (
+                                  <a href={r.drive_url} target="_blank" rel="noopener noreferrer"
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}>
+                                    Open
+                                  </a>
+                                ) : <span style={{ fontSize: 11, color: '#374151' }}>—</span>}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </div>
     )
   }

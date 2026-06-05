@@ -341,6 +341,11 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   const saWindowOpen = activeCycle?.phase === 'sa_open'
   const saLocked = !isSubmitted && !saWindowOpen
 
+  // Derive effective review stage from actual data rather than just activeCycle.phase
+  const managerReviewComplete = managerReviews.length > 0
+  const bothSigned = managerReviews.some(r => r.employee_signed_at)
+  const effectivePhase = bothSigned ? 'complete' : managerReviewComplete ? 'meeting' : activeCycle?.phase ?? 'sa_open'
+
   // DB notifications state
   const [cycleNotifs, setCycleNotifs] = useState<{ id: string; type: string; title: string; body: string; created_at: string }[]>([])
   useEffect(() => {
@@ -1479,24 +1484,25 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
               <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.7, marginBottom: 28, maxWidth: 420, margin: '0 auto 28px' }}>
                 Your self-assessment will become editable when your annual review cycle opens — approximately 30 days before your work anniversary.
               </p>
-              {activeCycle && activeCycle.phase !== 'sa_open' && (
+              {activeCycle && effectivePhase !== 'sa_open' && (
                 <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', textAlign: 'left', maxWidth: 420, margin: '0 auto 20px' }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Your {activeCycle.anniversary_year} Review Cycle</div>
                   {[
-                    { label: 'Self-Assessment', open: activeCycle.sa_open_at, close: activeCycle.sa_close_at, phase: 'sa_open' },
-                    { label: 'Manager Review', open: activeCycle.review_open_at, close: activeCycle.review_close_at, phase: 'review_open' },
-                    { label: '1-on-1 Meeting', open: activeCycle.meeting_open_at, close: activeCycle.meeting_close_at, phase: 'meeting' },
+                    { label: 'Self-Assessment', open: activeCycle.sa_open_at, close: activeCycle.sa_close_at, phase: 'sa_open', isDone: true },
+                    { label: 'Manager Review', open: activeCycle.review_open_at, close: activeCycle.review_close_at, phase: 'review_open', isDone: managerReviewComplete },
+                    { label: '1-on-1 Meeting', open: activeCycle.meeting_open_at, close: activeCycle.meeting_close_at, phase: 'meeting', isDone: bothSigned },
+                    { label: 'Signatures', open: activeCycle.meeting_open_at, close: activeCycle.meeting_close_at, phase: 'complete', isDone: bothSigned },
                   ].map(w => {
-                    const isPast = new Date(w.close) < new Date()
-                    const isCurrent = activeCycle.phase === w.phase
+                    const isCurrent = effectivePhase === w.phase
                     return (
                       <div key={w.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #1e2130' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           {isCurrent && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34d399', boxShadow: '0 0 4px #34d399', flexShrink: 0 }} />}
-                          <span style={{ fontSize: 12, color: isCurrent ? '#f0f2fa' : isPast ? '#4b5563' : '#9ca3af', fontWeight: isCurrent ? 600 : 400 }}>{w.label}</span>
+                          {w.isDone && !isCurrent && <span style={{ fontSize: 10, color: '#34d399', flexShrink: 0 }}>✓</span>}
+                          <span style={{ fontSize: 12, color: isCurrent ? '#f0f2fa' : w.isDone ? '#6b7280' : '#9ca3af', fontWeight: isCurrent ? 600 : 400 }}>{w.label}</span>
                         </div>
                         <span style={{ fontSize: 11, color: '#4b5563' }}>
-                          {new Date(w.open).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(w.close).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          {w.phase !== 'complete' ? `${new Date(w.open).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(w.close).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : (bothSigned ? 'Complete' : 'Pending')}
                         </span>
                       </div>
                     )

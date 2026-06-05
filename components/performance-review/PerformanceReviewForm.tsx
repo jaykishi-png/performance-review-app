@@ -2637,7 +2637,7 @@ export function PerformanceReviewForm() {
   const [form, setForm] = useState<FormData>(defaultForm())
   const [saves, setSaves] = useState<SavedReview[]>([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notifications'>('reviews')
+  const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notifications' | 'cycles' | 'meeting'>('reviews')
   const [reviewsExpanded, setReviewsExpanded] = useState(true)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [showDirectReports, setShowDirectReports] = useState(false)
@@ -2670,6 +2670,18 @@ export function PerformanceReviewForm() {
   const [viewingSA, setViewingSA] = useState<{employeeId:string;employeeName:string;position:string}|null>(null)
   const [saData, setSAData] = useState<SAData|null>(null)
   const [saLoading, setSALoading] = useState(false)
+
+  // ── Review signatures (for cycles + meeting pages) ───────────────────────────
+  const [reviewSignatures, setReviewSignatures] = useState<Record<string, { employee_signed_at: string | null; employee_signature: string | null }>>({})
+
+  // ── Meeting page state ────────────────────────────────────────────────────────
+  const [meetingReviewId, setMeetingReviewId] = useState<string>('')
+  const [meetingSAData, setMeetingSAData] = useState<SAData | null>(null)
+  const [meetingSALoading, setMeetingSALoading] = useState(false)
+  const [meetingEmpSigName, setMeetingEmpSigName] = useState('')
+  const [meetingEmpSigLoading, setMeetingEmpSigLoading] = useState(false)
+  const [meetingEmpSigError, setMeetingEmpSigError] = useState('')
+  const [meetingEmpSigSuccess, setMeetingEmpSigSuccess] = useState(false)
 
   async function openSA(employeeId: string, employeeName: string, position: string) {
     setViewingSA({ employeeId, employeeName, position })
@@ -2762,11 +2774,30 @@ export function PerformanceReviewForm() {
       } catch { /* Supabase not configured */ }
 
       // Load reviews via API (uses service key server-side)
-      const remote = await apiLoadReviews()
-      if (remote && remote.length > 0) {
-        setSaves(remote)
-        localStorage.setItem(SAVES_KEY, JSON.stringify(remote))
-      } else {
+      try {
+        const res = await fetch('/api/reviews')
+        if (res.ok) {
+          const { reviews: rawRows } = await res.json() as { reviews: Record<string, unknown>[] }
+          const remote = rawRows.map(dbRowToSave)
+          if (remote.length > 0) {
+            setSaves(remote)
+            localStorage.setItem(SAVES_KEY, JSON.stringify(remote))
+          } else {
+            setSaves(getSaves())
+          }
+          // Build review signatures map from raw rows
+          const sigMap: Record<string, { employee_signed_at: string | null; employee_signature: string | null }> = {}
+          for (const row of rawRows) {
+            sigMap[row.id as string] = {
+              employee_signed_at: (row.employee_signed_at as string | null) ?? null,
+              employee_signature: (row.employee_signature as string | null) ?? null,
+            }
+          }
+          setReviewSignatures(sigMap)
+        } else {
+          setSaves(getSaves())
+        }
+      } catch {
         setSaves(getSaves())
       }
 
@@ -3395,6 +3426,36 @@ export function PerformanceReviewForm() {
               </button>
             )
           })()}
+
+          {/* Review Cycles */}
+          {(() => {
+            const active = activePage === 'cycles'
+            return (
+              <button onClick={() => setActivePage('cycles')} title={sidebarCollapsed ? 'Review Cycles' : undefined}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                <RefreshCw size={15} color={active ? '#818cf8' : '#6b7280'} />
+                {!sidebarCollapsed && 'Review Cycles'}
+              </button>
+            )
+          })()}
+
+          {/* 1:1 Meeting */}
+          {(() => {
+            const active = activePage === 'meeting'
+            const signedSaves = saves.filter(s => s.managerSignedAt)
+            return (
+              <button onClick={() => setActivePage('meeting')} title={sidebarCollapsed ? '1:1 Meeting' : undefined}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                <Users size={15} color={active ? '#818cf8' : '#6b7280'} />
+                {!sidebarCollapsed && '1:1 Meeting'}
+                {signedSaves.length > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: '#34d399', color: '#0d0f1a', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{signedSaves.length}</span>}
+              </button>
+            )
+          })()}
         </div>
 
         {/* Sidebar footer — profile + admin + sign out */}
@@ -3656,6 +3717,374 @@ export function PerformanceReviewForm() {
             })()}
           </div>
         )}
+
+        {/* ── Review Cycles page ── */}
+        {activePage === 'cycles' && (
+          <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
+            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Review Cycles</h1>
+            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Track where each employee is in the review process.</p>
+            {dbTeam.length === 0 ? (
+              <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '40px', textAlign: 'center' }}>
+                <div style={{ fontSize: 36, marginBottom: 10 }}>🔄</div>
+                <div style={{ fontSize: 14, color: '#9ca3af' }}>No team members found.</div>
+              </div>
+            ) : dbTeam.map(r => {
+              const displayName = r.name || r.email
+              const saStatus = dbTeamSaMap[r.id]
+              const save = saves.find(s => s.employeeId === r.id) ?? saves.find(s => s.employeeName === displayName)
+              const empSig = save ? reviewSignatures[save.id] : null
+
+              // Derive stage
+              let stage: string
+              let stageColor: string
+              let stageBg: string
+              let stageBorder: string
+              let actionLabel: string
+              let actionFn: () => void
+
+              if (save && save.managerSignedAt && empSig?.employee_signed_at) {
+                stage = 'Both Signed'; stageColor = '#34d399'; stageBg = '#0d1a13'; stageBorder = '#1a4a35'
+                actionLabel = 'Go to Meeting'; actionFn = () => { setMeetingReviewId(save.id); setActivePage('meeting') }
+              } else if (save && save.managerSignedAt) {
+                stage = 'Awaiting Employee Signature'; stageColor = '#f59e0b'; stageBg = '#1f1a0d'; stageBorder = '#92400e'
+                actionLabel = 'Go to Meeting'; actionFn = () => { setMeetingReviewId(save.id); setActivePage('meeting') }
+              } else if (save && reviewPct(save) === 100) {
+                stage = 'Review Complete — Awaiting Sign-off'; stageColor = '#60a5fa'; stageBg = '#0d1523'; stageBorder = '#1e3a5f'
+                actionLabel = 'View Review'; actionFn = () => { handleLoad(save); setActivePage('reviews') }
+              } else if (save && reviewPct(save) > 0) {
+                stage = 'Review In Progress'; stageColor = '#a78bfa'; stageBg = '#1a1430'; stageBorder = '#4c1d95'
+                actionLabel = 'Continue Review'; actionFn = () => { handleLoad(save); setActivePage('reviews') }
+              } else if (saStatus?.status === 'submitted') {
+                stage = 'SA Submitted — Ready to Review'; stageColor = '#818cf8'; stageBg = '#1e1f3a'; stageBorder = 'rgba(129,140,248,0.4)'
+                actionLabel = 'Start Review'; actionFn = () => { handleNewReview(); update({ employeeName: r.name || r.email, employeePosition: r.position || '', employeeDivision: r.division || '', employeePronouns: r.pronouns || '', supervisorName: profileName || '', appraisalPeriod: r.start_date ? computeAppraisalPeriod(r.start_date) : '', reviewDate: r.start_date ? computeReviewDate(r.start_date) : '' }); setCurrentEmployeeId(r.id); setActivePage('reviews') }
+              } else {
+                stage = 'Not Started'; stageColor = '#6b7280'; stageBg = '#13151f'; stageBorder = '#2a2d3a'
+                actionLabel = 'Start Review'; actionFn = () => { handleNewReview(); update({ employeeName: r.name || r.email, employeePosition: r.position || '', employeeDivision: r.division || '', employeePronouns: r.pronouns || '', supervisorName: profileName || '', appraisalPeriod: r.start_date ? computeAppraisalPeriod(r.start_date) : '', reviewDate: r.start_date ? computeReviewDate(r.start_date) : '' }); setCurrentEmployeeId(r.id); setActivePage('reviews') }
+              }
+
+              // Pipeline dots: SA → Review → Complete → Signed → Done
+              const stageIndex = stage === 'Not Started' ? 0
+                : stage === 'SA Submitted — Ready to Review' ? 1
+                : stage === 'Review In Progress' ? 2
+                : stage === 'Review Complete — Awaiting Sign-off' ? 2
+                : stage === 'Awaiting Employee Signature' ? 3
+                : stage === 'Both Signed' ? 4
+                : 0
+              const pipelineStages = ['SA', 'Review', 'Complete', 'Signed', 'Done']
+              const pipelineColors = ['#818cf8', '#a78bfa', '#60a5fa', '#f59e0b', '#34d399']
+
+              return (
+                <div key={r.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '18px 22px', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+                        {displayName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e7eb' }}>{displayName}</div>
+                        <div style={{ fontSize: 11, color: '#6b7280' }}>{r.position || r.email}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: stageBg, color: stageColor, border: `1px solid ${stageBorder}`, whiteSpace: 'nowrap' }}>{stage}</span>
+                      <button onClick={actionFn} style={{ padding: '6px 14px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>{actionLabel}</button>
+                    </div>
+                  </div>
+                  {/* Pipeline */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                    {pipelineStages.map((ps, pi) => {
+                      const isActive = pi === stageIndex
+                      const isDone = pi < stageIndex
+                      const color = isDone || isActive ? pipelineColors[pi] : '#2a2d3a'
+                      return (
+                        <div key={ps} style={{ display: 'flex', alignItems: 'center', flex: pi < pipelineStages.length - 1 ? 1 : 'none' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                            <div style={{ width: 28, height: 28, borderRadius: '50%', background: isDone ? color : isActive ? color + '30' : '#13151f', border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: isDone ? '#0d0f1a' : color, fontWeight: 700, flexShrink: 0 }}>
+                              {isDone ? '✓' : pi + 1}
+                            </div>
+                            <span style={{ fontSize: 9, color: isActive ? color : isDone ? '#6b7280' : '#374151', fontWeight: isActive ? 700 : 400, whiteSpace: 'nowrap' }}>{ps}</span>
+                          </div>
+                          {pi < pipelineStages.length - 1 && (
+                            <div style={{ flex: 1, height: 2, background: isDone ? pipelineColors[pi] : '#1e2130', margin: '0 4px', marginBottom: 14, transition: 'background 0.3s' }} />
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* ── 1:1 Meeting page ── */}
+        {activePage === 'meeting' && (() => {
+          const signedSaves = saves.filter(s => s.managerSignedAt)
+          const currentMeetingSave = signedSaves.find(s => s.id === meetingReviewId) ?? signedSaves[0] ?? null
+          const effectiveMeetingId = currentMeetingSave?.id ?? ''
+
+          async function loadMeetingSA(empId: string) {
+            if (!empId) return
+            setMeetingSALoading(true)
+            setMeetingSAData(null)
+            try {
+              const res = await fetch(`/api/self-reviews?employeeId=${empId}`)
+              const data = await res.json() as { selfReview: SAData | null }
+              setMeetingSAData(data.selfReview ?? null)
+            } catch { setMeetingSAData(null) }
+            finally { setMeetingSALoading(false) }
+          }
+
+          async function handleMeetingEmpSign() {
+            if (!meetingEmpSigName.trim() || !effectiveMeetingId) return
+            setMeetingEmpSigLoading(true)
+            setMeetingEmpSigError('')
+            try {
+              const res = await fetch('/api/reviews/meeting-sign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reviewId: effectiveMeetingId, employeeSignature: meetingEmpSigName.trim() }),
+              })
+              const data = await res.json() as { ok?: boolean; signedAt?: string; error?: string }
+              if (!res.ok) throw new Error(data.error ?? 'Failed')
+              setReviewSignatures(prev => ({ ...prev, [effectiveMeetingId]: { employee_signed_at: data.signedAt ?? new Date().toISOString(), employee_signature: meetingEmpSigName.trim() } }))
+              setMeetingEmpSigSuccess(true)
+            } catch (e) {
+              setMeetingEmpSigError(String(e))
+            } finally {
+              setMeetingEmpSigLoading(false)
+            }
+          }
+
+          const mSave = currentMeetingSave
+          const mForm = mSave?.form
+          const mEmpSig = mSave ? reviewSignatures[mSave.id] : null
+          const mBothSigned = !!(mSave?.managerSignedAt && mEmpSig?.employee_signed_at)
+
+          return (
+            <div style={{ padding: '28px 32px', maxWidth: 1200, margin: '0 auto' }}>
+              <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>1:1 Meeting</h1>
+              <p style={{ margin: '0 0 20px', fontSize: 13, color: '#6b7280' }}>Side-by-side view for your meeting with the employee.</p>
+
+              {signedSaves.length === 0 ? (
+                <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '40px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 36, marginBottom: 10 }}>👥</div>
+                  <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 6 }}>No signed reviews yet.</div>
+                  <div style={{ fontSize: 12, color: '#4b5563' }}>Sign a review from the Review Output step, then come back here.</div>
+                </div>
+              ) : (
+                <>
+                  {/* Selector */}
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Employee</label>
+                    <select
+                      value={effectiveMeetingId}
+                      onChange={e => {
+                        const id = e.target.value
+                        setMeetingReviewId(id)
+                        setMeetingEmpSigSuccess(false)
+                        setMeetingEmpSigName('')
+                        const sel = signedSaves.find(s => s.id === id)
+                        if (sel?.employeeId) loadMeetingSA(sel.employeeId)
+                        else setMeetingSAData(null)
+                      }}
+                      style={{ background: '#0d0f1a', border: '1px solid #2a2d3a', borderRadius: 8, padding: '9px 14px', fontSize: 13, color: '#e5e7eb', outline: 'none', minWidth: 260 }}
+                    >
+                      {signedSaves.map(s => (
+                        <option key={s.id} value={s.id}>{s.employeeName || 'Untitled'} — {s.employeePosition || 'No position'}</option>
+                      ))}
+                    </select>
+                    {effectiveMeetingId && !meetingSAData && !meetingSALoading && (
+                      <button onClick={() => {
+                        const sel = signedSaves.find(s => s.id === effectiveMeetingId)
+                        if (sel?.employeeId) loadMeetingSA(sel.employeeId)
+                      }} style={{ marginLeft: 10, padding: '8px 14px', background: '#1e1f3a', color: '#818cf8', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                        Load SA
+                      </button>
+                    )}
+                  </div>
+
+                  {mSave && mForm && (
+                    <>
+                      {/* Two-column layout */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+                        {/* Left: Self-Assessment */}
+                        <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 640, overflow: 'hidden' }}>
+                          <div style={{ padding: '12px 16px', background: '#1a1430', border: '1px solid #4c1d95', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Self-Assessment</div>
+                            {meetingSAData?.submitted_at && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Submitted {new Date(meetingSAData.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
+                          </div>
+                          <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#0d0f1a', border: '1px solid #4c1d95', borderRadius: '0 0 10px 10px' }}>
+                            {meetingSALoading ? (
+                              <div style={{ textAlign: 'center', padding: 32, color: '#6b7280' }}>Loading…</div>
+                            ) : !meetingSAData ? (
+                              <div style={{ textAlign: 'center', padding: 32, color: '#6b7280', fontSize: 13 }}>No self-assessment found for this employee.</div>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                {meetingSAData.competencies?.filter(c => c.term).length > 0 && (
+                                  <div>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Competencies</div>
+                                    {meetingSAData.competencies.filter(c => c.term).map((c, i) => {
+                                      const col = c.type === 'positive' ? '#10b981' : c.type === 'constructive' ? '#f97316' : '#818cf8'
+                                      return (
+                                        <div key={i} style={{ background: '#13151f', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                                          <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{c.term}</div>
+                                          {c.examples.filter(e => e.trim()).map((ex, ei) => (
+                                            <div key={ei} style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.5, marginBottom: 2 }}>{ex}</div>
+                                          ))}
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                )}
+                                {meetingSAData.goals_objectives?.filter(g => g.description?.trim()).length > 0 && (
+                                  <div>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Goals & Objectives</div>
+                                    {meetingSAData.goals_objectives.filter(g => g.description?.trim()).map((g, i) => (
+                                      <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                                        <div style={{ fontSize: 12, color: '#e5e7eb', marginBottom: 4 }}>{g.description}</div>
+                                        {g.outcome && <span style={{ fontSize: 11, fontWeight: 600, color: g.outcome === 'successful' ? '#34d399' : g.outcome === 'ongoing' ? '#f59e0b' : '#f87171' }}>{g.outcome}</span>}
+                                        {g.reasoning && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{g.reasoning}</div>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {meetingSAData.next_year_goals?.filter(g => g.goal?.trim()).length > 0 && (
+                                  <div>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Next Year&apos;s Goals</div>
+                                    {meetingSAData.next_year_goals.filter(g => g.goal?.trim()).map((g, i) => (
+                                      <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                                        <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 2 }}>{g.goal}</div>
+                                        {g.objective && <div style={{ fontSize: 11, color: '#9ca3af' }}>{g.objective}</div>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {meetingSAData.overall_rating !== null && meetingSAData.overall_rating !== undefined && (
+                                  <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Self Rating</span>
+                                    <span style={{ fontSize: 16, fontWeight: 700, color: '#a78bfa' }}>{'★'.repeat(meetingSAData.overall_rating || 0)}{'☆'.repeat(5 - (meetingSAData.overall_rating || 0))}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Right: Performance Review */}
+                        <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 640, overflow: 'hidden' }}>
+                          <div style={{ padding: '12px 16px', background: '#0d1523', border: '1px solid #1e3a5f', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Performance Review</div>
+                            {mForm.reviewDate && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Review Date: {mForm.reviewDate}</div>}
+                          </div>
+                          <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#0d0f1a', border: '1px solid #1e3a5f', borderRadius: '0 0 10px 10px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                              {/* Header info */}
+                              <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 14px' }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{mForm.employeeName}</div>
+                                <div style={{ fontSize: 11, color: '#6b7280' }}>{mForm.employeePosition}{mForm.appraisalPeriod ? ` · ${mForm.appraisalPeriod}` : ''}</div>
+                                {mForm.supervisorName && <div style={{ fontSize: 11, color: '#4b5563', marginTop: 2 }}>Supervisor: {mForm.supervisorName}</div>}
+                              </div>
+                              {/* Competencies */}
+                              {[
+                                { entry: mForm.competencyOne, type: 'positive' },
+                                { entry: mForm.competencyTwo, type: 'positive' },
+                                { entry: mForm.competencyThree, type: 'constructive' },
+                                { entry: mForm.competencyFour, type: 'constructive' },
+                                { entry: mForm.competencyFive, type: mForm.competencyFiveType },
+                              ].filter(c => c.entry.competency).map((c, i) => {
+                                const col = c.type === 'positive' ? '#10b981' : '#f97316'
+                                return (
+                                  <div key={i} style={{ background: '#13151f', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 8, padding: '10px 12px' }}>
+                                    <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{c.entry.competency}</div>
+                                    {c.entry.examples.filter(e => e.trim()).map((ex, ei) => (
+                                      <div key={ei} style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.5, marginBottom: 2 }}>{ei + 1}. {ex}</div>
+                                    ))}
+                                  </div>
+                                )
+                              })}
+                              {/* Goals */}
+                              {mForm.goals?.filter(g => g.text.trim()).map((g, i) => (
+                                <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px' }}>
+                                  <div style={{ fontSize: 12, color: '#e5e7eb', marginBottom: 2 }}>{g.text}</div>
+                                  {g.status && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: g.status === 'successful' ? '#0d2b1f' : g.status === 'unsuccessful' ? '#1f0d0d' : '#1f1a0d', color: g.status === 'successful' ? '#34d399' : g.status === 'unsuccessful' ? '#f87171' : '#f59e0b' }}>{g.status}</span>}
+                                </div>
+                              ))}
+                              {/* Overall score */}
+                              {mForm.overallScore > 0 && (
+                                <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8 }}>
+                                  <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Overall Score </span>
+                                  <span style={{ fontSize: 16, fontWeight: 700, color: '#60a5fa' }}>{'★'.repeat(mForm.overallScore)}{'☆'.repeat(5 - mForm.overallScore)}</span>
+                                  <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 6 }}>{SCORE_LABELS[mForm.overallScore]?.label}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Comparison report */}
+                      {mSave.comparisonReport && (
+                        <div style={{ marginBottom: 20, background: '#0d0f1a', border: '1px solid #2a1f4a', borderRadius: 12, padding: '16px 20px' }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Comparison Report</div>
+                          <pre style={{ margin: 0, fontSize: 12, color: '#9ca3af', lineHeight: 1.7, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{mSave.comparisonReport}</pre>
+                        </div>
+                      )}
+                      {!mSave.comparisonReport && (
+                        <div style={{ marginBottom: 20, background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 12, padding: '16px 20px', fontSize: 13, color: '#4b5563' }}>No comparison report available.</div>
+                      )}
+
+                      {/* Signatures section */}
+                      <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px' }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#f0f2fa', marginBottom: 16 }}>Meeting Confirmation &amp; Signatures</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                          {/* Manager signature */}
+                          <div>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Manager</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                              <span style={{ color: '#34d399', fontSize: 13 }}>✓ {mSave.managerSignature} · {new Date(mSave.managerSignedAt!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                            </div>
+                          </div>
+                          {/* Employee signature */}
+                          <div>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Employee</div>
+                            {mEmpSig?.employee_signed_at ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                                <span style={{ color: '#34d399', fontSize: 13 }}>✓ {mEmpSig.employee_signature} · {new Date(mEmpSig.employee_signed_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <input
+                                  value={meetingEmpSigName}
+                                  onChange={e => setMeetingEmpSigName(e.target.value)}
+                                  placeholder="Employee Full Name"
+                                  style={{ background: '#0a0c14', border: '1px solid #2a2d3a', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: '#e5e7eb', outline: 'none' }}
+                                />
+                                <div style={{ fontSize: 11, color: '#4b5563' }}>Date: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+                                {meetingEmpSigError && <p style={{ margin: 0, fontSize: 12, color: '#f87171' }}>{meetingEmpSigError}</p>}
+                                <button
+                                  onClick={handleMeetingEmpSign}
+                                  disabled={!meetingEmpSigName.trim() || meetingEmpSigLoading}
+                                  style={{ padding: '9px 16px', background: meetingEmpSigName.trim() && !meetingEmpSigLoading ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', color: meetingEmpSigName.trim() && !meetingEmpSigLoading ? '#fff' : '#4b5563', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: meetingEmpSigName.trim() && !meetingEmpSigLoading ? 'pointer' : 'not-allowed' }}>
+                                  {meetingEmpSigLoading ? 'Signing…' : '✍️ Sign on Behalf of Employee'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {(mBothSigned || meetingEmpSigSuccess) && (
+                          <div style={{ marginTop: 16, padding: '12px 16px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8, fontSize: 13, color: '#34d399', fontWeight: 600 }}>
+                            ✓ Both parties have signed. Admin has been notified.
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          )
+        })()}
 
         {/* ── Performance Reviews (form) ── */}
         {activePage === 'reviews' && (!currentReviewId ? (
