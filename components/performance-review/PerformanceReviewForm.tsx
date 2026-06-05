@@ -2809,6 +2809,24 @@ export function PerformanceReviewForm() {
     }
   }, [profileName, profileEmail, currentReviewId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Backfill employee profile fields whenever the employee or team data loads.
+  // This fills in fields that were blank when a review was saved before the picker existed.
+  useEffect(() => {
+    if (!currentEmployeeId || dbTeam.length === 0) return
+    const emp = dbTeam.find(r => r.id === currentEmployeeId)
+    if (!emp) return
+    setForm(prev => ({
+      ...prev,
+      employeeName:     prev.employeeName     || emp.name || emp.email,
+      employeePosition: prev.employeePosition || emp.position || '',
+      employeeDivision: prev.employeeDivision || emp.division || '',
+      employeePronouns: prev.employeePronouns || emp.pronouns || '',
+      appraisalPeriod:  prev.appraisalPeriod  || (emp.start_date ? computeAppraisalPeriod(emp.start_date) : ''),
+      reviewDate:       prev.reviewDate       || (emp.start_date ? computeReviewDate(emp.start_date) : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })),
+      supervisorName:   prev.supervisorName   || profileName || profileEmail || '',
+    }))
+  }, [currentEmployeeId, dbTeam]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Keep maxStep as the high-water mark — never goes backward
   useEffect(() => {
     setMaxStep(prev => Math.max(prev, step))
