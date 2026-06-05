@@ -4192,6 +4192,30 @@ export function PerformanceReviewForm() {
               </div>
 
               {/* Final Submit — hidden for completed/past meetings */}
+              {(mSave.driveUrl || meetingDriveStatus === 'done') && (
+                <div style={{ marginTop: 24, padding: '16px 20px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#34d399', marginBottom: 12 }}>✓ Review Complete — Google Drive Documents</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {mSave.driveUrl && (
+                      <a href={mSave.driveUrl} target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#0a1a10', border: '1px solid #1a4a35', borderRadius: 8, textDecoration: 'none', color: '#6ee7b7', fontSize: 12, fontWeight: 500 }}>
+                        <span>📄</span>
+                        <span>Performance Review — {mSave.employeeName}</span>
+                        <span style={{ marginLeft: 'auto', fontSize: 10, color: '#4b5563' }}>Open in Drive ↗</span>
+                      </a>
+                    )}
+                    {meetingSAData?.drive_url && (
+                      <a href={meetingSAData.drive_url} target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#0a1a10', border: '1px solid #1a4a35', borderRadius: 8, textDecoration: 'none', color: '#6ee7b7', fontSize: 12, fontWeight: 500 }}>
+                        <span>📝</span>
+                        <span>Self-Assessment — {mSave.employeeName}</span>
+                        <span style={{ marginLeft: 'auto', fontSize: 10, color: '#4b5563' }}>Open in Drive ↗</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {!isCompleted && (
                 <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid #1e2130' }}>
                   {meetingDriveError && (
