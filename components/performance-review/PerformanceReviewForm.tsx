@@ -2809,6 +2809,25 @@ export function PerformanceReviewForm() {
     }
   }, [profileName, profileEmail, currentReviewId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Low-score alert: notify admin once per review when overall score ≤ 2
+  const lowScoreAlertedRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (!form.overallScore || form.overallScore > 2 || !currentReviewId || !form.employeeName.trim()) return
+    const key = `${currentReviewId}-${form.overallScore}`
+    if (lowScoreAlertedRef.current.has(key)) return
+    lowScoreAlertedRef.current.add(key)
+    fetch('/api/reviews/low-score-alert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        referenceId: currentReviewId,
+        employeeName: form.employeeName,
+        score: form.overallScore,
+        type: 'manager_review',
+      }),
+    }).catch(() => { /* non-critical */ })
+  }, [form.overallScore, currentReviewId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Backfill employee profile fields whenever the employee or team data loads.
   // This fills in fields that were blank when a review was saved before the picker existed.
   useEffect(() => {

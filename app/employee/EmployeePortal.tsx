@@ -402,6 +402,20 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
       })
       setReview(r => ({ ...r, status: 'submitted', submitted_at: new Date().toISOString() }))
       setSubmitConfirm(false); router.refresh()
+
+      // Notify admin if overall rating is 2 stars or below
+      if (review.overall_rating && review.overall_rating <= 2 && (selfReviewId ?? review.id)) {
+        fetch('/api/reviews/low-score-alert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            referenceId: selfReviewId ?? review.id,
+            employeeName: profileName || profile.email,
+            score: review.overall_rating,
+            type: 'self_assessment',
+          }),
+        }).catch(() => { /* non-critical */ })
+      }
     } finally { setSaving(false) }
   }
 
