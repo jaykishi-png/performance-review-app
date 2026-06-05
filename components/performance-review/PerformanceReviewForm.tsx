@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft, LogOut, BookOpen, BookMarked, Bell } from 'lucide-react'
+import { SignaturePad, SignatureDisplay, encodeSignature, type SignatureResult } from '@/components/SignaturePad'
 
 // ─── Competency glossary ──────────────────────────────────────────────────────
 
@@ -1846,23 +1847,22 @@ function StepOutput({
   const [manualLinkValue, setManualLinkValue] = useState('')
   const [manualLinkError, setManualLinkError] = useState('')
 
-  const [sigName, setSigName] = useState('')
   const [sigLoading, setSigLoading] = useState(false)
   const [sigError, setSigError] = useState('')
 
-  async function handleSign() {
-    if (!sigName.trim() || !reviewId) return
+  async function handleSign(result: SignatureResult) {
+    if (!reviewId) return
     setSigLoading(true)
     setSigError('')
     try {
       const res = await fetch('/api/reviews/manager-sign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reviewId, managerSignature: sigName.trim() }),
+        body: JSON.stringify({ reviewId, managerSignature: encodeSignature(result) }),
       })
       const data = await res.json() as { ok?: boolean; signedAt?: string; error?: string }
       if (!res.ok) throw new Error(data.error ?? 'Failed')
-      onManagerSigned?.(data.signedAt ?? new Date().toISOString(), sigName.trim())
+      onManagerSigned?.(data.signedAt ?? new Date().toISOString(), encodeSignature(result))
     } catch (e) {
       setSigError(String(e))
     } finally {
@@ -2370,32 +2370,22 @@ function StepOutput({
           </div>
           {managerSignedAt ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
-                <span style={{ color: '#34d399', fontSize: 13 }}>✓ Signed by {managerSignature} · {new Date(managerSignedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+              <div style={{ padding: '12px 16px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                <SignatureDisplay stored={managerSignature} date={managerSignedAt} />
               </div>
               {employeeId && <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>The employee has been notified to sign their copy.</p>}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <p style={{ margin: 0, fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>
-                By signing, you confirm that you have completed the 1:1 meeting with this employee and reviewed this document with them.
+                By signing, you confirm that you have reviewed this document with the employee in your 1:1 meeting.
               </p>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Your Full Name</div>
-                <input
-                  value={sigName}
-                  onChange={e => setSigName(e.target.value)}
-                  placeholder="Type your full name to sign"
-                  style={{ width: '100%', background: '#0a0c14', border: '1px solid #2a2d3a', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: '#e5e7eb', outline: 'none', boxSizing: 'border-box' }}
-                />
-              </div>
-              {sigError && <p style={{ margin: 0, fontSize: 12, color: '#f87171' }}>{sigError}</p>}
-              <button
-                onClick={handleSign}
-                disabled={!sigName.trim() || sigLoading}
-                style={{ padding: '10px 20px', background: sigName.trim() && !sigLoading ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', color: sigName.trim() && !sigLoading ? '#fff' : '#4b5563', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: sigName.trim() && !sigLoading ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 8 }}>
-                {sigLoading ? 'Signing…' : '✍️ Sign & Notify Employee'}
-              </button>
+              <SignaturePad
+                onSign={handleSign}
+                loading={sigLoading}
+                error={sigError}
+                buttonLabel="✍️ Sign & Notify Employee"
+              />
             </div>
           )}
         </div>
@@ -2678,7 +2668,6 @@ export function PerformanceReviewForm() {
   const [meetingReviewId, setMeetingReviewId] = useState<string>('')
   const [meetingSAData, setMeetingSAData] = useState<SAData | null>(null)
   const [meetingSALoading, setMeetingSALoading] = useState(false)
-  const [meetingEmpSigName, setMeetingEmpSigName] = useState('')
   const [meetingEmpSigLoading, setMeetingEmpSigLoading] = useState(false)
   const [meetingEmpSigError, setMeetingEmpSigError] = useState('')
   const [meetingEmpSigSuccess, setMeetingEmpSigSuccess] = useState(false)
@@ -3871,19 +3860,19 @@ export function PerformanceReviewForm() {
             finally { setMeetingSALoading(false) }
           }
 
-          async function handleMeetingEmpSign() {
-            if (!meetingEmpSigName.trim() || !effectiveMeetingId) return
+          async function handleMeetingEmpSign(result: SignatureResult) {
+            if (!effectiveMeetingId) return
             setMeetingEmpSigLoading(true)
             setMeetingEmpSigError('')
             try {
               const res = await fetch('/api/reviews/meeting-sign', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ reviewId: effectiveMeetingId, employeeSignature: meetingEmpSigName.trim() }),
+                body: JSON.stringify({ reviewId: effectiveMeetingId, employeeSignature: encodeSignature(result) }),
               })
               const data = await res.json() as { ok?: boolean; signedAt?: string; error?: string }
               if (!res.ok) throw new Error(data.error ?? 'Failed')
-              setReviewSignatures(prev => ({ ...prev, [effectiveMeetingId]: { employee_signed_at: data.signedAt ?? new Date().toISOString(), employee_signature: meetingEmpSigName.trim() } }))
+              setReviewSignatures(prev => ({ ...prev, [effectiveMeetingId]: { employee_signed_at: data.signedAt ?? new Date().toISOString(), employee_signature: encodeSignature(result) } }))
               setMeetingEmpSigSuccess(true)
             } catch (e) {
               setMeetingEmpSigError(String(e))
@@ -3919,7 +3908,7 @@ export function PerformanceReviewForm() {
                         const id = e.target.value
                         setMeetingReviewId(id)
                         setMeetingEmpSigSuccess(false)
-                        setMeetingEmpSigName('')
+                        setMeetingEmpSigSuccess(false)
                         const sel = signedSaves.find(s => s.id === id)
                         if (sel?.employeeId) loadMeetingSA(sel.employeeId)
                         else setMeetingSAData(null)
@@ -4077,34 +4066,24 @@ export function PerformanceReviewForm() {
                           {/* Manager signature */}
                           <div>
                             <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Manager</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
-                              <span style={{ color: '#34d399', fontSize: 13 }}>✓ {mSave.managerSignature} · {new Date(mSave.managerSignedAt!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                            <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                              <SignatureDisplay stored={mSave.managerSignature} date={mSave.managerSignedAt ?? undefined} />
                             </div>
                           </div>
                           {/* Employee signature */}
                           <div>
                             <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Employee</div>
                             {mEmpSig?.employee_signed_at ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
-                                <span style={{ color: '#34d399', fontSize: 13 }}>✓ {mEmpSig.employee_signature} · {new Date(mEmpSig.employee_signed_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                              <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                                <SignatureDisplay stored={mEmpSig.employee_signature} date={mEmpSig.employee_signed_at} />
                               </div>
                             ) : (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                <input
-                                  value={meetingEmpSigName}
-                                  onChange={e => setMeetingEmpSigName(e.target.value)}
-                                  placeholder="Employee Full Name"
-                                  style={{ background: '#0a0c14', border: '1px solid #2a2d3a', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: '#e5e7eb', outline: 'none' }}
-                                />
-                                <div style={{ fontSize: 11, color: '#4b5563' }}>Date: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
-                                {meetingEmpSigError && <p style={{ margin: 0, fontSize: 12, color: '#f87171' }}>{meetingEmpSigError}</p>}
-                                <button
-                                  onClick={handleMeetingEmpSign}
-                                  disabled={!meetingEmpSigName.trim() || meetingEmpSigLoading}
-                                  style={{ padding: '9px 16px', background: meetingEmpSigName.trim() && !meetingEmpSigLoading ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', color: meetingEmpSigName.trim() && !meetingEmpSigLoading ? '#fff' : '#4b5563', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: meetingEmpSigName.trim() && !meetingEmpSigLoading ? 'pointer' : 'not-allowed' }}>
-                                  {meetingEmpSigLoading ? 'Signing…' : '✍️ Sign on Behalf of Employee'}
-                                </button>
-                              </div>
+                              <SignaturePad
+                                onSign={handleMeetingEmpSign}
+                                loading={meetingEmpSigLoading}
+                                error={meetingEmpSigError}
+                                buttonLabel="✍️ Employee Sign"
+                              />
                             )}
                           </div>
                         </div>

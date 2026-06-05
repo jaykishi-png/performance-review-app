@@ -8,6 +8,7 @@ import {
   ExternalLink, Clock, Bell, Target, User, ChevronDown,
   BarChart2, History, Pencil, Check, Sparkles,
 } from 'lucide-react'
+import { SignaturePad, SignatureDisplay, encodeSignature, decodeSignature, type SignatureResult } from '@/components/SignaturePad'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -255,7 +256,6 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     updated_at: string
   }>>([])
   const [signingId, setSigningId] = useState<string | null>(null)
-  const [signName, setSignName] = useState('')
   const [signLoading, setSignLoading] = useState(false)
   const [signError, setSignError] = useState('')
 
@@ -455,21 +455,20 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
       .catch(() => {})
   }, [page])
 
-  async function handleEmployeeSign(reviewId: string) {
-    if (!signName.trim()) return
+  async function handleEmployeeSign(reviewId: string, result: SignatureResult) {
     setSignLoading(true)
     setSignError('')
     try {
+      const encoded = encodeSignature(result)
       const res = await fetch('/api/reviews/employee-sign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reviewId, employeeSignature: signName.trim() }),
+        body: JSON.stringify({ reviewId, employeeSignature: encoded }),
       })
       const data = await res.json() as { ok?: boolean; signedAt?: string; error?: string }
       if (!res.ok) throw new Error(data.error ?? 'Failed')
-      setManagerReviews(prev => prev.map(r => r.id === reviewId ? { ...r, employee_signed_at: data.signedAt ?? new Date().toISOString(), employee_signature: signName.trim() } : r))
+      setManagerReviews(prev => prev.map(r => r.id === reviewId ? { ...r, employee_signed_at: data.signedAt ?? new Date().toISOString(), employee_signature: encoded } : r))
       setSigningId(null)
-      setSignName('')
     } catch (e) {
       setSignError(String(e))
     } finally {
@@ -946,35 +945,41 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                 {r.drive_url && <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}><ExternalLink size={12} /> Drive</a>}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12 }}>
-              <div style={{ fontSize: 12, color: '#6b7280' }}>
-                <span style={{ color: '#4b5563' }}>Manager signed: </span>
-                <span style={{ color: '#34d399' }}>✓ {r.manager_signature} · {new Date(r.manager_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-              </div>
-              {r.employee_signed_at ? (
-                <div style={{ fontSize: 12, color: '#6b7280' }}>
-                  <span style={{ color: '#4b5563' }}>Your signature: </span>
-                  <span style={{ color: '#34d399' }}>✓ {r.employee_signature} · {new Date(r.employee_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+            {/* Signatures */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: r.employee_signed_at ? 0 : 12 }}>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Manager</div>
+                <div style={{ padding: '10px 12px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                  <SignatureDisplay stored={r.manager_signature} date={r.manager_signed_at} />
                 </div>
-              ) : (
-                <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: '#1f1a0d', color: '#f59e0b', border: '1px solid #92400e' }}>Awaiting your signature</span>
-              )}
+              </div>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>You</div>
+                {r.employee_signed_at ? (
+                  <div style={{ padding: '10px 12px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                    <SignatureDisplay stored={r.employee_signature} date={r.employee_signed_at} />
+                  </div>
+                ) : (
+                  <div style={{ padding: '6px 10px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8, fontSize: 11, fontWeight: 600, color: '#f59e0b' }}>
+                    Awaiting your signature
+                  </div>
+                )}
+              </div>
             </div>
             {!r.employee_signed_at && (
               signingId === r.id ? (
                 <div style={{ background: '#0a0c14', border: '1px solid #2a2d3a', borderRadius: 10, padding: '16px' }}>
-                  <p style={{ margin: '0 0 10px', fontSize: 13, color: '#9ca3af' }}>By signing, you acknowledge that you have reviewed this performance evaluation and discussed it with your manager.</p>
-                  <input value={signName} onChange={e => setSignName(e.target.value)} placeholder="Type your full name to sign" style={{ width: '100%', background: '#0d0f1a', border: '1px solid #2a2d3a', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: '#e5e7eb', outline: 'none', boxSizing: 'border-box', marginBottom: 10 }} />
-                  {signError && <p style={{ margin: '0 0 8px', fontSize: 12, color: '#f87171' }}>{signError}</p>}
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => { setSigningId(null); setSignName(''); setSignError('') }} style={{ flex: 1, padding: '9px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
-                    <button onClick={() => handleEmployeeSign(r.id)} disabled={!signName.trim() || signLoading} style={{ flex: 2, padding: '9px', background: signName.trim() && !signLoading ? 'linear-gradient(135deg,#4f46e5,#7c3aed)' : '#1e2130', color: signName.trim() && !signLoading ? '#fff' : '#4b5563', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: signName.trim() && !signLoading ? 'pointer' : 'not-allowed' }}>
-                      {signLoading ? 'Signing…' : '✍️ Sign & Acknowledge'}
-                    </button>
-                  </div>
+                  <p style={{ margin: '0 0 12px', fontSize: 13, color: '#9ca3af' }}>By signing, you acknowledge that you have reviewed this performance evaluation and discussed it with your manager.</p>
+                  <SignaturePad
+                    onSign={result => handleEmployeeSign(r.id, result)}
+                    loading={signLoading}
+                    error={signError}
+                    buttonLabel="✍️ Sign & Acknowledge"
+                    onCancel={() => { setSigningId(null); setSignError('') }}
+                  />
                 </div>
               ) : (
-                <button onClick={() => { setSigningId(r.id); setSignName(''); setSignError('') }} style={{ padding: '8px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                <button onClick={() => { setSigningId(r.id); setSignError('') }} style={{ padding: '8px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                   ✍️ Sign &amp; Acknowledge
                 </button>
               )
