@@ -859,6 +859,8 @@ function StepInfo({
     { label: 'Pronouns',             value: form.employeePronouns },
   ]
 
+  const missingFields = fields.filter(f => !f.value?.trim()).map(f => f.label)
+
   return (
     <div className="space-y-6">
       <div>
@@ -866,11 +868,24 @@ function StepInfo({
         <p className="text-[12px] text-gray-500">Review the details below before continuing. To make changes, contact your admin.</p>
       </div>
 
+      {missingFields.length > 0 && (
+        <div className="flex items-start gap-3 bg-amber-950/30 border border-amber-700/40 rounded-xl px-4 py-3">
+          <span className="text-amber-400 text-base mt-0.5">⚠</span>
+          <div>
+            <p className="text-[12px] font-semibold text-amber-300 mb-0.5">Some fields are missing</p>
+            <p className="text-[11px] text-amber-500/80 leading-relaxed">
+              <strong>{missingFields.join(', ')}</strong> {missingFields.length === 1 ? 'is' : 'are'} not set in this employee&apos;s profile.
+              An admin can update these in the <strong>Admin → Users</strong> table. You can still continue the review.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         {fields.map(f => (
-          <div key={f.label} className="bg-[#13151f] border border-[#1e2130] rounded-xl px-4 py-3">
+          <div key={f.label} className={`bg-[#13151f] border rounded-xl px-4 py-3 ${!f.value?.trim() ? 'border-amber-900/40' : 'border-[#1e2130]'}`}>
             <div className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider mb-1">{f.label}</div>
-            <div className="text-[13px] font-medium text-gray-200">{f.value || <span className="text-gray-600 font-normal">—</span>}</div>
+            <div className="text-[13px] font-medium text-gray-200">{f.value || <span className="text-amber-700/80 font-normal text-[12px]">Not set — update in admin portal</span>}</div>
           </div>
         ))}
       </div>
@@ -2785,12 +2800,14 @@ export function PerformanceReviewForm() {
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When the manager's profile name loads, backfill supervisorName if it's still empty
+  // When the manager's profile name/email loads, backfill supervisorName if still empty
+  // Also fires when currentReviewId changes (new review created) so reset doesn't clear it
   useEffect(() => {
-    if (profileName) {
-      setForm(prev => prev.supervisorName ? prev : { ...prev, supervisorName: profileName })
+    const managerIdentity = profileName || profileEmail
+    if (managerIdentity) {
+      setForm(prev => prev.supervisorName ? prev : { ...prev, supervisorName: managerIdentity })
     }
-  }, [profileName]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profileName, profileEmail, currentReviewId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep maxStep as the high-water mark — never goes backward
   useEffect(() => {
@@ -3604,7 +3621,7 @@ export function PerformanceReviewForm() {
                         handleLoad(existingReview)
                       } else {
                         handleNewReview()
-                        update({ employeeName: r.name || r.email, employeePosition: r.position || '', employeeDivision: r.division || '', employeePronouns: r.pronouns || '', supervisorName: profileName || '', appraisalPeriod: r.start_date ? computeAppraisalPeriod(r.start_date) : '', reviewDate: r.start_date ? computeReviewDate(r.start_date) : '' })
+                        update({ employeeName: r.name || r.email, employeePosition: r.position || '', employeeDivision: r.division || '', employeePronouns: r.pronouns || '', supervisorName: profileName || profileEmail || '', appraisalPeriod: r.start_date ? computeAppraisalPeriod(r.start_date) : '', reviewDate: r.start_date ? computeReviewDate(r.start_date) : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) })
                         setCurrentEmployeeId(r.id)
                       }
                       setActivePage('reviews')
@@ -3739,10 +3756,10 @@ export function PerformanceReviewForm() {
                 actionLabel = 'Continue Review'; actionFn = () => { handleLoad(save); setActivePage('reviews') }
               } else if (saStatus?.status === 'submitted') {
                 stage = 'SA Submitted — Ready to Review'; stageColor = '#818cf8'; stageBg = '#1e1f3a'; stageBorder = 'rgba(129,140,248,0.4)'
-                actionLabel = 'Start Review'; actionFn = () => { handleNewReview(); update({ employeeName: r.name || r.email, employeePosition: r.position || '', employeeDivision: r.division || '', employeePronouns: r.pronouns || '', supervisorName: profileName || '', appraisalPeriod: r.start_date ? computeAppraisalPeriod(r.start_date) : '', reviewDate: r.start_date ? computeReviewDate(r.start_date) : '' }); setCurrentEmployeeId(r.id); setActivePage('reviews') }
+                actionLabel = 'Start Review'; actionFn = () => { handleNewReview(); update({ employeeName: r.name || r.email, employeePosition: r.position || '', employeeDivision: r.division || '', employeePronouns: r.pronouns || '', supervisorName: profileName || profileEmail || '', appraisalPeriod: r.start_date ? computeAppraisalPeriod(r.start_date) : '', reviewDate: r.start_date ? computeReviewDate(r.start_date) : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) }); setCurrentEmployeeId(r.id); setActivePage('reviews') }
               } else {
                 stage = 'Not Started'; stageColor = '#6b7280'; stageBg = '#13151f'; stageBorder = '#2a2d3a'
-                actionLabel = 'Start Review'; actionFn = () => { handleNewReview(); update({ employeeName: r.name || r.email, employeePosition: r.position || '', employeeDivision: r.division || '', employeePronouns: r.pronouns || '', supervisorName: profileName || '', appraisalPeriod: r.start_date ? computeAppraisalPeriod(r.start_date) : '', reviewDate: r.start_date ? computeReviewDate(r.start_date) : '' }); setCurrentEmployeeId(r.id); setActivePage('reviews') }
+                actionLabel = 'Start Review'; actionFn = () => { handleNewReview(); update({ employeeName: r.name || r.email, employeePosition: r.position || '', employeeDivision: r.division || '', employeePronouns: r.pronouns || '', supervisorName: profileName || profileEmail || '', appraisalPeriod: r.start_date ? computeAppraisalPeriod(r.start_date) : '', reviewDate: r.start_date ? computeReviewDate(r.start_date) : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) }); setCurrentEmployeeId(r.id); setActivePage('reviews') }
               }
 
               // Pipeline dots: SA → Review → Complete → Signed → Done
@@ -4379,9 +4396,9 @@ export function PerformanceReviewForm() {
                       employeePosition: r.position || '',
                       employeeDivision: r.division || '',
                       employeePronouns: r.pronouns || '',
-                      supervisorName: profileName || '',
+                      supervisorName: profileName || profileEmail || '',
                       appraisalPeriod: r.start_date ? computeAppraisalPeriod(r.start_date) : '',
-                      reviewDate: r.start_date ? computeReviewDate(r.start_date) : '',
+                      reviewDate: r.start_date ? computeReviewDate(r.start_date) : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
                     })
                     setCurrentEmployeeId(r.id)
                   }
