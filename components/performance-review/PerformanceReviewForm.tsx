@@ -4218,20 +4218,27 @@ export function PerformanceReviewForm() {
                         setMeetingDriveStatus('uploading')
                         setMeetingDriveError('')
                         try {
-                          const res = await fetch('/api/reviews/submit-drive', {
+                          const folderId = parseFolderId(settings.driveFolderUrl)
+                          const res = await fetch('/api/performance-review/send-to-drive', {
                             method: 'POST',
                             credentials: 'include',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ reviewId: effectiveMeetingId }),
+                            body: JSON.stringify({
+                              ...reviewForm,
+                              ...(folderId ? { driveFolderId: folderId } : {}),
+                              employeeId: mSave.employeeId,
+                              managerEmail: profileEmail,
+                            }),
                           })
                           const ct = res.headers.get('content-type') ?? ''
                           if (!ct.includes('application/json')) throw new Error(`Server returned non-JSON response (status ${res.status}). Check server logs.`)
-                          const data = await res.json() as { ok?: boolean; driveUrl?: string; error?: string }
-                          if (!res.ok) throw new Error(data.error ?? 'Failed')
+                          const data = await res.json() as { docUrl?: string; docId?: string; error?: string }
+                          if (!res.ok || data.error) throw new Error(data.error ?? 'Drive export failed')
+                          const url = data.docUrl ?? ''
+                          const docId = data.docId ?? ''
+                          apiPatchReview(effectiveMeetingId, { drive_url: url || null, drive_doc_id: docId || null })
+                          setSaves(prev => prev.map(s => s.id === effectiveMeetingId ? { ...s, driveUrl: url || undefined, driveDocId: docId || undefined } : s))
                           setMeetingDriveStatus('done')
-                          if (data.driveUrl) {
-                            setSaves(prev => prev.map(s => s.id === effectiveMeetingId ? { ...s, driveUrl: data.driveUrl } : s))
-                          }
                         } catch (e) {
                           setMeetingDriveStatus('error')
                           setMeetingDriveError(String(e))
