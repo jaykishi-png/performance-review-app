@@ -2593,7 +2593,7 @@ export function PerformanceReviewForm() {
   const [reviewSignatures, setReviewSignatures] = useState<Record<string, { employee_signed_at: string | null; employee_signature: string | null }>>({})
 
   // ── Meeting page state ────────────────────────────────────────────────────────
-  const [meetingReviewId, setMeetingReviewId] = useState<string>('')
+  const [meetingDetailId, setMeetingDetailId] = useState<string | null>(null)
   const [meetingSAData, setMeetingSAData] = useState<SAData | null>(null)
   const [meetingSALoading, setMeetingSALoading] = useState(false)
   const [meetingEmpSigLoading, setMeetingEmpSigLoading] = useState(false)
@@ -2601,12 +2601,41 @@ export function PerformanceReviewForm() {
   const [meetingEmpSigSuccess, setMeetingEmpSigSuccess] = useState(false)
   const [meetingMgrSigLoading, setMeetingMgrSigLoading] = useState(false)
   const [meetingMgrSigError, setMeetingMgrSigError] = useState('')
-  const [meetingMgrSigned, setMeetingMgrSigned] = useState(false)
-  const [meetingMgrSignedAt, setMeetingMgrSignedAt] = useState('')
-  const [meetingMgrSignature, setMeetingMgrSignature] = useState('')
-  const [meetingSubmitted, setMeetingSubmitted] = useState(false)
   const [meetingDriveStatus, setMeetingDriveStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle')
   const [meetingDriveError, setMeetingDriveError] = useState('')
+
+  // ── Meeting SA auto-load (component level) ─────────────────────────────────
+  async function loadMeetingSA(empId: string) {
+    if (!empId) return
+    setMeetingSALoading(true)
+    setMeetingSAData(null)
+    try {
+      const res = await fetch(`/api/self-reviews?employeeId=${empId}`)
+      const data = await res.json() as { selfReview: SAData | null }
+      setMeetingSAData(data.selfReview ?? null)
+    } catch {
+      setMeetingSAData(null)
+    } finally {
+      setMeetingSALoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activePage !== 'meeting' || !meetingDetailId) return
+    const save = saves.find(s => s.id === meetingDetailId)
+    if (save?.employeeId) {
+      loadMeetingSA(save.employeeId)
+    }
+    // Reset per-session UI state when opening a detail
+    setMeetingEmpSigSuccess(false)
+    setMeetingMgrSigLoading(false)
+    setMeetingMgrSigError('')
+    setMeetingEmpSigLoading(false)
+    setMeetingEmpSigError('')
+    setMeetingDriveStatus('idle')
+    setMeetingDriveError('')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meetingDetailId, activePage])
 
   async function openSA(employeeId: string, employeeName: string, position: string) {
     setViewingSA({ employeeId, employeeName, position })
@@ -3446,7 +3475,7 @@ export function PerformanceReviewForm() {
             const active = activePage === 'meeting'
             const signedSaves = saves.filter(s => s.managerSignedAt)
             return (
-              <button onClick={() => setActivePage('meeting')} title={sidebarCollapsed ? '1:1 Meeting' : undefined}
+              <button onClick={() => { setMeetingDetailId(null); setActivePage('meeting') }} title={sidebarCollapsed ? '1:1 Meeting' : undefined}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
@@ -3744,10 +3773,10 @@ export function PerformanceReviewForm() {
 
               if (save && save.managerSignedAt && empSig?.employee_signed_at) {
                 stage = 'Both Signed'; stageColor = '#34d399'; stageBg = '#0d1a13'; stageBorder = '#1a4a35'
-                actionLabel = 'Go to Meeting'; actionFn = () => { setMeetingReviewId(save.id); setActivePage('meeting') }
+                actionLabel = 'Go to Meeting'; actionFn = () => { setMeetingDetailId(save.id); setActivePage('meeting') }
               } else if (save && save.managerSignedAt) {
                 stage = 'Awaiting Employee Signature'; stageColor = '#f59e0b'; stageBg = '#1f1a0d'; stageBorder = '#92400e'
-                actionLabel = 'Go to Meeting'; actionFn = () => { setMeetingReviewId(save.id); setActivePage('meeting') }
+                actionLabel = 'Go to Meeting'; actionFn = () => { setMeetingDetailId(save.id); setActivePage('meeting') }
               } else if (save && reviewPct(save) === 100) {
                 stage = 'Review Complete — Awaiting Sign-off'; stageColor = '#60a5fa'; stageBg = '#0d1523'; stageBorder = '#1e3a5f'
                 actionLabel = 'View Review'; actionFn = () => { handleLoad(save); setActivePage('reviews') }
@@ -3819,24 +3848,71 @@ export function PerformanceReviewForm() {
 
         {/* ── 1:1 Meeting page ── */}
         {activePage === 'meeting' && (() => {
-          const signedSaves = saves.filter(s => s.form && (s.managerSignedAt || s.maxStep >= 8))
-          const currentMeetingSave = signedSaves.find(s => s.id === meetingReviewId) ?? signedSaves[0] ?? null
-          const effectiveMeetingId = currentMeetingSave?.id ?? ''
+          // All saves that qualify as meeting records (manager has signed)
+          const meetingSaves = saves.filter(s => s.managerSignedAt || s.driveUrl)
 
-          async function loadMeetingSA(empId: string) {
-            if (!empId) return
-            setMeetingSALoading(true)
-            setMeetingSAData(null)
-            try {
-              const res = await fetch(`/api/self-reviews?employeeId=${empId}`)
-              const data = await res.json() as { selfReview: SAData | null }
-              setMeetingSAData(data.selfReview ?? null)
-            } catch { setMeetingSAData(null) }
-            finally { setMeetingSALoading(false) }
+          // ── LIST VIEW ──────────────────────────────────────────────────────────────
+          if (!meetingDetailId) {
+            return (
+              <div style={{ padding: '28px 32px', maxWidth: 1200, margin: '0 auto' }}>
+                <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>1:1 Meetings</h1>
+                <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>All current and past 1:1 review meetings.</p>
+
+                {meetingSaves.length === 0 ? (
+                  <div style={{ padding: '32px', background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, textAlign: 'center', color: '#6b7280', fontSize: 14 }}>
+                    No signed reviews ready for a 1:1 meeting yet.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {meetingSaves.map(s => {
+                      const empSig = reviewSignatures[s.id]
+                      const isCompleted = !!s.driveUrl
+                      const bothSigned = !!(s.managerSignedAt && empSig?.employee_signed_at)
+                      const status: string = isCompleted ? 'Completed' : bothSigned ? 'Ready to Submit' : 'Manager Signed'
+                      const statusColor = isCompleted ? '#34d399' : bothSigned ? '#818cf8' : '#f59e0b'
+                      const statusBg = isCompleted ? '#0d2b1f' : bothSigned ? '#1a1a3a' : '#2a1f00'
+                      const statusBorder = isCompleted ? '#1a4a35' : bothSigned ? '#2e2e6a' : '#4a3300'
+                      return (
+                        <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <span style={{ fontSize: 15, fontWeight: 600, color: '#f0f2fa' }}>{s.employeeName}</span>
+                            <span style={{ fontSize: 12, color: '#6b7280' }}>{s.employeePosition} · {s.managerSignedAt ? new Date(s.managerSignedAt).toLocaleDateString() : '—'}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: statusBg, border: `1px solid ${statusBorder}`, color: statusColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{status}</span>
+                            <button
+                              onClick={() => { setMeetingDetailId(s.id) }}
+                              style={{ padding: '7px 16px', background: '#1e2130', border: '1px solid #2d3148', borderRadius: 8, color: '#c7d0f8', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                            >
+                              Open →
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
           }
 
+          // ── DETAIL VIEW ────────────────────────────────────────────────────────────
+          const mSave = saves.find(s => s.id === meetingDetailId) ?? null
+          if (!mSave) {
+            return (
+              <div style={{ padding: '28px 32px' }}>
+                <button onClick={() => setMeetingDetailId(null)} style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: 13, marginBottom: 16 }}>← Back to Meetings</button>
+                <div style={{ color: '#6b7280' }}>Meeting not found.</div>
+              </div>
+            )
+          }
+
+          const mEmpSig = reviewSignatures[mSave.id]
+          const isCompleted = !!mSave.driveUrl
+          const mBothSigned = !!(mSave.managerSignedAt && mEmpSig?.employee_signed_at)
+          const effectiveMeetingId = mSave.id
+
           async function handleMeetingMgrSign(result: SignatureResult) {
-            if (!effectiveMeetingId) return
             setMeetingMgrSigLoading(true)
             setMeetingMgrSigError('')
             try {
@@ -3848,9 +3924,6 @@ export function PerformanceReviewForm() {
               const data = await res.json() as { ok?: boolean; signedAt?: string; error?: string }
               if (!res.ok) throw new Error(data.error ?? 'Failed')
               const signedAt = data.signedAt ?? new Date().toISOString()
-              setMeetingMgrSigned(true)
-              setMeetingMgrSignedAt(signedAt)
-              setMeetingMgrSignature(encodeSignature(result))
               setSaves(prev => prev.map(s => s.id === effectiveMeetingId
                 ? { ...s, managerSignedAt: signedAt, managerSignature: encodeSignature(result) }
                 : s))
@@ -3862,7 +3935,6 @@ export function PerformanceReviewForm() {
           }
 
           async function handleMeetingEmpSign(result: SignatureResult) {
-            if (!effectiveMeetingId) return
             setMeetingEmpSigLoading(true)
             setMeetingEmpSigError('')
             try {
@@ -3882,295 +3954,262 @@ export function PerformanceReviewForm() {
             }
           }
 
-          const mSave = currentMeetingSave
-          const mForm = mSave?.form
-          const mEmpSig = mSave ? reviewSignatures[mSave.id] : null
-          const mBothSigned = !!(meetingMgrSigned && (mEmpSig?.employee_signed_at || meetingEmpSigSuccess))
-
           return (
             <div style={{ padding: '28px 32px', maxWidth: 1200, margin: '0 auto' }}>
-              <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>1:1 Meeting</h1>
-              <p style={{ margin: '0 0 20px', fontSize: 13, color: '#6b7280' }}>Side-by-side view for your meeting with the employee.</p>
+              {/* Back nav */}
+              <button
+                onClick={() => setMeetingDetailId(null)}
+                style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: 13, marginBottom: 16, padding: 0 }}
+              >
+                ← Back to Meetings
+              </button>
 
-              {signedSaves.length === 0 ? (
-                <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '40px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 36, marginBottom: 10 }}>👥</div>
-                  <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 6 }}>No reviews ready for meeting yet.</div>
-                  <div style={{ fontSize: 12, color: '#4b5563' }}>Complete a review and click &ldquo;Submit Review&rdquo; to prepare for the 1:1 meeting.</div>
-                </div>
-              ) : (
-                <>
-                  {/* Selector */}
-                  <div style={{ marginBottom: 20 }}>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Employee</label>
-                    <select
-                      value={effectiveMeetingId}
-                      onChange={e => {
-                        const id = e.target.value
-                        setMeetingReviewId(id)
-                        setMeetingEmpSigSuccess(false)
-                        setMeetingSubmitted(false)
-                        setMeetingDriveStatus('idle')
-                        setMeetingDriveError('')
-                        const sel = signedSaves.find(s => s.id === id)
-                        if (sel?.employeeId) loadMeetingSA(sel.employeeId)
-                        else setMeetingSAData(null)
-                      }}
-                      style={{ background: '#0d0f1a', border: '1px solid #2a2d3a', borderRadius: 8, padding: '9px 14px', fontSize: 13, color: '#e5e7eb', outline: 'none', minWidth: 260 }}
-                    >
-                      {signedSaves.map(s => (
-                        <option key={s.id} value={s.id}>{s.employeeName || 'Untitled'} — {s.employeePosition || 'No position'}</option>
-                      ))}
-                    </select>
-                    {effectiveMeetingId && !meetingSAData && !meetingSALoading && (
-                      <button onClick={() => {
-                        const sel = signedSaves.find(s => s.id === effectiveMeetingId)
-                        if (sel?.employeeId) loadMeetingSA(sel.employeeId)
-                      }} style={{ marginLeft: 10, padding: '8px 14px', background: '#1e1f3a', color: '#818cf8', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                        Load SA
-                      </button>
-                    )}
-                  </div>
+              <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>
+                1:1 Meeting — {mSave.employeeName}
+              </h1>
+              <p style={{ margin: '0 0 20px', fontSize: 13, color: '#6b7280' }}>
+                {isCompleted ? 'Completed · Read-only' : 'Side-by-side view for your meeting with the employee.'}
+              </p>
 
-                  {mSave && mForm && (
-                    <>
-                      {/* Two-column layout */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
-                        {/* Left: Self-Assessment */}
-                        <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 640, overflow: 'hidden' }}>
-                          <div style={{ padding: '12px 16px', background: '#1a1430', border: '1px solid #4c1d95', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Self-Assessment</div>
-                            {meetingSAData?.submitted_at && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Submitted {new Date(meetingSAData.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
-                          </div>
-                          <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#0d0f1a', border: '1px solid #4c1d95', borderRadius: '0 0 10px 10px' }}>
-                            {meetingSALoading ? (
-                              <div style={{ textAlign: 'center', padding: 32, color: '#6b7280' }}>Loading…</div>
-                            ) : !meetingSAData ? (
-                              <div style={{ textAlign: 'center', padding: 32, color: '#6b7280', fontSize: 13 }}>No self-assessment found for this employee.</div>
-                            ) : (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                {meetingSAData.competencies?.filter(c => c.term).length > 0 && (
-                                  <div>
-                                    <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Competencies</div>
-                                    {meetingSAData.competencies.filter(c => c.term).map((c, i) => {
-                                      const col = c.type === 'positive' ? '#10b981' : c.type === 'constructive' ? '#f97316' : '#818cf8'
-                                      return (
-                                        <div key={i} style={{ background: '#13151f', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
-                                          <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{c.term}</div>
-                                          {c.examples.filter(e => e.trim()).map((ex, ei) => (
-                                            <div key={ei} style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.5, marginBottom: 2 }}>{ex}</div>
-                                          ))}
-                                        </div>
-                                      )
-                                    })}
-                                  </div>
-                                )}
-                                {meetingSAData.goals_objectives?.filter(g => g.description?.trim()).length > 0 && (
-                                  <div>
-                                    <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Goals & Objectives</div>
-                                    {meetingSAData.goals_objectives.filter(g => g.description?.trim()).map((g, i) => (
-                                      <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
-                                        <div style={{ fontSize: 12, color: '#e5e7eb', marginBottom: 4 }}>{g.description}</div>
-                                        {g.outcome && <span style={{ fontSize: 11, fontWeight: 600, color: g.outcome === 'successful' ? '#34d399' : g.outcome === 'ongoing' ? '#f59e0b' : '#f87171' }}>{g.outcome}</span>}
-                                        {g.reasoning && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{g.reasoning}</div>}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                                {meetingSAData.next_year_goals?.filter(g => g.goal?.trim()).length > 0 && (
-                                  <div>
-                                    <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Next Year&apos;s Goals</div>
-                                    {meetingSAData.next_year_goals.filter(g => g.goal?.trim()).map((g, i) => (
-                                      <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
-                                        <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 2 }}>{g.goal}</div>
-                                        {g.objective && <div style={{ fontSize: 11, color: '#9ca3af' }}>{g.objective}</div>}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                                {meetingSAData.overall_rating !== null && meetingSAData.overall_rating !== undefined && (
-                                  <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Self Rating</span>
-                                    <span style={{ fontSize: 16, fontWeight: 700, color: '#a78bfa' }}>{'★'.repeat(meetingSAData.overall_rating || 0)}{'☆'.repeat(5 - (meetingSAData.overall_rating || 0))}</span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
+              {/* Self-Assessment panel */}
+              {(() => {
+                const mForm = mSave.form
+                return mForm ? (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+                      {/* Left: Self-Assessment */}
+                      <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 640, overflow: 'hidden' }}>
+                        <div style={{ padding: '12px 16px', background: '#1a1430', border: '1px solid #4c1d95', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Self-Assessment</div>
+                          {meetingSAData?.submitted_at && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Submitted {new Date(meetingSAData.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
                         </div>
-
-                        {/* Right: Performance Review */}
-                        <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 640, overflow: 'hidden' }}>
-                          <div style={{ padding: '12px 16px', background: '#0d1523', border: '1px solid #1e3a5f', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Performance Review</div>
-                            {mForm.reviewDate && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Review Date: {mForm.reviewDate}</div>}
-                          </div>
-                          <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#0d0f1a', border: '1px solid #1e3a5f', borderRadius: '0 0 10px 10px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                              {/* Header info */}
-                              <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 14px' }}>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{mForm.employeeName}</div>
-                                <div style={{ fontSize: 11, color: '#6b7280' }}>{mForm.employeePosition}{mForm.appraisalPeriod ? ` · ${mForm.appraisalPeriod}` : ''}</div>
-                                {mForm.supervisorName && <div style={{ fontSize: 11, color: '#4b5563', marginTop: 2 }}>Supervisor: {mForm.supervisorName}</div>}
-                              </div>
-                              {/* Competencies */}
-                              {[
-                                { entry: mForm.competencyOne, type: 'positive' },
-                                { entry: mForm.competencyTwo, type: 'positive' },
-                                { entry: mForm.competencyThree, type: 'constructive' },
-                                { entry: mForm.competencyFour, type: 'constructive' },
-                                { entry: mForm.competencyFive, type: mForm.competencyFiveType },
-                              ].filter(c => c.entry.competency).map((c, i) => {
-                                const col = c.type === 'positive' ? '#10b981' : '#f97316'
-                                return (
-                                  <div key={i} style={{ background: '#13151f', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 8, padding: '10px 12px' }}>
-                                    <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{c.entry.competency}</div>
-                                    {c.entry.examples.filter(e => e.trim()).map((ex, ei) => (
-                                      <div key={ei} style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.5, marginBottom: 2 }}>{ei + 1}. {ex}</div>
-                                    ))}
-                                  </div>
-                                )
-                              })}
-                              {/* Goals */}
-                              {mForm.goals?.filter(g => g.text.trim()).map((g, i) => (
-                                <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px' }}>
-                                  <div style={{ fontSize: 12, color: '#e5e7eb', marginBottom: 2 }}>{g.text}</div>
-                                  {g.status && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: g.status === 'successful' ? '#0d2b1f' : g.status === 'unsuccessful' ? '#1f0d0d' : '#1f1a0d', color: g.status === 'successful' ? '#34d399' : g.status === 'unsuccessful' ? '#f87171' : '#f59e0b' }}>{g.status}</span>}
+                        <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#0d0f1a', border: '1px solid #4c1d95', borderRadius: '0 0 10px 10px' }}>
+                          {meetingSALoading ? (
+                            <div style={{ textAlign: 'center', padding: 32, color: '#6b7280' }}>Loading…</div>
+                          ) : !meetingSAData ? (
+                            <div style={{ textAlign: 'center', padding: 32, color: '#6b7280', fontSize: 13 }}>No self-assessment found for this employee.</div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                              {meetingSAData.competencies?.filter(c => c.term).length > 0 && (
+                                <div>
+                                  <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Competencies</div>
+                                  {meetingSAData.competencies.filter(c => c.term).map((c, i) => {
+                                    const col = c.type === 'positive' ? '#10b981' : c.type === 'constructive' ? '#f97316' : '#818cf8'
+                                    return (
+                                      <div key={i} style={{ background: '#13151f', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                                        <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{c.term}</div>
+                                        {c.examples.filter(e => e.trim()).map((ex, ei) => (
+                                          <div key={ei} style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.5, marginBottom: 2 }}>{ex}</div>
+                                        ))}
+                                      </div>
+                                    )
+                                  })}
                                 </div>
-                              ))}
-                              {/* Overall score */}
-                              {mForm.overallScore > 0 && (
-                                <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8 }}>
-                                  <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Overall Score </span>
-                                  <span style={{ fontSize: 16, fontWeight: 700, color: '#60a5fa' }}>{'★'.repeat(mForm.overallScore)}{'☆'.repeat(5 - mForm.overallScore)}</span>
-                                  <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 6 }}>{SCORE_LABELS[mForm.overallScore]?.label}</span>
+                              )}
+                              {meetingSAData.goals_objectives?.filter(g => g.description?.trim()).length > 0 && (
+                                <div>
+                                  <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Goals & Objectives</div>
+                                  {meetingSAData.goals_objectives.filter(g => g.description?.trim()).map((g, i) => (
+                                    <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                                      <div style={{ fontSize: 12, color: '#e5e7eb', marginBottom: 4 }}>{g.description}</div>
+                                      {g.outcome && <span style={{ fontSize: 11, fontWeight: 600, color: g.outcome === 'successful' ? '#34d399' : g.outcome === 'ongoing' ? '#f59e0b' : '#f87171' }}>{g.outcome}</span>}
+                                      {g.reasoning && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{g.reasoning}</div>}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {meetingSAData.next_year_goals?.filter(g => g.goal?.trim()).length > 0 && (
+                                <div>
+                                  <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Next Year&apos;s Goals</div>
+                                  {meetingSAData.next_year_goals.filter(g => g.goal?.trim()).map((g, i) => (
+                                    <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                                      <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 2 }}>{g.goal}</div>
+                                      {g.objective && <div style={{ fontSize: 11, color: '#9ca3af' }}>{g.objective}</div>}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {meetingSAData.overall_rating !== null && meetingSAData.overall_rating !== undefined && (
+                                <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Self Rating</span>
+                                  <span style={{ fontSize: 16, fontWeight: 700, color: '#a78bfa' }}>{'★'.repeat(meetingSAData.overall_rating || 0)}{'☆'.repeat(5 - (meetingSAData.overall_rating || 0))}</span>
                                 </div>
                               )}
                             </div>
-                          </div>
+                          )}
                         </div>
                       </div>
 
-                      {/* Comparison Section */}
-                      <div style={{ marginBottom: 20 }}>
-                        <ComparisonSection
-                          form={mSave.form ?? { ...defaultForm(), employeeName: mSave.employeeName, employeePosition: mSave.employeePosition }}
-                          savedComparisonReport={mSave.comparisonReport}
-                          saData={meetingSAData}
-                          onReportSaved={report => {
-                            apiPatchReview(effectiveMeetingId, { comparison_report: report || null })
-                            setSaves(prev => prev.map(s => s.id === effectiveMeetingId ? { ...s, comparisonReport: report || undefined } : s))
-                          }}
-                        />
-                      </div>
-
-                      {/* Signatures section */}
-                      <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px' }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#f0f2fa', marginBottom: 16 }}>Meeting Confirmation &amp; Signatures</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-                          {/* Manager signature */}
-                          <div>
-                            <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Manager</div>
-                            {meetingMgrSigned ? (
-                              <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
-                                <SignatureDisplay stored={meetingMgrSignature} date={meetingMgrSignedAt} />
+                      {/* Right: Performance Review */}
+                      <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 640, overflow: 'hidden' }}>
+                        <div style={{ padding: '12px 16px', background: '#0d1523', border: '1px solid #1e3a5f', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Performance Review</div>
+                          {mForm.reviewDate && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Review Date: {mForm.reviewDate}</div>}
+                        </div>
+                        <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#0d0f1a', border: '1px solid #1e3a5f', borderRadius: '0 0 10px 10px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 14px' }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{mForm.employeeName}</div>
+                              <div style={{ fontSize: 11, color: '#6b7280' }}>{mForm.employeePosition}{mForm.appraisalPeriod ? ` · ${mForm.appraisalPeriod}` : ''}</div>
+                              {mForm.supervisorName && <div style={{ fontSize: 11, color: '#4b5563', marginTop: 2 }}>Supervisor: {mForm.supervisorName}</div>}
+                            </div>
+                            {[
+                              { entry: mForm.competencyOne, type: 'positive' },
+                              { entry: mForm.competencyTwo, type: 'positive' },
+                              { entry: mForm.competencyThree, type: 'constructive' },
+                              { entry: mForm.competencyFour, type: 'constructive' },
+                              { entry: mForm.competencyFive, type: mForm.competencyFiveType },
+                            ].filter(c => c.entry.competency).map((c, i) => {
+                              const col = c.type === 'positive' ? '#10b981' : '#f97316'
+                              return (
+                                <div key={i} style={{ background: '#13151f', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 8, padding: '10px 12px' }}>
+                                  <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{c.entry.competency}</div>
+                                  {c.entry.examples.filter(e => e.trim()).map((ex, ei) => (
+                                    <div key={ei} style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.5, marginBottom: 2 }}>{ei + 1}. {ex}</div>
+                                  ))}
+                                </div>
+                              )
+                            })}
+                            {mForm.goals?.filter(g => g.text.trim()).map((g, i) => (
+                              <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px' }}>
+                                <div style={{ fontSize: 12, color: '#e5e7eb', marginBottom: 2 }}>{g.text}</div>
+                                {g.status && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: g.status === 'successful' ? '#0d2b1f' : g.status === 'unsuccessful' ? '#1f0d0d' : '#1f1a0d', color: g.status === 'successful' ? '#34d399' : g.status === 'unsuccessful' ? '#f87171' : '#f59e0b' }}>{g.status}</span>}
                               </div>
-                            ) : (
-                              <SignaturePad
-                                onSign={handleMeetingMgrSign}
-                                loading={meetingMgrSigLoading}
-                                error={meetingMgrSigError}
-                                buttonLabel="✍️ Manager Sign"
-                              />
-                            )}
-                          </div>
-                          {/* Employee signature */}
-                          <div>
-                            <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Employee</div>
-                            {mEmpSig?.employee_signed_at ? (
-                              <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
-                                <SignatureDisplay stored={mEmpSig.employee_signature} date={mEmpSig.employee_signed_at} />
+                            ))}
+                            {mForm.overallScore > 0 && (
+                              <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8 }}>
+                                <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Overall Score </span>
+                                <span style={{ fontSize: 16, fontWeight: 700, color: '#60a5fa' }}>{'★'.repeat(mForm.overallScore)}{'☆'.repeat(5 - mForm.overallScore)}</span>
+                                <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 6 }}>{SCORE_LABELS[mForm.overallScore]?.label}</span>
                               </div>
-                            ) : (
-                              <SignaturePad
-                                onSign={handleMeetingEmpSign}
-                                loading={meetingEmpSigLoading}
-                                error={meetingEmpSigError}
-                                buttonLabel="✍️ Employee Sign"
-                              />
                             )}
                           </div>
                         </div>
-                        {(mBothSigned || meetingEmpSigSuccess) && (
-                          <div style={{ marginTop: 16, padding: '12px 16px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8, fontSize: 13, color: '#34d399', fontWeight: 600 }}>
-                            ✓ Both parties have signed. Admin has been notified.
-                          </div>
-                        )}
                       </div>
+                    </div>
 
-                      {/* Final Submit */}
-                      <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid #1e2130' }}>
-                        {meetingDriveError && (
-                          <div style={{ marginBottom: 12, padding: '10px 14px', background: '#1a0d0d', border: '1px solid #7f1d1d', borderRadius: 8, fontSize: 12, color: '#f87171' }}>
-                            Drive export failed: {meetingDriveError} — <button onClick={() => setMeetingDriveError('')} style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>Retry</button>
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                          <div style={{ fontSize: 12, color: meetingSubmitted ? '#34d399' : mBothSigned || meetingEmpSigSuccess ? '#34d399' : '#4b5563' }}>
-                            {meetingSubmitted
-                              ? '✓ Documents saved to Google Drive. Review cycle complete.'
-                              : meetingDriveStatus === 'uploading'
-                                ? '⏳ Saving documents to Google Drive…'
-                                : mBothSigned || meetingEmpSigSuccess
-                                  ? '✓ Both signatures collected. Ready to submit.'
-                                  : 'Both manager and employee must sign before submitting.'}
-                          </div>
-                          <button
-                            type="button"
-                            disabled={!(mBothSigned || meetingEmpSigSuccess) || meetingDriveStatus === 'uploading' || meetingSubmitted}
-                            onClick={async () => {
-                              const reviewForm = mSave?.form ?? (mSave ? { ...defaultForm(), employeeName: mSave.employeeName, employeePosition: mSave.employeePosition } : null)
-                              if (!reviewForm || !effectiveMeetingId) return
-                              setMeetingDriveStatus('uploading')
-                              setMeetingDriveError('')
-                              try {
-                                const folderId = parseFolderId(settings.driveFolderUrl)
-                                const res = await fetch('/api/performance-review/send-to-drive', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ ...reviewForm, ...(folderId ? { driveFolderId: folderId } : {}) }),
-                                })
-                                const data = await res.json() as { docUrl?: string; docId?: string; error?: string }
-                                if (!res.ok || data.error) throw new Error(data.error ?? 'Drive export failed')
-                                const url = data.docUrl ?? ''
-                                const docId = data.docId ?? ''
-                                apiPatchReview(effectiveMeetingId, { drive_url: url || null, drive_doc_id: docId || null })
-                                setSaves(prev => prev.map(s => s.id === effectiveMeetingId ? { ...s, driveUrl: url || undefined, driveDocId: docId || undefined } : s))
-                                setMeetingDriveStatus('done')
-                              } catch (err) {
-                                setMeetingDriveError(String(err))
-                                setMeetingDriveStatus('error')
-                                return
-                              }
-                              setMeetingSubmitted(true)
-                              setTimeout(() => setActivePage('team'), 2500)
-                            }}
-                            style={{
-                              padding: '11px 32px',
-                              background: (mBothSigned || meetingEmpSigSuccess) && !meetingSubmitted && meetingDriveStatus !== 'uploading' ? 'linear-gradient(135deg, #059669, #047857)' : '#1e2130',
-                              color: (mBothSigned || meetingEmpSigSuccess) && !meetingSubmitted && meetingDriveStatus !== 'uploading' ? '#fff' : '#4b5563',
-                              border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700,
-                              cursor: (mBothSigned || meetingEmpSigSuccess) && !meetingSubmitted && meetingDriveStatus !== 'uploading' ? 'pointer' : 'not-allowed',
-                              transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
-                            }}
-                          >
-                            {meetingSubmitted ? '✓ Complete!' : meetingDriveStatus === 'uploading' ? <><Loader2 size={14} className="animate-spin" /> Saving to Drive…</> : 'Submit & Complete'}
-                          </button>
-                        </div>
+                    {/* Comparison Section */}
+                    <div style={{ marginBottom: 20 }}>
+                      <ComparisonSection
+                        form={mSave.form ?? { ...defaultForm(), employeeName: mSave.employeeName, employeePosition: mSave.employeePosition }}
+                        savedComparisonReport={mSave.comparisonReport}
+                        saData={meetingSAData}
+                        onReportSaved={report => {
+                          apiPatchReview(effectiveMeetingId, { comparison_report: report || null })
+                          setSaves(prev => prev.map(s => s.id === effectiveMeetingId ? { ...s, comparisonReport: report || undefined } : s))
+                        }}
+                      />
+                    </div>
+                  </>
+                ) : null
+              })()}
+
+              {/* Signatures section */}
+              <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#f0f2fa', marginBottom: 16 }}>Meeting Confirmation &amp; Signatures</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                  {/* Manager signature */}
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Manager</div>
+                    {mSave.managerSignedAt ? (
+                      <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                        <SignatureDisplay stored={mSave.managerSignature ?? ''} date={mSave.managerSignedAt} />
                       </div>
-                    </>
+                    ) : isCompleted ? (
+                      <div style={{ padding: '12px 14px', color: '#6b7280', fontSize: 13 }}>No manager signature recorded.</div>
+                    ) : (
+                      <SignaturePad
+                        onSign={handleMeetingMgrSign}
+                        loading={meetingMgrSigLoading}
+                        error={meetingMgrSigError}
+                        buttonLabel="✍️ Manager Sign"
+                      />
+                    )}
+                  </div>
+                  {/* Employee signature */}
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Employee</div>
+                    {mEmpSig?.employee_signed_at ? (
+                      <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                        <SignatureDisplay stored={mEmpSig.employee_signature ?? ''} date={mEmpSig.employee_signed_at} />
+                      </div>
+                    ) : isCompleted ? (
+                      <div style={{ padding: '12px 14px', color: '#6b7280', fontSize: 13 }}>No employee signature recorded.</div>
+                    ) : (
+                      <SignaturePad
+                        onSign={handleMeetingEmpSign}
+                        loading={meetingEmpSigLoading}
+                        error={meetingEmpSigError}
+                        buttonLabel="✍️ Employee Sign"
+                      />
+                    )}
+                  </div>
+                </div>
+                {(mBothSigned || meetingEmpSigSuccess) && (
+                  <div style={{ marginTop: 16, padding: '12px 16px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8, fontSize: 13, color: '#34d399', fontWeight: 600 }}>
+                    ✓ Both parties have signed. Admin has been notified.
+                  </div>
+                )}
+              </div>
+
+              {/* Final Submit — hidden for completed/past meetings */}
+              {!isCompleted && (
+                <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid #1e2130' }}>
+                  {meetingDriveError && (
+                    <div style={{ marginBottom: 12, padding: '10px 14px', background: '#1a0d0d', border: '1px solid #7f1d1d', borderRadius: 8, fontSize: 12, color: '#f87171' }}>
+                      Drive export failed: {meetingDriveError} — <button onClick={() => setMeetingDriveError('')} style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>Retry</button>
+                    </div>
                   )}
-                </>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                    <div style={{ fontSize: 12, color: mBothSigned || meetingEmpSigSuccess ? '#34d399' : '#4b5563' }}>
+                      {meetingDriveStatus === 'done'
+                        ? '✓ Documents saved to Google Drive. Review cycle complete.'
+                        : meetingDriveStatus === 'uploading'
+                          ? '⏳ Saving documents to Google Drive…'
+                          : mBothSigned || meetingEmpSigSuccess
+                            ? '✓ Both signatures collected. Ready to submit.'
+                            : 'Both manager and employee must sign before submitting.'}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!(mBothSigned || meetingEmpSigSuccess) || meetingDriveStatus === 'uploading' || meetingDriveStatus === 'done'}
+                      onClick={async () => {
+                        const reviewForm = mSave.form ?? { ...defaultForm(), employeeName: mSave.employeeName, employeePosition: mSave.employeePosition }
+                        if (!reviewForm || !effectiveMeetingId) return
+                        setMeetingDriveStatus('uploading')
+                        setMeetingDriveError('')
+                        try {
+                          const res = await fetch('/api/reviews/submit-drive', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ reviewId: effectiveMeetingId }),
+                          })
+                          const data = await res.json() as { ok?: boolean; driveUrl?: string; error?: string }
+                          if (!res.ok) throw new Error(data.error ?? 'Failed')
+                          setMeetingDriveStatus('done')
+                          if (data.driveUrl) {
+                            setSaves(prev => prev.map(s => s.id === effectiveMeetingId ? { ...s, driveUrl: data.driveUrl } : s))
+                          }
+                        } catch (e) {
+                          setMeetingDriveStatus('error')
+                          setMeetingDriveError(String(e))
+                        }
+                      }}
+                      style={{
+                        padding: '10px 22px',
+                        background: mBothSigned || meetingEmpSigSuccess ? '#4f46e5' : '#1e2130',
+                        border: 'none',
+                        borderRadius: 8,
+                        color: mBothSigned || meetingEmpSigSuccess ? '#fff' : '#4b5563',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: mBothSigned || meetingEmpSigSuccess ? 'pointer' : 'not-allowed',
+                      }}
+                    >
+                      Submit to Google Drive
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           )
@@ -4284,7 +4323,7 @@ export function PerformanceReviewForm() {
             <StepOutput
               key={currentReviewId}
               form={form}
-              onSubmit={() => setActivePage('meeting')}
+              onSubmit={() => { setMeetingDetailId(null); setActivePage('meeting') }}
             />
           )}
         </div>
