@@ -4104,6 +4104,13 @@ export function PerformanceReviewForm() {
                                 ))}
                               </div>
                             )}
+                            {mForm.overallScore > 0 && (
+                              <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Overall Score</span>
+                                <span style={{ fontSize: 16, fontWeight: 700, color: '#60a5fa' }}>{'★'.repeat(mForm.overallScore)}{'☆'.repeat(5 - mForm.overallScore)}</span>
+                                <span style={{ fontSize: 12, color: '#9ca3af' }}>{SCORE_LABELS[mForm.overallScore]?.label}</span>
+                              </div>
+                            )}
                             {mForm.nextGoals?.filter(g => g.text.trim()).length > 0 && (
                               <div>
                                 <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Next Year&apos;s Goals</div>
@@ -4113,13 +4120,6 @@ export function PerformanceReviewForm() {
                                     {g.targetDate && <div style={{ fontSize: 11, color: '#6b7280' }}>Target: {g.targetDate}</div>}
                                   </div>
                                 ))}
-                              </div>
-                            )}
-                            {mForm.overallScore > 0 && (
-                              <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Overall Score</span>
-                                <span style={{ fontSize: 16, fontWeight: 700, color: '#60a5fa' }}>{'★'.repeat(mForm.overallScore)}{'☆'.repeat(5 - mForm.overallScore)}</span>
-                                <span style={{ fontSize: 12, color: '#9ca3af' }}>{SCORE_LABELS[mForm.overallScore]?.label}</span>
                               </div>
                             )}
                           </div>
