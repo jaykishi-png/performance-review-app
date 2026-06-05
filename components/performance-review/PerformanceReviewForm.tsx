@@ -4030,6 +4030,12 @@ export function PerformanceReviewForm() {
                                   ))}
                                 </div>
                               )}
+                              {meetingSAData.overall_rating !== null && meetingSAData.overall_rating !== undefined && (
+                                <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Self Rating</span>
+                                  <span style={{ fontSize: 16, fontWeight: 700, color: '#a78bfa' }}>{'★'.repeat(meetingSAData.overall_rating || 0)}{'☆'.repeat(5 - (meetingSAData.overall_rating || 0))}</span>
+                                </div>
+                              )}
                               {meetingSAData.next_year_goals?.filter(g => g.goal?.trim()).length > 0 && (
                                 <div>
                                   <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Next Year&apos;s Goals</div>
@@ -4039,12 +4045,6 @@ export function PerformanceReviewForm() {
                                       {g.objective && <div style={{ fontSize: 11, color: '#9ca3af' }}>{g.objective}</div>}
                                     </div>
                                   ))}
-                                </div>
-                              )}
-                              {meetingSAData.overall_rating !== null && meetingSAData.overall_rating !== undefined && (
-                                <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
-                                  <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Self Rating</span>
-                                  <span style={{ fontSize: 16, fontWeight: 700, color: '#a78bfa' }}>{'★'.repeat(meetingSAData.overall_rating || 0)}{'☆'.repeat(5 - (meetingSAData.overall_rating || 0))}</span>
                                 </div>
                               )}
                             </div>
@@ -4059,7 +4059,7 @@ export function PerformanceReviewForm() {
                           {mForm.reviewDate && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Review Date: {mForm.reviewDate}</div>}
                         </div>
                         <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#0d0f1a', border: '1px solid #1e3a5f', borderRadius: '0 0 10px 10px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                             <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 14px' }}>
                               <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{mForm.employeeName}</div>
                               <div style={{ fontSize: 11, color: '#6b7280' }}>{mForm.employeePosition}{mForm.appraisalPeriod ? ` · ${mForm.appraisalPeriod}` : ''}</div>
@@ -4071,28 +4071,55 @@ export function PerformanceReviewForm() {
                               { entry: mForm.competencyThree, type: 'constructive' },
                               { entry: mForm.competencyFour, type: 'constructive' },
                               { entry: mForm.competencyFive, type: mForm.competencyFiveType },
-                            ].filter(c => c.entry.competency).map((c, i) => {
-                              const col = c.type === 'positive' ? '#10b981' : '#f97316'
-                              return (
-                                <div key={i} style={{ background: '#13151f', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 8, padding: '10px 12px' }}>
-                                  <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{c.entry.competency}</div>
-                                  {c.entry.examples.filter(e => e.trim()).map((ex, ei) => (
-                                    <div key={ei} style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.5, marginBottom: 2 }}>{ei + 1}. {ex}</div>
-                                  ))}
-                                </div>
-                              )
-                            })}
-                            {mForm.goals?.filter(g => g.text.trim()).map((g, i) => (
-                              <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px' }}>
-                                <div style={{ fontSize: 12, color: '#e5e7eb', marginBottom: 2 }}>{g.text}</div>
-                                {g.status && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: g.status === 'successful' ? '#0d2b1f' : g.status === 'unsuccessful' ? '#1f0d0d' : '#1f1a0d', color: g.status === 'successful' ? '#34d399' : g.status === 'unsuccessful' ? '#f87171' : '#f59e0b' }}>{g.status}</span>}
+                            ].filter(c => c.entry.competency).length > 0 && (
+                              <div>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Competencies</div>
+                                {[
+                                  { entry: mForm.competencyOne, type: 'positive' },
+                                  { entry: mForm.competencyTwo, type: 'positive' },
+                                  { entry: mForm.competencyThree, type: 'constructive' },
+                                  { entry: mForm.competencyFour, type: 'constructive' },
+                                  { entry: mForm.competencyFive, type: mForm.competencyFiveType },
+                                ].filter(c => c.entry.competency).map((c, i) => {
+                                  const col = c.type === 'positive' ? '#10b981' : '#f97316'
+                                  return (
+                                    <div key={i} style={{ background: '#13151f', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                                      <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{c.entry.competency}</div>
+                                      {c.entry.examples.filter(e => e.trim()).map((ex, ei) => (
+                                        <div key={ei} style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.5, marginBottom: 2 }}>{ei + 1}. {ex}</div>
+                                      ))}
+                                    </div>
+                                  )
+                                })}
                               </div>
-                            ))}
+                            )}
+                            {mForm.goals?.filter(g => g.text.trim()).length > 0 && (
+                              <div>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Goals &amp; Objectives</div>
+                                {mForm.goals.filter(g => g.text.trim()).map((g, i) => (
+                                  <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                                    <div style={{ fontSize: 12, color: '#e5e7eb', marginBottom: 2 }}>{g.text}</div>
+                                    {g.status && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: g.status === 'successful' ? '#0d2b1f' : g.status === 'unsuccessful' ? '#1f0d0d' : '#1f1a0d', color: g.status === 'successful' ? '#34d399' : g.status === 'unsuccessful' ? '#f87171' : '#f59e0b' }}>{g.status}</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {mForm.nextGoals?.filter(g => g.text.trim()).length > 0 && (
+                              <div>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Next Year&apos;s Goals</div>
+                                {mForm.nextGoals.filter(g => g.text.trim()).map((g, i) => (
+                                  <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                                    <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 2 }}>{g.text}</div>
+                                    {g.targetDate && <div style={{ fontSize: 11, color: '#6b7280' }}>Target: {g.targetDate}</div>}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                             {mForm.overallScore > 0 && (
-                              <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8 }}>
-                                <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Overall Score </span>
+                              <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Overall Score</span>
                                 <span style={{ fontSize: 16, fontWeight: 700, color: '#60a5fa' }}>{'★'.repeat(mForm.overallScore)}{'☆'.repeat(5 - mForm.overallScore)}</span>
-                                <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 6 }}>{SCORE_LABELS[mForm.overallScore]?.label}</span>
+                                <span style={{ fontSize: 12, color: '#9ca3af' }}>{SCORE_LABELS[mForm.overallScore]?.label}</span>
                               </div>
                             )}
                           </div>
