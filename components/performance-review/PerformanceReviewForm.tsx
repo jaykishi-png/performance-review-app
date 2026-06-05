@@ -1820,23 +1820,16 @@ function renderComparisonReport(report: string): React.ReactNode {
   })
 }
 
-function StepOutput({
-  form, driveFolderId, savedDriveUrl, savedDriveDocId, onDriveSaved,
-  savedComparisonReport, onReportSaved,
-  reviewId, employeeId, managerSignedAt, managerSignature, onManagerSigned,
+// ─── DriveExportSection ───────────────────────────────────────────────────────
+
+function DriveExportSection({
+  form, driveFolderId, savedDriveUrl, savedDriveDocId, onDriveSaved
 }: {
   form: FormData
   driveFolderId?: string
   savedDriveUrl?: string
   savedDriveDocId?: string
   onDriveSaved?: (url: string, docId: string) => void
-  savedComparisonReport?: string
-  onReportSaved?: (report: string) => void
-  reviewId?: string
-  employeeId?: string
-  managerSignedAt?: string
-  managerSignature?: string
-  onManagerSigned?: (signedAt: string, sig: string) => void
 }) {
   const [driveStatus, setDriveStatus] = useState<'idle' | 'checking' | 'sending' | 'done' | 'error'>(
     savedDriveUrl ? 'checking' : 'idle'
@@ -1846,44 +1839,6 @@ function StepOutput({
   const [showManualLink, setShowManualLink] = useState(false)
   const [manualLinkValue, setManualLinkValue] = useState('')
   const [manualLinkError, setManualLinkError] = useState('')
-
-  const [sigLoading, setSigLoading] = useState(false)
-  const [sigError, setSigError] = useState('')
-
-  async function handleSign(result: SignatureResult) {
-    if (!reviewId) return
-    setSigLoading(true)
-    setSigError('')
-    try {
-      const res = await fetch('/api/reviews/manager-sign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reviewId, managerSignature: encodeSignature(result) }),
-      })
-      const data = await res.json() as { ok?: boolean; signedAt?: string; error?: string }
-      if (!res.ok) throw new Error(data.error ?? 'Failed')
-      onManagerSigned?.(data.signedAt ?? new Date().toISOString(), encodeSignature(result))
-    } catch (e) {
-      setSigError(String(e))
-    } finally {
-      setSigLoading(false)
-    }
-  }
-
-  function handleSaveManualLink() {
-    const val = manualLinkValue.trim()
-    if (!val) { setManualLinkError('Please enter a URL.'); return }
-    if (!val.startsWith('https://docs.google.com/') && !val.startsWith('https://drive.google.com/')) {
-      setManualLinkError('Must be a Google Docs or Drive URL.')
-      return
-    }
-    setDriveUrl(val)
-    setDriveStatus('done')
-    setManualLinkError('')
-    setShowManualLink(false)
-    setManualLinkValue('')
-    onDriveSaved?.(val, '')
-  }
 
   // Validate saved Drive link on mount — reset to idle if doc was deleted
   useEffect(() => {
@@ -1902,7 +1857,158 @@ function StepOutput({
       .catch(() => setDriveStatus('done')) // network error → assume doc still exists
   }, [savedDriveDocId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Comparison state ──────────────────────────────────────────────────────
+  function handleSaveManualLink() {
+    const val = manualLinkValue.trim()
+    if (!val) { setManualLinkError('Please enter a URL.'); return }
+    if (!val.startsWith('https://docs.google.com/') && !val.startsWith('https://drive.google.com/')) {
+      setManualLinkError('Must be a Google Docs or Drive URL.')
+      return
+    }
+    setDriveUrl(val)
+    setDriveStatus('done')
+    setManualLinkError('')
+    setShowManualLink(false)
+    setManualLinkValue('')
+    onDriveSaved?.(val, '')
+  }
+
+  async function handleSendToDrive() {
+    setDriveStatus('sending')
+    setDriveError('')
+    try {
+      const res = await fetch('/api/performance-review/send-to-drive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, ...(driveFolderId ? { driveFolderId } : {}) }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Unknown error')
+      setDriveUrl(data.docUrl)
+      setDriveStatus('done')
+      onDriveSaved?.(data.docUrl, data.docId)
+    } catch (err) {
+      setDriveError(String(err))
+      setDriveStatus('error')
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-emerald-900/50 bg-emerald-950/20 p-5 space-y-3">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[13px] font-semibold text-emerald-300">Approve &amp; Send to Drive</p>
+          <p className="text-[11px] text-gray-500 mt-0.5">
+            Creates a formatted Google Doc in the Performance Reviews folder and opens it for you.
+          </p>
+        </div>
+
+        {driveStatus === 'checking' ? (
+          <button disabled className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0d0f1a] border border-[#1e2030] text-gray-600 text-[13px] font-semibold shrink-0 cursor-not-allowed">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Checking link…
+          </button>
+        ) : driveStatus === 'idle' || driveStatus === 'error' ? (
+          <button
+            onClick={handleSendToDrive}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] font-semibold transition-colors shrink-0"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+              <path fill="#0066da" d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0a15.4 15.4 0 003.3 8.5z"/>
+              <path fill="#00ac47" d="M43.65 25L29.9 1.2a15.4 15.4 0 00-3.3 3.3L.95 50.3A15.4 15.4 0 000 55.65h27.5z"/>
+              <path fill="#ea4335" d="M73.55 76.8a15.4 15.4 0 003.3-3.3l1.6-2.75 7.65-13.2a15.4 15.4 0 001-5.35H59.6l5.85 11.5z"/>
+              <path fill="#00832d" d="M43.65 25L57.4 1.2a15.4 15.4 0 00-8.35-1.2H38.3a15.4 15.4 0 00-8.4 1.2z"/>
+              <path fill="#2684fc" d="M59.6 55.65h27.5a15.4 15.4 0 00-1-5.35L62.85 8.5A15.4 15.4 0 0059.55 5.2L43.65 25z"/>
+              <path fill="#00ac47" d="M43.65 25L27.5 55.65H59.6z"/>
+            </svg>
+            Approve &amp; Send to Drive
+          </button>
+        ) : driveStatus === 'sending' ? (
+          <button disabled className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-800 text-emerald-400 text-[13px] font-semibold shrink-0 cursor-not-allowed">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Creating document…
+          </button>
+        ) : (
+          <a
+            href={driveUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[13px] font-semibold transition-colors shrink-0"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            Open in Google Docs ↗
+          </a>
+        )}
+      </div>
+
+      {driveStatus === 'done' && (
+        <div className="flex items-center gap-2 text-[11px] text-emerald-400 bg-emerald-950/40 rounded-lg px-3 py-2">
+          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">{driveUrl}</span>
+          <a href={driveUrl} target="_blank" rel="noopener noreferrer" className="ml-auto underline hover:text-emerald-300 shrink-0">Open →</a>
+        </div>
+      )}
+
+      {driveStatus === 'error' && (
+        <div className="text-[11px] text-red-400 bg-red-950/30 rounded-lg px-3 py-2">
+          <span className="font-semibold">Error: </span>{driveError}
+        </div>
+      )}
+
+      {(driveStatus === 'idle' || driveStatus === 'error' || driveStatus === 'done') && (
+        <div>
+          {!showManualLink ? (
+            <button
+              type="button"
+              onClick={() => { setShowManualLink(true); setManualLinkValue(driveUrl || '') }}
+              className="text-[11px] text-gray-600 hover:text-gray-400 transition-colors underline-offset-2 hover:underline"
+            >
+              {driveStatus === 'done' ? 'Replace with a different link' : 'Already have a doc? Paste the link manually'}
+            </button>
+          ) : (
+            <div className="space-y-2 pt-1">
+              <p className="text-[11px] text-gray-500">Paste a Google Docs or Drive URL:</p>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={manualLinkValue}
+                  onChange={e => { setManualLinkValue(e.target.value); setManualLinkError('') }}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSaveManualLink() }}
+                  placeholder="https://docs.google.com/document/d/..."
+                  className="flex-1 bg-[#0a0c14] border border-[#2a2d3a] rounded-lg px-3 py-2 text-[12px] text-gray-200 placeholder-gray-700 focus:outline-none focus:border-emerald-700/60 transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveManualLink}
+                  className="px-3 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[12px] font-semibold transition-colors shrink-0"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowManualLink(false); setManualLinkError('') }}
+                  className="px-3 py-2 rounded-lg border border-[#1e2030] text-gray-500 hover:text-gray-300 text-[12px] transition-colors shrink-0"
+                >
+                  Cancel
+                </button>
+              </div>
+              {manualLinkError && <p className="text-[11px] text-red-400">{manualLinkError}</p>}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── ComparisonSection ────────────────────────────────────────────────────────
+
+function ComparisonSection({
+  form, savedComparisonReport, onReportSaved
+}: {
+  form: FormData
+  savedComparisonReport?: string
+  onReportSaved?: (report: string) => void
+}) {
   const [compareInputMode, setCompareInputMode] = useState<'url' | 'text'>('url')
   const [compareUrl, setCompareUrl]             = useState('')
   const [compareText, setCompareText]           = useState('')
@@ -1932,7 +2038,6 @@ function StepOutput({
   async function loadSubmittedSelfReview() {
     setSelfReviewStatus('loading')
     try {
-      // Find employee by name match in profiles
       const res = await fetch(`/api/self-reviews/find?name=${encodeURIComponent(form.employeeName.trim())}`)
       if (res.ok) {
         const { text } = await res.json()
@@ -1947,38 +2052,6 @@ function StepOutput({
       setSelfReviewStatus('none')
     } catch {
       setSelfReviewStatus('none')
-    }
-  }
-
-  const scoreInfo = form.overallScore > 0 ? SCORE_LABELS[form.overallScore] : null
-
-  const compEntries = [
-    { entry: form.competencyOne,   ordinal: 'ONE',   typeLabel: 'positive' as const },
-    { entry: form.competencyTwo,   ordinal: 'TWO',   typeLabel: 'positive' as const },
-    { entry: form.competencyThree, ordinal: 'THREE', typeLabel: 'constructive' as const },
-    { entry: form.competencyFour,  ordinal: 'FOUR',  typeLabel: 'constructive' as const },
-    { entry: form.competencyFive,  ordinal: 'FIVE',  typeLabel: form.competencyFiveType },
-  ]
-
-  const fullReview = buildFullReview(form)
-
-  async function handleSendToDrive() {
-    setDriveStatus('sending')
-    setDriveError('')
-    try {
-      const res = await fetch('/api/performance-review/send-to-drive', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, ...(driveFolderId ? { driveFolderId } : {}) }),
-      })
-      const data = await res.json()
-      if (!res.ok || data.error) throw new Error(data.error ?? 'Unknown error')
-      setDriveUrl(data.docUrl)
-      setDriveStatus('done')
-      onDriveSaved?.(data.docUrl, data.docId)
-    } catch (err) {
-      setDriveError(String(err))
-      setDriveStatus('error')
     }
   }
 
@@ -2009,12 +2082,11 @@ function StepOutput({
     }
   }
 
-  // Strip markdown for clean plain-text copy
   function stripMarkdown(text: string): string {
     return text
-      .replace(/^##\s+/gm, '')                     // remove ## headers
-      .replace(/\*\*([^*]+)\*\*/g, '$1')            // remove **bold**
-      .replace(/^[-*]\s+/gm, '• ')                  // - bullets → •
+      .replace(/^##\s+/gm, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/^[-*]\s+/gm, '• ')
       .trim()
   }
 
@@ -2030,7 +2102,211 @@ function StepOutput({
     onReportSaved?.(val)
   }
 
-  // Per-competency copy text matching template format
+  // suppress unused variable warning for selfReviewText
+  void selfReviewText
+
+  return (
+    <div className="rounded-xl border border-purple-900/40 bg-purple-950/10 p-5 space-y-4">
+      <div>
+        <p className="text-[13px] font-semibold text-purple-200 flex items-center gap-2">
+          <FileText size={14} className="text-purple-400" />
+          Compare with Employee Self-Assessment
+        </p>
+        <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+          Upload the employee&apos;s self-review and get an AI-generated comparison report — including alignment areas, divergence, talking points, and a recommended action plan.
+        </p>
+      </div>
+
+      {form.employeeName.trim() && (
+        <div className="mb-3 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={loadSubmittedSelfReview}
+            disabled={selfReviewStatus === 'loading'}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-700/50 bg-purple-900/20 text-[11px] text-purple-300 hover:bg-purple-900/40 transition-all disabled:opacity-50"
+          >
+            {selfReviewStatus === 'loading' ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+            Load {form.employeeName.split(' ')[0]}&apos;s submitted self-assessment
+          </button>
+          {selfReviewStatus === 'found' && <span className="text-[11px] text-emerald-500">✓ Loaded</span>}
+          {selfReviewStatus === 'none' && <span className="text-[11px] text-gray-500">No submitted self-review found</span>}
+        </div>
+      )}
+
+      <div className="flex gap-1 p-1 rounded-lg bg-[#0b0d14] border border-[#1e2030] w-fit">
+        <button
+          type="button"
+          onClick={() => setCompareInputMode('url')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all ${
+            compareInputMode === 'url' ? 'bg-purple-800/70 text-purple-200' : 'text-gray-600 hover:text-gray-300'
+          }`}
+        >
+          <Link size={11} /> Google Doc URL
+        </button>
+        <button
+          type="button"
+          onClick={() => setCompareInputMode('text')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all ${
+            compareInputMode === 'text' ? 'bg-purple-800/70 text-purple-200' : 'text-gray-600 hover:text-gray-300'
+          }`}
+        >
+          <AlignLeft size={11} /> Paste Text
+        </button>
+      </div>
+
+      {compareInputMode === 'url' ? (
+        <div className="space-y-2">
+          <input
+            value={compareUrl}
+            onChange={e => setCompareUrl(e.target.value)}
+            placeholder="https://docs.google.com/document/d/..."
+            className="w-full bg-[#0d0f1a] border border-[#2a2d3a] rounded-xl px-4 py-2.5 text-[12px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-600 transition-colors"
+          />
+          <p className="text-[10px] text-gray-600">The document must be shared with the Google account linked to this app.</p>
+        </div>
+      ) : (
+        <textarea
+          value={compareText}
+          onChange={e => setCompareText(e.target.value)}
+          placeholder="Paste the employee's self-assessment text here…"
+          rows={6}
+          className="w-full bg-[#0d0f1a] border border-[#2a2d3a] rounded-xl px-4 py-2.5 text-[12px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-600 transition-colors resize-none"
+        />
+      )}
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <button
+          type="button"
+          onClick={handleCompare}
+          disabled={compareStatus === 'loading' || (compareInputMode === 'url' ? !compareUrl.trim() : !compareText.trim())}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-700 hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[12px] font-semibold transition-colors"
+        >
+          {compareStatus === 'loading' ? (
+            <><Loader2 size={13} className="animate-spin" /> Analyzing…</>
+          ) : compareStatus === 'done' ? (
+            <><RefreshCw size={13} /> Regenerate Report</>
+          ) : (
+            <><Sparkles size={13} /> Generate Comparison Report</>
+          )}
+        </button>
+        {compareStatus === 'done' && !showManualReport && (
+          <span className="text-[11px] text-emerald-400 flex items-center gap-1">
+            <CheckCircle2 size={11} /> Saved to this review
+          </span>
+        )}
+      </div>
+
+      {compareStatus === 'error' && (
+        <div className="text-[11px] text-red-400 bg-red-950/30 rounded-lg px-3 py-2">
+          <span className="font-semibold">Error: </span>{compareError}
+        </div>
+      )}
+
+      {!showManualReport ? (
+        <button
+          type="button"
+          onClick={() => { setShowManualReport(true); setManualReportValue(compareStatus === 'done' ? compareReport : '') }}
+          className="text-[11px] text-gray-600 hover:text-gray-400 transition-colors underline-offset-2 hover:underline"
+        >
+          {compareStatus === 'done' ? 'Replace with a manually written report' : 'Already wrote the report? Paste it in directly'}
+        </button>
+      ) : (
+        <div className="space-y-2 pt-1">
+          <p className="text-[11px] text-gray-500">Paste your manually written comparison report:</p>
+          <textarea
+            value={manualReportValue}
+            onChange={e => setManualReportValue(e.target.value)}
+            placeholder="Paste your comparison report here…"
+            rows={8}
+            className="w-full bg-[#0a0c14] border border-[#2a2d3a] rounded-xl px-4 py-3 text-[12px] text-gray-200 placeholder-gray-700 focus:outline-none focus:border-purple-600/60 transition-colors resize-y"
+          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSaveManualReport}
+              disabled={!manualReportValue.trim()}
+              className="px-4 py-2 rounded-lg bg-purple-700 hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[12px] font-semibold transition-colors"
+            >
+              Save Report
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowManualReport(false); setManualReportValue('') }}
+              className="px-3 py-2 rounded-lg border border-[#1e2030] text-gray-500 hover:text-gray-300 text-[12px] transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {compareStatus === 'done' && compareReport && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] font-semibold text-purple-300 uppercase tracking-wider">Comparison Report</p>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setReportEditMode(m => !m)}
+                title={reportEditMode ? 'Back to preview' : 'Edit report'}
+                className={`flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg border transition-all ${
+                  reportEditMode
+                    ? 'border-purple-600 bg-purple-900/30 text-purple-300'
+                    : 'border-[#2a2d3a] bg-[#0d0f1a] text-gray-400 hover:text-white hover:border-[#3a3d4a]'
+                }`}
+              >
+                <Pencil size={11} />
+                {reportEditMode ? 'Preview' : 'Edit'}
+              </button>
+              <button
+                onClick={copyReport}
+                className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg border border-[#2a2d3a] bg-[#0d0f1a] text-gray-400 hover:text-white hover:border-purple-700/60 transition-all"
+              >
+                {reportCopied ? <CheckCircle2 size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                {reportCopied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+          </div>
+
+          {reportEditMode ? (
+            <textarea
+              value={compareReport}
+              onChange={e => handleReportEdit(e.target.value)}
+              rows={24}
+              className="w-full bg-[#0b0d14] border border-purple-800/40 rounded-xl px-5 py-4 text-[12px] text-gray-300 leading-relaxed font-mono focus:outline-none focus:border-purple-600 transition-colors resize-y
+                [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-thumb]:bg-[#2a2d3a]"
+            />
+          ) : (
+            <div className="bg-[#0b0d14] border border-[#1e2030] rounded-xl p-5 space-y-5
+              [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-thumb]:bg-[#2a2d3a]">
+              {renderComparisonReport(compareReport)}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── StepOutput ───────────────────────────────────────────────────────────────
+
+function StepOutput({
+  form, onSubmit,
+}: {
+  form: FormData
+  onSubmit?: () => void
+}) {
+  const scoreInfo = form.overallScore > 0 ? SCORE_LABELS[form.overallScore] : null
+
+  const compEntries = [
+    { entry: form.competencyOne,   ordinal: 'ONE',   typeLabel: 'positive' as const },
+    { entry: form.competencyTwo,   ordinal: 'TWO',   typeLabel: 'positive' as const },
+    { entry: form.competencyThree, ordinal: 'THREE', typeLabel: 'constructive' as const },
+    { entry: form.competencyFour,  ordinal: 'FOUR',  typeLabel: 'constructive' as const },
+    { entry: form.competencyFive,  ordinal: 'FIVE',  typeLabel: form.competencyFiveType },
+  ]
+
+  const fullReview = buildFullReview(form)
+
   const compCopyText = (entry: CompetencyEntry, ordinal: string, typeLabel: string) => {
     const examples = entry.examples
       .map((ex, i) => `${i + 1}. ${ex.trim() || '[INSERT EXAMPLE]'}`)
@@ -2254,339 +2530,20 @@ function StepOutput({
         </div>
       </OutputBlock>
 
-      {/* ── Approve & Send to Drive ── */}
-      <div className="rounded-xl border border-emerald-900/50 bg-emerald-950/20 p-5 space-y-3">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[13px] font-semibold text-emerald-300">Approve &amp; Send to Drive</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">
-              Creates a formatted Google Doc in the Performance Reviews folder and opens it for you.
-            </p>
-          </div>
-
-          {driveStatus === 'checking' ? (
-            <button disabled className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0d0f1a] border border-[#1e2030] text-gray-600 text-[13px] font-semibold shrink-0 cursor-not-allowed">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Checking link…
-            </button>
-          ) : driveStatus === 'idle' || driveStatus === 'error' ? (
-            <button
-              onClick={handleSendToDrive}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] font-semibold transition-colors shrink-0"
-            >
-              {/* Google Drive logo */}
-              <svg className="w-4 h-4" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
-                <path fill="#0066da" d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0a15.4 15.4 0 003.3 8.5z"/>
-                <path fill="#00ac47" d="M43.65 25L29.9 1.2a15.4 15.4 0 00-3.3 3.3L.95 50.3A15.4 15.4 0 000 55.65h27.5z"/>
-                <path fill="#ea4335" d="M73.55 76.8a15.4 15.4 0 003.3-3.3l1.6-2.75 7.65-13.2a15.4 15.4 0 001-5.35H59.6l5.85 11.5z"/>
-                <path fill="#00832d" d="M43.65 25L57.4 1.2a15.4 15.4 0 00-8.35-1.2H38.3a15.4 15.4 0 00-8.4 1.2z"/>
-                <path fill="#2684fc" d="M59.6 55.65h27.5a15.4 15.4 0 00-1-5.35L62.85 8.5A15.4 15.4 0 0059.55 5.2L43.65 25z"/>
-                <path fill="#00ac47" d="M43.65 25L27.5 55.65H59.6z"/>
-              </svg>
-              Approve &amp; Send to Drive
-            </button>
-          ) : driveStatus === 'sending' ? (
-            <button disabled className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-800 text-emerald-400 text-[13px] font-semibold shrink-0 cursor-not-allowed">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Creating document…
-            </button>
-          ) : (
-            <a
-              href={driveUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[13px] font-semibold transition-colors shrink-0"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              Open in Google Docs ↗
-            </a>
-          )}
-        </div>
-
-        {driveStatus === 'done' && (
-          <div className="flex items-center gap-2 text-[11px] text-emerald-400 bg-emerald-950/40 rounded-lg px-3 py-2">
-            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">{driveUrl}</span>
-            <a href={driveUrl} target="_blank" rel="noopener noreferrer" className="ml-auto underline hover:text-emerald-300 shrink-0">Open →</a>
-          </div>
-        )}
-
-        {driveStatus === 'error' && (
-          <div className="text-[11px] text-red-400 bg-red-950/30 rounded-lg px-3 py-2">
-            <span className="font-semibold">Error: </span>{driveError}
-          </div>
-        )}
-
-        {/* Manual link entry */}
-        {(driveStatus === 'idle' || driveStatus === 'error' || driveStatus === 'done') && (
-          <div>
-            {!showManualLink ? (
-              <button
-                type="button"
-                onClick={() => { setShowManualLink(true); setManualLinkValue(driveUrl || '') }}
-                className="text-[11px] text-gray-600 hover:text-gray-400 transition-colors underline-offset-2 hover:underline"
-              >
-                {driveStatus === 'done' ? 'Replace with a different link' : 'Already have a doc? Paste the link manually'}
-              </button>
-            ) : (
-              <div className="space-y-2 pt-1">
-                <p className="text-[11px] text-gray-500">Paste a Google Docs or Drive URL:</p>
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={manualLinkValue}
-                    onChange={e => { setManualLinkValue(e.target.value); setManualLinkError('') }}
-                    onKeyDown={e => { if (e.key === 'Enter') handleSaveManualLink() }}
-                    placeholder="https://docs.google.com/document/d/..."
-                    className="flex-1 bg-[#0a0c14] border border-[#2a2d3a] rounded-lg px-3 py-2 text-[12px] text-gray-200 placeholder-gray-700 focus:outline-none focus:border-emerald-700/60 transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSaveManualLink}
-                    className="px-3 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[12px] font-semibold transition-colors shrink-0"
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setShowManualLink(false); setManualLinkError('') }}
-                    className="px-3 py-2 rounded-lg border border-[#1e2030] text-gray-500 hover:text-gray-300 text-[12px] transition-colors shrink-0"
-                  >
-                    Cancel
-                  </button>
-                </div>
-                {manualLinkError && <p className="text-[11px] text-red-400">{manualLinkError}</p>}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {driveStatus === 'done' && reviewId && (
-        <div style={{ marginTop: 24, background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <span style={{ fontSize: 16 }}>✍️</span>
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#f0f2fa' }}>Sign &amp; Confirm Meeting</span>
-          </div>
-          {managerSignedAt ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ padding: '12px 16px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
-                <SignatureDisplay stored={managerSignature} date={managerSignedAt} />
-              </div>
-              {employeeId && <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>The employee has been notified to sign their copy.</p>}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <p style={{ margin: 0, fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>
-                By signing, you confirm that you have reviewed this document with the employee in your 1:1 meeting.
-              </p>
-              <SignaturePad
-                onSign={handleSign}
-                loading={sigLoading}
-                error={sigError}
-                buttonLabel="✍️ Sign & Notify Employee"
-              />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Self-Review Comparison ── */}
-      <div className="rounded-xl border border-purple-900/40 bg-purple-950/10 p-5 space-y-4">
-        {/* Header */}
-        <div>
-          <p className="text-[13px] font-semibold text-purple-200 flex items-center gap-2">
-            <FileText size={14} className="text-purple-400" />
-            Compare with Employee Self-Assessment
-          </p>
-          <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
-            Upload the employee&apos;s self-review and get an AI-generated comparison report — including alignment areas, divergence, talking points, and a recommended action plan.
-          </p>
-        </div>
-
-        {/* Auto-load from portal */}
-        {form.employeeName.trim() && (
-          <div className="mb-3 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={loadSubmittedSelfReview}
-              disabled={selfReviewStatus === 'loading'}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-700/50 bg-purple-900/20 text-[11px] text-purple-300 hover:bg-purple-900/40 transition-all disabled:opacity-50"
-            >
-              {selfReviewStatus === 'loading' ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
-              Load {form.employeeName.split(' ')[0]}&apos;s submitted self-assessment
-            </button>
-            {selfReviewStatus === 'found' && <span className="text-[11px] text-emerald-500">✓ Loaded</span>}
-            {selfReviewStatus === 'none' && <span className="text-[11px] text-gray-500">No submitted self-review found</span>}
-          </div>
-        )}
-
-        {/* Input mode toggle */}
-        <div className="flex gap-1 p-1 rounded-lg bg-[#0b0d14] border border-[#1e2030] w-fit">
-          <button
-            type="button"
-            onClick={() => setCompareInputMode('url')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all ${
-              compareInputMode === 'url'
-                ? 'bg-purple-800/70 text-purple-200'
-                : 'text-gray-600 hover:text-gray-300'
-            }`}
-          >
-            <Link size={11} /> Google Doc URL
-          </button>
-          <button
-            type="button"
-            onClick={() => setCompareInputMode('text')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all ${
-              compareInputMode === 'text'
-                ? 'bg-purple-800/70 text-purple-200'
-                : 'text-gray-600 hover:text-gray-300'
-            }`}
-          >
-            <AlignLeft size={11} /> Paste Text
-          </button>
-        </div>
-
-        {/* Input field */}
-        {compareInputMode === 'url' ? (
-          <div className="space-y-2">
-            <input
-              value={compareUrl}
-              onChange={e => setCompareUrl(e.target.value)}
-              placeholder="https://docs.google.com/document/d/..."
-              className="w-full bg-[#0d0f1a] border border-[#2a2d3a] rounded-xl px-4 py-2.5 text-[12px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-600 transition-colors"
-            />
-            <p className="text-[10px] text-gray-600">The document must be shared with the Google account linked to this app.</p>
-          </div>
-        ) : (
-          <textarea
-            value={compareText}
-            onChange={e => setCompareText(e.target.value)}
-            placeholder="Paste the employee's self-assessment text here…"
-            rows={6}
-            className="w-full bg-[#0d0f1a] border border-[#2a2d3a] rounded-xl px-4 py-2.5 text-[12px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-600 transition-colors resize-none"
-          />
-        )}
-
-        {/* Analyze / Regenerate button row */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <button
-            type="button"
-            onClick={handleCompare}
-            disabled={compareStatus === 'loading' || (compareInputMode === 'url' ? !compareUrl.trim() : !compareText.trim())}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-700 hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[12px] font-semibold transition-colors"
-          >
-            {compareStatus === 'loading' ? (
-              <><Loader2 size={13} className="animate-spin" /> Analyzing…</>
-            ) : compareStatus === 'done' ? (
-              <><RefreshCw size={13} /> Regenerate Report</>
-            ) : (
-              <><Sparkles size={13} /> Generate Comparison Report</>
-            )}
-          </button>
-          {compareStatus === 'done' && !showManualReport && (
-            <span className="text-[11px] text-emerald-400 flex items-center gap-1">
-              <CheckCircle2 size={11} /> Saved to this review
-            </span>
-          )}
-        </div>
-
-        {compareStatus === 'error' && (
-          <div className="text-[11px] text-red-400 bg-red-950/30 rounded-lg px-3 py-2">
-            <span className="font-semibold">Error: </span>{compareError}
-          </div>
-        )}
-
-        {/* Manual report paste */}
-        {!showManualReport ? (
-          <button
-            type="button"
-            onClick={() => { setShowManualReport(true); setManualReportValue(compareStatus === 'done' ? compareReport : '') }}
-            className="text-[11px] text-gray-600 hover:text-gray-400 transition-colors underline-offset-2 hover:underline"
-          >
-            {compareStatus === 'done' ? 'Replace with a manually written report' : 'Already wrote the report? Paste it in directly'}
-          </button>
-        ) : (
-          <div className="space-y-2 pt-1">
-            <p className="text-[11px] text-gray-500">Paste your manually written comparison report:</p>
-            <textarea
-              value={manualReportValue}
-              onChange={e => setManualReportValue(e.target.value)}
-              placeholder="Paste your comparison report here…"
-              rows={8}
-              className="w-full bg-[#0a0c14] border border-[#2a2d3a] rounded-xl px-4 py-3 text-[12px] text-gray-200 placeholder-gray-700 focus:outline-none focus:border-purple-600/60 transition-colors resize-y"
-            />
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleSaveManualReport}
-                disabled={!manualReportValue.trim()}
-                className="px-4 py-2 rounded-lg bg-purple-700 hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[12px] font-semibold transition-colors"
-              >
-                Save Report
-              </button>
-              <button
-                type="button"
-                onClick={() => { setShowManualReport(false); setManualReportValue('') }}
-                className="px-3 py-2 rounded-lg border border-[#1e2030] text-gray-500 hover:text-gray-300 text-[12px] transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Report output */}
-        {compareStatus === 'done' && compareReport && (
-          <div className="space-y-3">
-            {/* Toolbar */}
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[11px] font-semibold text-purple-300 uppercase tracking-wider">Comparison Report</p>
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setReportEditMode(m => !m)}
-                  title={reportEditMode ? 'Back to preview' : 'Edit report'}
-                  className={`flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg border transition-all ${
-                    reportEditMode
-                      ? 'border-purple-600 bg-purple-900/30 text-purple-300'
-                      : 'border-[#2a2d3a] bg-[#0d0f1a] text-gray-400 hover:text-white hover:border-[#3a3d4a]'
-                  }`}
-                >
-                  <Pencil size={11} />
-                  {reportEditMode ? 'Preview' : 'Edit'}
-                </button>
-                <button
-                  onClick={copyReport}
-                  className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg border border-[#2a2d3a] bg-[#0d0f1a] text-gray-400 hover:text-white hover:border-purple-700/60 transition-all"
-                >
-                  {reportCopied ? <CheckCircle2 size={11} className="text-emerald-400" /> : <Copy size={11} />}
-                  {reportCopied ? 'Copied!' : 'Copy'}
-                </button>
-              </div>
-            </div>
-
-            {/* Edit mode — raw textarea */}
-            {reportEditMode ? (
-              <textarea
-                value={compareReport}
-                onChange={e => handleReportEdit(e.target.value)}
-                rows={24}
-                className="w-full bg-[#0b0d14] border border-purple-800/40 rounded-xl px-5 py-4 text-[12px] text-gray-300 leading-relaxed font-mono focus:outline-none focus:border-purple-600 transition-colors resize-y
-                  [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-thumb]:bg-[#2a2d3a]"
-              />
-            ) : (
-              /* Preview mode — rendered markdown */
-              <div className="bg-[#0b0d14] border border-[#1e2030] rounded-xl p-5 space-y-5
-                [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-thumb]:bg-[#2a2d3a]">
-                {renderComparisonReport(compareReport)}
-              </div>
-            )}
-          </div>
-        )}
+      {/* Submit Review button */}
+      <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={onSubmit}
+          style={{ padding: '11px 32px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+        >
+          Submit Review →
+        </button>
       </div>
     </div>
   )
 }
+
 
 function OutputBlock({
   title, badge, badgeColor, copyText, children,
@@ -2671,6 +2628,7 @@ export function PerformanceReviewForm() {
   const [meetingEmpSigLoading, setMeetingEmpSigLoading] = useState(false)
   const [meetingEmpSigError, setMeetingEmpSigError] = useState('')
   const [meetingEmpSigSuccess, setMeetingEmpSigSuccess] = useState(false)
+  const [meetingSubmitted, setMeetingSubmitted] = useState(false)
 
   async function openSA(employeeId: string, employeeName: string, position: string) {
     setViewingSA({ employeeId, employeeName, position })
@@ -3844,7 +3802,7 @@ export function PerformanceReviewForm() {
 
         {/* ── 1:1 Meeting page ── */}
         {activePage === 'meeting' && (() => {
-          const signedSaves = saves.filter(s => s.managerSignedAt)
+          const signedSaves = saves.filter(s => s.form && (s.managerSignedAt || s.maxStep >= 8))
           const currentMeetingSave = signedSaves.find(s => s.id === meetingReviewId) ?? signedSaves[0] ?? null
           const effectiveMeetingId = currentMeetingSave?.id ?? ''
 
@@ -3894,8 +3852,8 @@ export function PerformanceReviewForm() {
               {signedSaves.length === 0 ? (
                 <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '40px', textAlign: 'center' }}>
                   <div style={{ fontSize: 36, marginBottom: 10 }}>👥</div>
-                  <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 6 }}>No signed reviews yet.</div>
-                  <div style={{ fontSize: 12, color: '#4b5563' }}>Sign a review from the Review Output step, then come back here.</div>
+                  <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 6 }}>No reviews ready for meeting yet.</div>
+                  <div style={{ fontSize: 12, color: '#4b5563' }}>Complete a review and click &ldquo;Submit Review&rdquo; to prepare for the 1:1 meeting.</div>
                 </div>
               ) : (
                 <>
@@ -3908,7 +3866,7 @@ export function PerformanceReviewForm() {
                         const id = e.target.value
                         setMeetingReviewId(id)
                         setMeetingEmpSigSuccess(false)
-                        setMeetingEmpSigSuccess(false)
+                        setMeetingSubmitted(false)
                         const sel = signedSaves.find(s => s.id === id)
                         if (sel?.employeeId) loadMeetingSA(sel.employeeId)
                         else setMeetingSAData(null)
@@ -3931,6 +3889,20 @@ export function PerformanceReviewForm() {
 
                   {mSave && mForm && (
                     <>
+                      {/* Drive Export */}
+                      <div style={{ marginBottom: 20 }}>
+                        <DriveExportSection
+                          form={mSave.form ?? { ...defaultForm(), employeeName: mSave.employeeName, employeePosition: mSave.employeePosition }}
+                          driveFolderId={parseFolderId(settings.driveFolderUrl)}
+                          savedDriveUrl={mSave.driveUrl}
+                          savedDriveDocId={mSave.driveDocId}
+                          onDriveSaved={(url, docId) => {
+                            apiPatchReview(effectiveMeetingId, { drive_url: url || null, drive_doc_id: docId || null })
+                            setSaves(prev => prev.map(s => s.id === effectiveMeetingId ? { ...s, driveUrl: url || undefined, driveDocId: docId || undefined } : s))
+                          }}
+                        />
+                      </div>
+
                       {/* Two-column layout */}
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
                         {/* Left: Self-Assessment */}
@@ -4048,16 +4020,17 @@ export function PerformanceReviewForm() {
                         </div>
                       </div>
 
-                      {/* Comparison report */}
-                      {mSave.comparisonReport && (
-                        <div style={{ marginBottom: 20, background: '#0d0f1a', border: '1px solid #2a1f4a', borderRadius: 12, padding: '16px 20px' }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Comparison Report</div>
-                          <pre style={{ margin: 0, fontSize: 12, color: '#9ca3af', lineHeight: 1.7, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{mSave.comparisonReport}</pre>
-                        </div>
-                      )}
-                      {!mSave.comparisonReport && (
-                        <div style={{ marginBottom: 20, background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 12, padding: '16px 20px', fontSize: 13, color: '#4b5563' }}>No comparison report available.</div>
-                      )}
+                      {/* Comparison Section */}
+                      <div style={{ marginBottom: 20 }}>
+                        <ComparisonSection
+                          form={mSave.form ?? { ...defaultForm(), employeeName: mSave.employeeName, employeePosition: mSave.employeePosition }}
+                          savedComparisonReport={mSave.comparisonReport}
+                          onReportSaved={report => {
+                            apiPatchReview(effectiveMeetingId, { comparison_report: report || null })
+                            setSaves(prev => prev.map(s => s.id === effectiveMeetingId ? { ...s, comparisonReport: report || undefined } : s))
+                          }}
+                        />
+                      </div>
 
                       {/* Signatures section */}
                       <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px' }}>
@@ -4092,6 +4065,33 @@ export function PerformanceReviewForm() {
                             ✓ Both parties have signed. Admin has been notified.
                           </div>
                         )}
+                      </div>
+
+                      {/* Final Submit */}
+                      <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid #1e2130', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                        <div style={{ fontSize: 12, color: mBothSigned || meetingEmpSigSuccess ? '#34d399' : '#4b5563' }}>
+                          {mBothSigned || meetingEmpSigSuccess
+                            ? '✓ Both signatures collected. Ready to submit.'
+                            : 'Both manager and employee must sign before submitting.'}
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!(mBothSigned || meetingEmpSigSuccess)}
+                          onClick={() => {
+                            setMeetingSubmitted(true)
+                            setTimeout(() => setActivePage('team'), 2000)
+                          }}
+                          style={{
+                            padding: '11px 32px',
+                            background: (mBothSigned || meetingEmpSigSuccess) ? 'linear-gradient(135deg, #059669, #047857)' : '#1e2130',
+                            color: (mBothSigned || meetingEmpSigSuccess) ? '#fff' : '#4b5563',
+                            border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700,
+                            cursor: (mBothSigned || meetingEmpSigSuccess) ? 'pointer' : 'not-allowed',
+                            transition: 'all 0.2s',
+                          }}
+                        >
+                          {meetingSubmitted ? '✓ Complete!' : 'Submit & Complete'}
+                        </button>
                       </div>
                     </>
                   )}
@@ -4209,17 +4209,7 @@ export function PerformanceReviewForm() {
             <StepOutput
               key={currentReviewId}
               form={form}
-              driveFolderId={parseFolderId(settings.driveFolderUrl)}
-              savedDriveUrl={saves.find(s => s.id === currentReviewId)?.driveUrl}
-              savedDriveDocId={saves.find(s => s.id === currentReviewId)?.driveDocId}
-              onDriveSaved={handleDriveSaved}
-              savedComparisonReport={saves.find(s => s.id === currentReviewId)?.comparisonReport}
-              onReportSaved={handleReportSaved}
-              reviewId={currentReviewId}
-              employeeId={currentEmployeeId || saves.find(s => s.id === currentReviewId)?.employeeId || ''}
-              managerSignedAt={saves.find(s => s.id === currentReviewId)?.managerSignedAt}
-              managerSignature={saves.find(s => s.id === currentReviewId)?.managerSignature}
-              onManagerSigned={handleManagerSigned}
+              onSubmit={() => setActivePage('meeting')}
             />
           )}
         </div>
