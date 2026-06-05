@@ -2748,8 +2748,8 @@ export function PerformanceReviewForm() {
                 driveUrl: r.driveUrl || l.driveUrl,
                 driveDocId: r.driveDocId || l.driveDocId,
                 comparisonReport: r.comparisonReport || l.comparisonReport,
-                managerSignedAt: r.managerSignedAt || l.managerSignedAt,
-                managerSignature: r.managerSignature || l.managerSignature,
+                managerSignedAt: r.managerSignedAt ?? undefined,
+                managerSignature: r.managerSignature ?? undefined,
                 form: r.form ?? l.form,
               }
             })
