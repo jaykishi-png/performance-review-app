@@ -2623,8 +2623,8 @@ function OutputBlock({
 
 function reviewPct(save: SavedReview): number {
   if (save.driveUrl || save.managerSignedAt) return 100
-  // null form_data with an employee name = legacy review saved before form_data existed
-  if (!save.form) return save.employeeName ? 100 : 0
+  // No form_data and no drive/signature = genuinely empty (ghost review or corrupt record)
+  if (!save.form) return 0
   const filled = Array.from({ length: STEPS.length - 1 }, (_, i) => i).filter(i => isStepComplete(i, save.form)).length
   return Math.round((filled / (STEPS.length - 1)) * 100)
 }
@@ -2780,8 +2780,27 @@ export function PerformanceReviewForm() {
           const { reviews: rawRows } = await res.json() as { reviews: Record<string, unknown>[] }
           const remote = rawRows.map(dbRowToSave)
           if (remote.length > 0) {
-            setSaves(remote)
-            localStorage.setItem(SAVES_KEY, JSON.stringify(remote))
+            // Merge with localStorage: keep non-null local values if DB returned null
+            // (e.g. drive_url saved to localStorage but PATCH to DB failed)
+            const local = getSaves()
+            const localMap = Object.fromEntries(local.map(s => [s.id, s]))
+            const merged = remote.map(r => {
+              const l = localMap[r.id]
+              if (!l) return r
+              return {
+                ...r,
+                employeeName: r.employeeName || l.employeeName,
+                employeePosition: r.employeePosition || l.employeePosition,
+                driveUrl: r.driveUrl || l.driveUrl,
+                driveDocId: r.driveDocId || l.driveDocId,
+                comparisonReport: r.comparisonReport || l.comparisonReport,
+                managerSignedAt: r.managerSignedAt || l.managerSignedAt,
+                managerSignature: r.managerSignature || l.managerSignature,
+                form: r.form ?? l.form,
+              }
+            })
+            setSaves(merged)
+            localStorage.setItem(SAVES_KEY, JSON.stringify(merged))
           } else {
             setSaves(getSaves())
           }
