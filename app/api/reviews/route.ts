@@ -39,7 +39,7 @@ export async function GET() {
     if (role === 'employee') {
       const { data, error } = await serviceClient
         .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id')
+        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id')
         .eq('employee_id', user.id)
         .not('manager_signed_at', 'is', null)
         .order('updated_at', { ascending: false })
@@ -50,7 +50,7 @@ export async function GET() {
     // Manager: own reviews only
     const { data, error } = await serviceClient
       .from('reviews')
-      .select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id')
+      .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id')
       .eq('user_id', user.id)
       .order('saved_at', { ascending: false })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
