@@ -2015,29 +2015,59 @@ function DriveExportSection({
   )
 }
 
+// ─── Shared types ─────────────────────────────────────────────────────────────
+type SAData = { competencies: {type:string;term:string;examples:string[]}[]; goals_objectives: {description:string;outcome:string;reasoning:string}[]; next_year_goals: {goal:string;objective:string}[]; overall_rating: number|null; submitted_at: string|null; drive_url: string|null }
+
 // ─── ComparisonSection ────────────────────────────────────────────────────────
 
+function saDataToText(sa: SAData): string {
+  const lines: string[] = []
+  if (sa.competencies?.length) {
+    lines.push('COMPETENCIES:')
+    sa.competencies.forEach(c => {
+      lines.push(`[${c.type}] ${c.term}`)
+      c.examples?.filter(Boolean).forEach(e => lines.push(`  - ${e}`))
+    })
+    lines.push('')
+  }
+  if (sa.goals_objectives?.length) {
+    lines.push('GOALS & OUTCOMES:')
+    sa.goals_objectives.forEach(g => {
+      if (g.description) lines.push(`Goal: ${g.description}`)
+      if (g.outcome) lines.push(`Outcome: ${g.outcome}`)
+      if (g.reasoning) lines.push(`Reasoning: ${g.reasoning}`)
+      lines.push('')
+    })
+  }
+  if (sa.next_year_goals?.length) {
+    lines.push("NEXT YEAR'S GOALS:")
+    sa.next_year_goals.forEach(g => {
+      if (g.goal) lines.push(`Goal: ${g.goal}`)
+      if (g.objective) lines.push(`Objective: ${g.objective}`)
+      lines.push('')
+    })
+  }
+  if (sa.overall_rating) lines.push(`OVERALL SELF-RATING: ${sa.overall_rating}/5`)
+  return lines.join('\n').trim()
+}
+
 function ComparisonSection({
-  form, savedComparisonReport, onReportSaved
+  form, savedComparisonReport, onReportSaved, saData,
 }: {
   form: FormData
   savedComparisonReport?: string
   onReportSaved?: (report: string) => void
+  saData?: SAData | null
 }) {
-  const [compareInputMode, setCompareInputMode] = useState<'url' | 'text'>('url')
-  const [compareUrl, setCompareUrl]             = useState('')
-  const [compareText, setCompareText]           = useState('')
-  const [compareStatus, setCompareStatus]       = useState<'idle' | 'loading' | 'done' | 'error'>(
+  const [compareStatus, setCompareStatus] = useState<'idle' | 'loading' | 'done' | 'error'>(
     savedComparisonReport ? 'done' : 'idle'
   )
-  const [compareReport, setCompareReport]       = useState(savedComparisonReport ?? '')
-  const [compareError, setCompareError]         = useState('')
-  const [reportCopied, setReportCopied]         = useState(false)
-  const [reportEditMode, setReportEditMode]     = useState(false)
+  const [compareReport, setCompareReport] = useState(savedComparisonReport ?? '')
+  const [compareError, setCompareError]   = useState('')
+  const [reportCopied, setReportCopied]   = useState(false)
+  const [reportEditMode, setReportEditMode] = useState(false)
   const [showManualReport, setShowManualReport] = useState(false)
   const [manualReportValue, setManualReportValue] = useState('')
-  const [selfReviewStatus, setSelfReviewStatus] = useState<'idle' | 'loading' | 'found' | 'none'>('idle')
-  const [selfReviewText, setSelfReviewText]     = useState('')
 
   function handleSaveManualReport() {
     const val = manualReportValue.trim()
@@ -2050,39 +2080,16 @@ function ComparisonSection({
     onReportSaved?.(val)
   }
 
-  async function loadSubmittedSelfReview() {
-    setSelfReviewStatus('loading')
-    try {
-      const res = await fetch(`/api/self-reviews/find?name=${encodeURIComponent(form.employeeName.trim())}`)
-      if (res.ok) {
-        const { text } = await res.json()
-        if (text) {
-          setSelfReviewText(text)
-          setSelfReviewStatus('found')
-          setCompareInputMode('text')
-          setCompareText(text)
-          return
-        }
-      }
-      setSelfReviewStatus('none')
-    } catch {
-      setSelfReviewStatus('none')
-    }
-  }
-
   async function handleCompare() {
     setCompareStatus('loading')
     setCompareError('')
     setCompareReport('')
     try {
-      const body: Record<string, unknown> = { form }
-      if (compareInputMode === 'url') body.employeeDocUrl = compareUrl.trim()
-      else body.employeeText = compareText.trim()
-
+      const employeeText = saData ? saDataToText(saData) : ''
       const res = await fetch('/api/performance-review/compare-reviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ form, employeeText }),
       })
       const data = await res.json() as { report?: string; error?: string }
       if (!res.ok || data.error) throw new Error(data.error ?? 'Analysis failed')
@@ -2098,11 +2105,7 @@ function ComparisonSection({
   }
 
   function stripMarkdown(text: string): string {
-    return text
-      .replace(/^##\s+/gm, '')
-      .replace(/\*\*([^*]+)\*\*/g, '$1')
-      .replace(/^[-*]\s+/gm, '• ')
-      .trim()
+    return text.replace(/^##\s+/gm, '').replace(/\*\*([^*]+)\*\*/g, '$1').replace(/^[-*]\s+/gm, '• ').trim()
   }
 
   function copyReport() {
@@ -2117,83 +2120,37 @@ function ComparisonSection({
     onReportSaved?.(val)
   }
 
-  // suppress unused variable warning for selfReviewText
-  void selfReviewText
+  const canGenerate = !!saData && compareStatus !== 'loading'
 
   return (
     <div className="rounded-xl border border-purple-900/40 bg-purple-950/10 p-5 space-y-4">
-      <div>
-        <p className="text-[13px] font-semibold text-purple-200 flex items-center gap-2">
-          <FileText size={14} className="text-purple-400" />
-          Compare with Employee Self-Assessment
-        </p>
-        <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
-          Upload the employee&apos;s self-review and get an AI-generated comparison report — including alignment areas, divergence, talking points, and a recommended action plan.
-        </p>
-      </div>
-
-      {form.employeeName.trim() && (
-        <div className="mb-3 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={loadSubmittedSelfReview}
-            disabled={selfReviewStatus === 'loading'}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-700/50 bg-purple-900/20 text-[11px] text-purple-300 hover:bg-purple-900/40 transition-all disabled:opacity-50"
-          >
-            {selfReviewStatus === 'loading' ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
-            Load {form.employeeName.split(' ')[0]}&apos;s submitted self-assessment
-          </button>
-          {selfReviewStatus === 'found' && <span className="text-[11px] text-emerald-500">✓ Loaded</span>}
-          {selfReviewStatus === 'none' && <span className="text-[11px] text-gray-500">No submitted self-review found</span>}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[13px] font-semibold text-purple-200 flex items-center gap-2">
+            <FileText size={14} className="text-purple-400" />
+            Comparison Report
+          </p>
+          <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+            AI-generated report comparing the self-assessment and performance review — alignment areas, divergence, talking points, and action plan.
+          </p>
         </div>
-      )}
-
-      <div className="flex gap-1 p-1 rounded-lg bg-[#0b0d14] border border-[#1e2030] w-fit">
-        <button
-          type="button"
-          onClick={() => setCompareInputMode('url')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all ${
-            compareInputMode === 'url' ? 'bg-purple-800/70 text-purple-200' : 'text-gray-600 hover:text-gray-300'
-          }`}
-        >
-          <Link size={11} /> Google Doc URL
-        </button>
-        <button
-          type="button"
-          onClick={() => setCompareInputMode('text')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all ${
-            compareInputMode === 'text' ? 'bg-purple-800/70 text-purple-200' : 'text-gray-600 hover:text-gray-300'
-          }`}
-        >
-          <AlignLeft size={11} /> Paste Text
-        </button>
+        {!saData && (
+          <span className="text-[11px] text-amber-500 bg-amber-950/40 border border-amber-800/40 rounded-lg px-3 py-1.5 shrink-0">
+            SA not loaded
+          </span>
+        )}
+        {saData && compareStatus !== 'done' && (
+          <span className="text-[11px] text-emerald-500 flex items-center gap-1 shrink-0">
+            <CheckCircle2 size={11} /> SA ready
+          </span>
+        )}
       </div>
-
-      {compareInputMode === 'url' ? (
-        <div className="space-y-2">
-          <input
-            value={compareUrl}
-            onChange={e => setCompareUrl(e.target.value)}
-            placeholder="https://docs.google.com/document/d/..."
-            className="w-full bg-[#0d0f1a] border border-[#2a2d3a] rounded-xl px-4 py-2.5 text-[12px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-600 transition-colors"
-          />
-          <p className="text-[10px] text-gray-600">The document must be shared with the Google account linked to this app.</p>
-        </div>
-      ) : (
-        <textarea
-          value={compareText}
-          onChange={e => setCompareText(e.target.value)}
-          placeholder="Paste the employee's self-assessment text here…"
-          rows={6}
-          className="w-full bg-[#0d0f1a] border border-[#2a2d3a] rounded-xl px-4 py-2.5 text-[12px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-600 transition-colors resize-none"
-        />
-      )}
 
       <div className="flex items-center gap-3 flex-wrap">
         <button
           type="button"
           onClick={handleCompare}
-          disabled={compareStatus === 'loading' || (compareInputMode === 'url' ? !compareUrl.trim() : !compareText.trim())}
+          disabled={!canGenerate}
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-700 hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[12px] font-semibold transition-colors"
         >
           {compareStatus === 'loading' ? (
@@ -2628,7 +2585,6 @@ export function PerformanceReviewForm() {
   const [profileSaving, setProfileSaving] = useState(false)
 
   // ── SA viewer ────────────────────────────────────────────────────────────────
-  type SAData = { competencies: {type:string;term:string;examples:string[]}[]; goals_objectives: {description:string;outcome:string;reasoning:string}[]; next_year_goals: {goal:string;objective:string}[]; overall_rating: number|null; submitted_at: string|null; drive_url: string|null }
   const [viewingSA, setViewingSA] = useState<{employeeId:string;employeeName:string;position:string}|null>(null)
   const [saData, setSAData] = useState<SAData|null>(null)
   const [saLoading, setSALoading] = useState(false)
@@ -4079,6 +4035,7 @@ export function PerformanceReviewForm() {
                         <ComparisonSection
                           form={mSave.form ?? { ...defaultForm(), employeeName: mSave.employeeName, employeePosition: mSave.employeePosition }}
                           savedComparisonReport={mSave.comparisonReport}
+                          saData={meetingSAData}
                           onReportSaved={report => {
                             apiPatchReview(effectiveMeetingId, { comparison_report: report || null })
                             setSaves(prev => prev.map(s => s.id === effectiveMeetingId ? { ...s, comparisonReport: report || undefined } : s))
