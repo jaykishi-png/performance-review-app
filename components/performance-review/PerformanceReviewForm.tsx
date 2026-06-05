@@ -2600,6 +2600,8 @@ export function PerformanceReviewForm() {
   const [meetingEmpSigError, setMeetingEmpSigError] = useState('')
   const [meetingEmpSigSuccess, setMeetingEmpSigSuccess] = useState(false)
   const [meetingSubmitted, setMeetingSubmitted] = useState(false)
+  const [meetingDriveStatus, setMeetingDriveStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle')
+  const [meetingDriveError, setMeetingDriveError] = useState('')
 
   async function openSA(employeeId: string, employeeName: string, position: string) {
     setViewingSA({ employeeId, employeeName, position })
@@ -3877,6 +3879,8 @@ export function PerformanceReviewForm() {
                         setMeetingReviewId(id)
                         setMeetingEmpSigSuccess(false)
                         setMeetingSubmitted(false)
+                        setMeetingDriveStatus('idle')
+                        setMeetingDriveError('')
                         const sel = signedSaves.find(s => s.id === id)
                         if (sel?.employeeId) loadMeetingSA(sel.employeeId)
                         else setMeetingSAData(null)
@@ -3899,20 +3903,6 @@ export function PerformanceReviewForm() {
 
                   {mSave && mForm && (
                     <>
-                      {/* Drive Export */}
-                      <div style={{ marginBottom: 20 }}>
-                        <DriveExportSection
-                          form={mSave.form ?? { ...defaultForm(), employeeName: mSave.employeeName, employeePosition: mSave.employeePosition }}
-                          driveFolderId={parseFolderId(settings.driveFolderUrl)}
-                          savedDriveUrl={mSave.driveUrl}
-                          savedDriveDocId={mSave.driveDocId}
-                          onDriveSaved={(url, docId) => {
-                            apiPatchReview(effectiveMeetingId, { drive_url: url || null, drive_doc_id: docId || null })
-                            setSaves(prev => prev.map(s => s.id === effectiveMeetingId ? { ...s, driveUrl: url || undefined, driveDocId: docId || undefined } : s))
-                          }}
-                        />
-                      </div>
-
                       {/* Two-column layout */}
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
                         {/* Left: Self-Assessment */}
@@ -4079,30 +4069,64 @@ export function PerformanceReviewForm() {
                       </div>
 
                       {/* Final Submit */}
-                      <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid #1e2130', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                        <div style={{ fontSize: 12, color: mBothSigned || meetingEmpSigSuccess ? '#34d399' : '#4b5563' }}>
-                          {mBothSigned || meetingEmpSigSuccess
-                            ? '✓ Both signatures collected. Ready to submit.'
-                            : 'Both manager and employee must sign before submitting.'}
+                      <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid #1e2130' }}>
+                        {meetingDriveError && (
+                          <div style={{ marginBottom: 12, padding: '10px 14px', background: '#1a0d0d', border: '1px solid #7f1d1d', borderRadius: 8, fontSize: 12, color: '#f87171' }}>
+                            Drive export failed: {meetingDriveError} — <button onClick={() => setMeetingDriveError('')} style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>Retry</button>
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                          <div style={{ fontSize: 12, color: meetingSubmitted ? '#34d399' : mBothSigned || meetingEmpSigSuccess ? '#34d399' : '#4b5563' }}>
+                            {meetingSubmitted
+                              ? '✓ Documents saved to Google Drive. Review cycle complete.'
+                              : meetingDriveStatus === 'uploading'
+                                ? '⏳ Saving documents to Google Drive…'
+                                : mBothSigned || meetingEmpSigSuccess
+                                  ? '✓ Both signatures collected. Ready to submit.'
+                                  : 'Both manager and employee must sign before submitting.'}
+                          </div>
+                          <button
+                            type="button"
+                            disabled={!(mBothSigned || meetingEmpSigSuccess) || meetingDriveStatus === 'uploading' || meetingSubmitted}
+                            onClick={async () => {
+                              const reviewForm = mSave?.form ?? (mSave ? { ...defaultForm(), employeeName: mSave.employeeName, employeePosition: mSave.employeePosition } : null)
+                              if (!reviewForm || !effectiveMeetingId) return
+                              setMeetingDriveStatus('uploading')
+                              setMeetingDriveError('')
+                              try {
+                                const folderId = parseFolderId(settings.driveFolderUrl)
+                                const res = await fetch('/api/performance-review/send-to-drive', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ ...reviewForm, ...(folderId ? { driveFolderId: folderId } : {}) }),
+                                })
+                                const data = await res.json() as { docUrl?: string; docId?: string; error?: string }
+                                if (!res.ok || data.error) throw new Error(data.error ?? 'Drive export failed')
+                                const url = data.docUrl ?? ''
+                                const docId = data.docId ?? ''
+                                apiPatchReview(effectiveMeetingId, { drive_url: url || null, drive_doc_id: docId || null })
+                                setSaves(prev => prev.map(s => s.id === effectiveMeetingId ? { ...s, driveUrl: url || undefined, driveDocId: docId || undefined } : s))
+                                setMeetingDriveStatus('done')
+                              } catch (err) {
+                                setMeetingDriveError(String(err))
+                                setMeetingDriveStatus('error')
+                                return
+                              }
+                              setMeetingSubmitted(true)
+                              setTimeout(() => setActivePage('team'), 2500)
+                            }}
+                            style={{
+                              padding: '11px 32px',
+                              background: (mBothSigned || meetingEmpSigSuccess) && !meetingSubmitted && meetingDriveStatus !== 'uploading' ? 'linear-gradient(135deg, #059669, #047857)' : '#1e2130',
+                              color: (mBothSigned || meetingEmpSigSuccess) && !meetingSubmitted && meetingDriveStatus !== 'uploading' ? '#fff' : '#4b5563',
+                              border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700,
+                              cursor: (mBothSigned || meetingEmpSigSuccess) && !meetingSubmitted && meetingDriveStatus !== 'uploading' ? 'pointer' : 'not-allowed',
+                              transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
+                            }}
+                          >
+                            {meetingSubmitted ? '✓ Complete!' : meetingDriveStatus === 'uploading' ? <><Loader2 size={14} className="animate-spin" /> Saving to Drive…</> : 'Submit & Complete'}
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          disabled={!(mBothSigned || meetingEmpSigSuccess)}
-                          onClick={() => {
-                            setMeetingSubmitted(true)
-                            setTimeout(() => setActivePage('team'), 2000)
-                          }}
-                          style={{
-                            padding: '11px 32px',
-                            background: (mBothSigned || meetingEmpSigSuccess) ? 'linear-gradient(135deg, #059669, #047857)' : '#1e2130',
-                            color: (mBothSigned || meetingEmpSigSuccess) ? '#fff' : '#4b5563',
-                            border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700,
-                            cursor: (mBothSigned || meetingEmpSigSuccess) ? 'pointer' : 'not-allowed',
-                            transition: 'all 0.2s',
-                          }}
-                        >
-                          {meetingSubmitted ? '✓ Complete!' : 'Submit & Complete'}
-                        </button>
                       </div>
                     </>
                   )}
