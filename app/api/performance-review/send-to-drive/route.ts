@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { google, docs_v1 } from 'googleapis'
+import { createServiceClient } from '@/lib/supabase/server'
 
 export const maxDuration = 60
+export const dynamic = 'force-dynamic'
 
 // ─── Template & folder ───────────────────────────────────────────────────────
 // The blank template with exact formatting to copy for each review
@@ -124,6 +126,8 @@ export async function POST(req: NextRequest) {
       goals: GoalEntry[]; overallScore: number; overallSummary: string
       nextGoals: NextGoal[]
       driveFolderId?: string
+      employeeId?: string
+      managerEmail?: string
     }
 
     // Use caller-supplied folder ID if provided, otherwise fall back to default
@@ -318,6 +322,35 @@ export async function POST(req: NextRequest) {
         requestBody: { requests: buildRequests(ops) },
       })
     }
+
+    // ── 11. Share doc with employee and manager (non-blocking) ───────────────
+    try {
+      const emailsToShare: string[] = []
+
+      if (form.employeeId) {
+        const serviceClient = createServiceClient()
+        const { data: empProfile } = await serviceClient
+          .from('profiles')
+          .select('email')
+          .eq('id', form.employeeId)
+          .single()
+        if (empProfile?.email) emailsToShare.push(empProfile.email)
+      }
+
+      if (form.managerEmail) {
+        emailsToShare.push(form.managerEmail)
+      }
+
+      for (const email of emailsToShare.filter(Boolean)) {
+        try {
+          await drive.permissions.create({
+            fileId: docId,
+            requestBody: { type: 'user', role: 'reader', emailAddress: email },
+            sendNotificationEmail: false,
+          })
+        } catch { /* non-blocking */ }
+      }
+    } catch { /* non-blocking */ }
 
     return NextResponse.json({
       docId,

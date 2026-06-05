@@ -3,6 +3,7 @@ import { google, docs_v1 } from 'googleapis'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 export const maxDuration = 60
+export const dynamic = 'force-dynamic'
 
 const SA_TEMPLATE_DOC_ID  = '14CTluQZ2yyLDrNLvx8fjtPycIZ9JFhxH_ukQzgsZqLE'
 const SA_FOLDER           = '1vj8HSp0QnBlfwCoLvtzz-z3uJkh_84hg'
@@ -250,7 +251,42 @@ export async function POST(req: NextRequest) {
 
     const docUrl = `https://docs.google.com/document/d/${docId}/edit`
 
-    // 9. Persist drive fields
+    // 9. Share doc with employee and their manager (non-blocking)
+    try {
+      const shareEmails: string[] = []
+
+      // Employee (logged-in user)
+      if (user.email) shareEmails.push(user.email)
+
+      // Manager — look up from employee's profile
+      const serviceClient = createServiceClient()
+      const { data: empProfile } = await serviceClient
+        .from('profiles')
+        .select('manager_id')
+        .eq('id', user.id)
+        .single()
+
+      if (empProfile?.manager_id) {
+        const { data: managerProfile } = await serviceClient
+          .from('profiles')
+          .select('email')
+          .eq('id', empProfile.manager_id)
+          .single()
+        if (managerProfile?.email) shareEmails.push(managerProfile.email)
+      }
+
+      for (const email of shareEmails.filter(Boolean)) {
+        try {
+          await drive.permissions.create({
+            fileId: docId,
+            requestBody: { type: 'user', role: 'reader', emailAddress: email },
+            sendNotificationEmail: false,
+          })
+        } catch { /* non-blocking */ }
+      }
+    } catch { /* non-blocking */ }
+
+    // 11. Persist drive fields
     if (body.selfReviewId) {
       const serviceClient = createServiceClient()
       await serviceClient

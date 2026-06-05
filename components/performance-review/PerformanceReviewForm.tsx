@@ -1838,13 +1838,15 @@ function renderComparisonReport(report: string): React.ReactNode {
 // ─── DriveExportSection ───────────────────────────────────────────────────────
 
 function DriveExportSection({
-  form, driveFolderId, savedDriveUrl, savedDriveDocId, onDriveSaved
+  form, driveFolderId, savedDriveUrl, savedDriveDocId, onDriveSaved, employeeId, managerEmail
 }: {
   form: FormData
   driveFolderId?: string
   savedDriveUrl?: string
   savedDriveDocId?: string
   onDriveSaved?: (url: string, docId: string) => void
+  employeeId?: string
+  managerEmail?: string
 }) {
   const [driveStatus, setDriveStatus] = useState<'idle' | 'checking' | 'sending' | 'done' | 'error'>(
     savedDriveUrl ? 'checking' : 'idle'
@@ -1893,9 +1895,19 @@ function DriveExportSection({
     try {
       const res = await fetch('/api/performance-review/send-to-drive', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, ...(driveFolderId ? { driveFolderId } : {}) }),
+        body: JSON.stringify({
+          ...form,
+          ...(driveFolderId ? { driveFolderId } : {}),
+          ...(employeeId ? { employeeId } : {}),
+          ...(managerEmail ? { managerEmail } : {}),
+        }),
       })
+      const contentType = res.headers.get('content-type') ?? ''
+      if (!contentType.includes('application/json')) {
+        throw new Error(`Server returned non-JSON response (status ${res.status}). Check server logs.`)
+      }
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error ?? 'Unknown error')
       setDriveUrl(data.docUrl)
@@ -4181,9 +4193,12 @@ export function PerformanceReviewForm() {
                         try {
                           const res = await fetch('/api/reviews/submit-drive', {
                             method: 'POST',
+                            credentials: 'include',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ reviewId: effectiveMeetingId }),
                           })
+                          const ct = res.headers.get('content-type') ?? ''
+                          if (!ct.includes('application/json')) throw new Error(`Server returned non-JSON response (status ${res.status}). Check server logs.`)
                           const data = await res.json() as { ok?: boolean; driveUrl?: string; error?: string }
                           if (!res.ok) throw new Error(data.error ?? 'Failed')
                           setMeetingDriveStatus('done')
