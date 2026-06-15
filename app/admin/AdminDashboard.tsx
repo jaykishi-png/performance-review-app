@@ -161,6 +161,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteLink, setInviteLink] = useState('')
   const [inviteEmailSent, setInviteEmailSent] = useState(false)
+  const [resendingInviteId, setResendingInviteId] = useState<string | null>(null)
+  const [resentInviteId, setResentInviteId] = useState<string | null>(null)
   const [editingUser, setEditingUser] = useState<string | null>(null)
   const [editingManager, setEditingManager] = useState<string | null>(null)
   const [editingStartDate, setEditingStartDate] = useState<string | null>(null)
@@ -480,6 +482,20 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     } finally { setInviteLoading(false) }
   }
 
+  async function resendInvite(inv: InviteRecord) {
+    setResendingInviteId(inv.id)
+    try {
+      await fetch('/api/admin/invite', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: inv.email, role: inv.role }),
+      })
+      setResentInviteId(inv.id)
+      setTimeout(() => setResentInviteId(null), 3000)
+    } finally {
+      setResendingInviteId(null)
+    }
+  }
+
   async function updateField(userId: string, fields: Record<string, unknown>) {
     if (isDevAdmin && fields.role && ['admin', 'dev_admin'].includes(fields.role as string)) return
     await fetch('/api/admin/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, ...fields }) })
@@ -771,7 +787,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <div style={{ padding: '32px', textAlign: 'center', color: '#6b7280', fontSize: 13 }}>No pending invites</div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr>{['Email', 'Role', 'Invited', 'Expires'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+              <thead><tr>{['Email', 'Role', 'Invited', 'Expires', ''].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr></thead>
               <tbody>
                 {invites.map(inv => (
                   <tr key={inv.id}>
@@ -779,6 +795,18 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                     <td style={td}><span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500, background: `${ROLE_COLORS[inv.role] ?? '#64748b'}18`, color: ROLE_COLORS[inv.role] ?? '#64748b' }}>{ROLE_LABELS[inv.role] ?? inv.role}</span></td>
                     <td style={{ ...td, color: '#6b7280' }}>{new Date(inv.created_at).toLocaleDateString()}</td>
                     <td style={{ ...td, color: '#6b7280' }}>{new Date(inv.expires_at).toLocaleDateString()}</td>
+                    <td style={{ ...td, textAlign: 'right' }}>
+                      {resentInviteId === inv.id ? (
+                        <span style={{ fontSize: 12, color: '#34d399', fontWeight: 600 }}>✓ Sent</span>
+                      ) : (
+                        <button
+                          onClick={() => resendInvite(inv)}
+                          disabled={resendingInviteId === inv.id}
+                          style={{ padding: '4px 12px', background: 'transparent', border: '1px solid #2a2d3e', borderRadius: 6, color: resendingInviteId === inv.id ? '#4b5563' : '#a5b4fc', fontSize: 12, cursor: resendingInviteId === inv.id ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
+                          {resendingInviteId === inv.id ? 'Sending…' : '↩ Resend'}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
