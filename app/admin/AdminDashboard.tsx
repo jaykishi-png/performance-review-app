@@ -635,8 +635,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         </div>
 
         {/* Users table */}
-        <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflow: 'hidden', marginBottom: 24 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflowX: 'auto', marginBottom: 24 }}>
+          <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
             <thead><tr>{['Name / Email', 'Role', 'Position', 'Division', 'Pronouns', 'Manager', 'Start Date', 'Self-Assessment', 'Status', 'Actions'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {filteredUsers.map((u, i) => (
