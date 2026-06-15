@@ -3894,17 +3894,17 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* 1:1 Meeting */}
+          {/* Annual Reviews */}
           {(() => {
             const active = activePage === 'meeting'
             const signedSaves = saves.filter(s => s.managerSignedAt)
             return (
-              <button onClick={() => { setMeetingDetailId(null); setActivePage('meeting') }} title={sidebarCollapsed ? '1:1 Meeting' : undefined}
+              <button onClick={() => { setMeetingDetailId(null); setActivePage('meeting') }} title={sidebarCollapsed ? 'Annual Reviews' : undefined}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                 <Users size={15} color={active ? '#818cf8' : '#6b7280'} />
-                {!sidebarCollapsed && '1:1 Meeting'}
+                {!sidebarCollapsed && 'Annual Reviews'}
                 {signedSaves.length > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: '#34d399', color: '#0d0f1a', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{signedSaves.length}</span>}
               </button>
             )
@@ -4298,7 +4298,7 @@ export function PerformanceReviewForm() {
           </div>
         )}
 
-        {/* ── 1:1 Meeting page ── */}
+        {/* ── Annual Reviews page ── */}
         {activePage === 'meeting' && (() => {
           // All saves that qualify as meeting records (manager has signed)
           const meetingSaves = saves.filter(s => s.managerSignedAt || s.driveUrl || s.maxStep >= 8)
@@ -4307,7 +4307,7 @@ export function PerformanceReviewForm() {
           if (!meetingDetailId) {
             return (
               <div style={{ padding: '28px 32px', maxWidth: 1200, margin: '0 auto' }}>
-                <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>1:1 Meetings</h1>
+                <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Annual Reviews</h1>
                 <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>All current and past 1:1 review meetings.</p>
 
                 {meetingSaves.length === 0 ? (
@@ -4417,7 +4417,7 @@ export function PerformanceReviewForm() {
               </button>
 
               <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>
-                1:1 Meeting — {mSave.employeeName}
+                Annual Review — {mSave.employeeName}
               </h1>
               <p style={{ margin: '0 0 20px', fontSize: 13, color: '#6b7280' }}>
                 {isCompleted ? 'Completed · Read-only' : 'Side-by-side view for your meeting with the employee.'}
