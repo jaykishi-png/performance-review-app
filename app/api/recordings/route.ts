@@ -12,7 +12,7 @@ async function getAuthContext() {
   const serviceClient = await createServiceClient()
   const { data: profile } = await serviceClient
     .from('profiles')
-    .select('id, full_name, email, role')
+    .select('id, name, email, role')
     .eq('id', user.id)
     .single()
 
@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
     .from('meeting_recordings')
     .select(`
       *,
-      manager:profiles!meeting_recordings_manager_id_fkey(id, full_name, email),
-      employee:profiles!meeting_recordings_employee_id_fkey(id, full_name, email)
+      manager:profiles!meeting_recordings_manager_id_fkey(id, name, email),
+      employee:profiles!meeting_recordings_employee_id_fkey(id, name, email)
     `)
     .order('meeting_date', { ascending: false })
 
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
   const { data: employeeProfile, error: empError } = await serviceClient
     .from('profiles')
-    .select('id, full_name, email')
+    .select('id, name, email')
     .eq('id', employee_id)
     .single()
 
@@ -115,8 +115,8 @@ export async function POST(request: NextRequest) {
   if (process.env.RESEND_API_KEY) {
     const resend = new Resend(process.env.RESEND_API_KEY)
     const appUrl = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
-    const managerName = managerProfile?.full_name ?? 'Your manager'
-    const employeeName = employeeProfile.full_name ?? 'the employee'
+    const managerName = managerProfile?.name ?? 'Your manager'
+    const employeeName = employeeProfile.name ?? 'the employee'
     const formattedDate = new Date(meeting_date).toLocaleDateString('en-US', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     })

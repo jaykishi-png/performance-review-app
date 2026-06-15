@@ -21,8 +21,8 @@ export async function GET(request: NextRequest) {
       id, meeting_date, year, quarter, status,
       consent_manager, consent_employee, consent_declined,
       consent_manager_token, consent_employee_token,
-      manager:profiles!meeting_recordings_manager_id_fkey(full_name),
-      employee:profiles!meeting_recordings_employee_id_fkey(full_name)
+      manager:profiles!meeting_recordings_manager_id_fkey(name),
+      employee:profiles!meeting_recordings_employee_id_fkey(name)
     `)
     .or(`consent_manager_token.eq.${token},consent_employee_token.eq.${token}`)
     .single()
@@ -35,8 +35,8 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     recording_id: recording.id,
-    manager_name: (recording.manager as { full_name: string } | null)?.full_name ?? null,
-    employee_name: (recording.employee as { full_name: string } | null)?.full_name ?? null,
+    manager_name: ((recording.manager as unknown as { name: string }[] | null)?.[0]?.name ?? (recording.manager as unknown as { name: string } | null)?.name) ?? null,
+    employee_name: ((recording.employee as unknown as { name: string }[] | null)?.[0]?.name ?? (recording.employee as unknown as { name: string } | null)?.name) ?? null,
     meeting_date: recording.meeting_date,
     year: recording.year,
     token_role,
@@ -75,8 +75,8 @@ export async function POST(request: NextRequest) {
       consent_manager_token, consent_employee_token,
       manager_id, employee_id,
       meeting_date,
-      manager:profiles!meeting_recordings_manager_id_fkey(full_name, email),
-      employee:profiles!meeting_recordings_employee_id_fkey(full_name, email)
+      manager:profiles!meeting_recordings_manager_id_fkey(name, email),
+      employee:profiles!meeting_recordings_employee_id_fkey(name, email)
     `)
     .or(`consent_manager_token.eq.${token},consent_employee_token.eq.${token}`)
     .single()
@@ -90,8 +90,10 @@ export async function POST(request: NextRequest) {
   }
 
   const tokenRole = recording.consent_manager_token === token ? 'manager' : 'employee'
-  const manager = recording.manager as { full_name: string; email: string } | null
-  const employee = recording.employee as { full_name: string; email: string } | null
+  const _mgr = recording.manager as unknown
+  const _emp = recording.employee as unknown
+  const manager = (Array.isArray(_mgr) ? _mgr[0] : _mgr) as { name: string; email: string } | null
+  const employee = (Array.isArray(_emp) ? _emp[0] : _emp) as { name: string; email: string } | null
   const formattedDate = new Date(recording.meeting_date).toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   })
@@ -142,8 +144,8 @@ export async function POST(request: NextRequest) {
     if (action === 'consent' && bothConsented) {
       // Notify both parties that consent is complete
       const notifyEmails = [
-        { to: manager?.email, name: manager?.full_name },
-        { to: employee?.email, name: employee?.full_name },
+        { to: manager?.email, name: manager?.name },
+        { to: employee?.email, name: employee?.name },
       ].filter((e) => e.to)
 
       for (const recipient of notifyEmails) {
@@ -154,7 +156,7 @@ export async function POST(request: NextRequest) {
           html: `
             <div style="background:#0f0f0f;color:#e5e5e5;font-family:sans-serif;padding:40px;max-width:600px;margin:0 auto;border-radius:12px;">
               <h2 style="color:#fff;margin-top:0;">Consent complete</h2>
-              <p>Both <strong>${manager?.full_name}</strong> and <strong>${employee?.full_name}</strong> have consented to recording their 1:1 meeting on <strong>${formattedDate}</strong>.</p>
+              <p>Both <strong>${manager?.name}</strong> and <strong>${employee?.name}</strong> have consented to recording their 1:1 meeting on <strong>${formattedDate}</strong>.</p>
               <p>The meeting may now be recorded.</p>
             </div>
           `,
@@ -163,8 +165,8 @@ export async function POST(request: NextRequest) {
     } else if (action === 'consent') {
       // Notify the other party that one has consented
       const otherEmail = tokenRole === 'manager' ? employee?.email : manager?.email
-      const otherName = tokenRole === 'manager' ? employee?.full_name : manager?.full_name
-      const consentorName = tokenRole === 'manager' ? manager?.full_name : employee?.full_name
+      const otherName = tokenRole === 'manager' ? employee?.name : manager?.name
+      const consentorName = tokenRole === 'manager' ? manager?.name : employee?.name
 
       if (otherEmail) {
         await resend.emails.send({
@@ -185,11 +187,11 @@ export async function POST(request: NextRequest) {
       await resend.emails.send({
         from: fromEmail,
         to: manager.email,
-        subject: `${employee?.full_name} declined recording consent`,
+        subject: `${employee?.name} declined recording consent`,
         html: `
           <div style="background:#0f0f0f;color:#e5e5e5;font-family:sans-serif;padding:40px;max-width:600px;margin:0 auto;border-radius:12px;">
             <h2 style="color:#fff;margin-top:0;">Recording declined</h2>
-            <p><strong>${employee?.full_name}</strong> has declined consent to record your 1:1 meeting on <strong>${formattedDate}</strong>.</p>
+            <p><strong>${employee?.name}</strong> has declined consent to record your 1:1 meeting on <strong>${formattedDate}</strong>.</p>
             <p>The meeting will not be recorded.</p>
           </div>
         `,

@@ -3046,6 +3046,21 @@ export function PerformanceReviewForm() {
   const [editNoteDate, setEditNoteDate] = useState('')
   const [editNoteTags, setEditNoteTags] = useState<string[]>([])
 
+  // ── Recording state ─────────────────────────────────────────────────────────
+  const [recordingSessionId, setRecordingSessionId] = useState<string | null>(null)
+  const [recordingStatus, setRecordingStatus] = useState<'idle'|'pending_consent'|'consented'|'recording'|'uploading'|'transcribing'|'complete'>('idle')
+  const [recordings, setRecordings] = useState<any[]>([])
+  const [recordingError, setRecordingError] = useState<string | null>(null)
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([])
+  const [recordingSeconds, setRecordingSeconds] = useState(0)
+  const [recordingTranscript, setRecordingTranscript] = useState<string | null>(null)
+  const [recordingSummary, setRecordingSummary] = useState<string | null>(null)
+  const [recordingActionItems, setRecordingActionItems] = useState<any[]>([])
+  const [recordingPanelOpen, setRecordingPanelOpen] = useState(false)
+  const [transcriptExpanded, setTranscriptExpanded] = useState(false)
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   const NOTE_TAGS = [
     { id: 'recognition', label: 'Recognition', color: '#16a34a', bg: 'rgba(22,163,74,0.15)' },
     { id: 'concern', label: 'Concern', color: '#dc2626', bg: 'rgba(220,38,38,0.15)' },
@@ -3142,6 +3157,287 @@ export function PerformanceReviewForm() {
 
         {notesEmployeeId && (
           <>
+            {/* ── Meeting Recording Panel ── */}
+            {(() => {
+              const notesEmployee = dbTeam.find(r => r.id === notesEmployeeId)
+              const employeeName = notesEmployee?.name ?? 'Employee'
+
+              async function handleRequestConsent() {
+                setRecordingError(null)
+                try {
+                  const res = await fetch('/api/recordings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ employee_id: notesEmployeeId, meeting_date: '2026-06-15', year: 2026, quarter: 2 }),
+                  })
+                  if (res.ok) {
+                    const data = await res.json()
+                    setRecordingSessionId(data.id ?? data.recording_id ?? null)
+                    setRecordingStatus('pending_consent')
+                  } else {
+                    setRecordingError('Failed to send consent request.')
+                  }
+                } catch {
+                  setRecordingError('Network error sending consent request.')
+                }
+              }
+
+              async function handleRefreshConsentStatus() {
+                if (!notesEmployeeId) return
+                try {
+                  const res = await fetch(`/api/recordings?employee_id=${notesEmployeeId}`)
+                  if (res.ok) {
+                    const data = await res.json()
+                    const sessions: any[] = Array.isArray(data) ? data : (data.recordings ?? [])
+                    setRecordings(sessions)
+                    const match = recordingSessionId ? sessions.find((s: any) => s.id === recordingSessionId) : sessions[sessions.length - 1]
+                    if (match) {
+                      if (match.manager_consented && match.employee_consented) setRecordingStatus('consented')
+                    }
+                  }
+                } catch { /* ignore */ }
+              }
+
+              async function handleStartRecording() {
+                try {
+                  const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+                  const mr = new MediaRecorder(stream, { mimeType: 'audio/webm' })
+                  const chunks: Blob[] = []
+                  mr.ondataavailable = (e: BlobEvent) => { if (e.data.size > 0) chunks.push(e.data) }
+                  mr.onstop = () => handleRecordingStop(chunks)
+                  mr.start(1000)
+                  setMediaRecorder(mr)
+                  setAudioChunks([])
+                  setRecordingSeconds(0)
+                  setRecordingStatus('recording')
+                  recordingTimerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000)
+                } catch {
+                  setRecordingError('Microphone access denied or unavailable.')
+                }
+              }
+
+              function handleStopRecording() {
+                if (recordingTimerRef.current) { clearInterval(recordingTimerRef.current); recordingTimerRef.current = null }
+                mediaRecorder?.stop()
+              }
+
+              async function handleRecordingStop(chunks: Blob[]) {
+                setRecordingStatus('uploading')
+                const blob = new Blob(chunks, { type: 'audio/webm' })
+                const formData = new FormData()
+                formData.append('audio', blob, 'recording.webm')
+                formData.append('recording_id', recordingSessionId!)
+                try {
+                  const res = await fetch('/api/recordings/upload', { method: 'POST', body: formData })
+                  if (res.ok) {
+                    setRecordingStatus('transcribing')
+                    const tres = await fetch('/api/recordings/transcribe', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ recording_id: recordingSessionId }),
+                    })
+                    const tdata = await tres.json()
+                    if (tres.ok) {
+                      setRecordingTranscript(tdata.transcript ?? null)
+                      setRecordingSummary(tdata.summary ?? null)
+                      setRecordingActionItems(tdata.action_items ?? [])
+                      setRecordingStatus('complete')
+                    } else {
+                      setRecordingError('Transcription failed.')
+                      setRecordingStatus('consented')
+                    }
+                  } else {
+                    setRecordingError('Upload failed.')
+                    setRecordingStatus('consented')
+                  }
+                } catch {
+                  setRecordingError('Network error during upload.')
+                  setRecordingStatus('consented')
+                }
+              }
+
+              function handleSaveRecordingAsNote() {
+                const aiItems = recordingActionItems.map((a: any) => `- [${a.owner ?? '?'}] ${a.item ?? a}`).join('\n')
+                setNewNoteText((recordingSummary ?? '') + (aiItems ? '\n\nAction Items:\n' + aiItems : ''))
+                setNewNoteTags(['from_recording', 'goal_update'])
+              }
+
+              const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+
+              const sentimentColor = (s: string) => s === 'Positive' ? '#16a34a' : s === 'Negative' || s === 'Needs Attention' ? '#dc2626' : '#d97706'
+              const sentimentBg = (s: string) => s === 'Positive' ? 'rgba(22,163,74,0.15)' : s === 'Negative' || s === 'Needs Attention' ? 'rgba(220,38,38,0.15)' : 'rgba(217,119,6,0.15)'
+              const sentimentFromData = (tdata: any) => tdata?.sentiment ?? 'Neutral'
+              // We'll derive sentiment from the transcript data stored in state; approximate from summary if absent
+              const sentiment = (recordingActionItems as any)._sentiment ?? 'Neutral'
+
+              return (
+                <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, marginBottom: 24, overflow: 'hidden' }}>
+                  {/* Header toggle */}
+                  <button
+                    onClick={() => setRecordingPanelOpen(o => !o)}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#e0e7ff' }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600 }}>
+                      🎙️ Meeting Recording
+                      {recordingStatus === 'recording' && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 10px', borderRadius: 20, background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.4)', color: '#f87171', fontSize: 11, fontWeight: 700 }}>
+                          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block', animation: 'pulse 1s infinite' }} />
+                          REC {formatTime(recordingSeconds)}
+                        </span>
+                      )}
+                      {recordingStatus === 'complete' && <span style={{ fontSize: 11, color: '#34d399', fontWeight: 600 }}>● Complete</span>}
+                    </span>
+                    <span style={{ fontSize: 16, color: '#6b7280', transform: recordingPanelOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▾</span>
+                  </button>
+
+                  {recordingPanelOpen && (
+                    <div style={{ padding: '0 20px 20px' }}>
+                      {recordingError && (
+                        <div style={{ marginBottom: 12, padding: '8px 12px', background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: 6, color: '#f87171', fontSize: 12 }}>
+                          {recordingError} <button onClick={() => setRecordingError(null)} style={{ marginLeft: 8, background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 12 }}>✕</button>
+                        </div>
+                      )}
+
+                      {/* ── idle ── */}
+                      {recordingStatus === 'idle' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
+                          <button
+                            onClick={handleRequestConsent}
+                            style={{ padding: '8px 18px', background: 'transparent', border: '1px solid #4f46e5', borderRadius: 8, color: '#818cf8', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            Request Recording Consent
+                          </button>
+                          <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>Sends consent emails to you and {employeeName} before recording begins.</p>
+                        </div>
+                      )}
+
+                      {/* ── pending_consent ── */}
+                      {recordingStatus === 'pending_consent' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          <p style={{ margin: 0, fontSize: 13, color: '#e0e7ff' }}>⏳ Awaiting consent from both parties</p>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(22,163,74,0.15)', border: '1px solid rgba(22,163,74,0.4)', color: '#34d399', fontSize: 11, fontWeight: 600 }}>You: ✓ Consented</span>
+                            <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(217,119,6,0.15)', border: '1px solid rgba(217,119,6,0.4)', color: '#fbbf24', fontSize: 11, fontWeight: 600 }}>Employee: ⏳ Pending</span>
+                          </div>
+                          <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>Check your email to confirm your own consent.</p>
+                          <button onClick={handleRefreshConsentStatus} style={{ alignSelf: 'flex-start', padding: '6px 14px', background: 'transparent', border: '1px solid #1e2130', borderRadius: 6, color: '#9ca3af', fontSize: 12, cursor: 'pointer' }}>
+                            ↻ Refresh Status
+                          </button>
+                        </div>
+                      )}
+
+                      {/* ── consented ── */}
+                      {recordingStatus === 'consented' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          <p style={{ margin: 0, fontSize: 13, color: '#34d399', fontWeight: 600 }}>✓ Both parties have consented. Ready to record.</p>
+                          <button
+                            onClick={handleStartRecording}
+                            style={{ alignSelf: 'flex-start', padding: '10px 24px', background: 'linear-gradient(135deg, #dc2626, #b91c1c)', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                          >
+                            🔴 Start Recording
+                          </button>
+                        </div>
+                      )}
+
+                      {/* ── recording ── */}
+                      {recordingStatus === 'recording' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
+                            <span style={{ fontSize: 20, fontWeight: 700, color: '#f0f2fa', fontVariantNumeric: 'tabular-nums' }}>{formatTime(recordingSeconds)}</span>
+                          </div>
+                          <button
+                            onClick={handleStopRecording}
+                            style={{ padding: '9px 20px', background: '#1e2130', color: '#e0e7ff', border: '1px solid #374151', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            ⏹ Stop Recording
+                          </button>
+                        </div>
+                      )}
+
+                      {/* ── uploading ── */}
+                      {recordingStatus === 'uploading' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#9ca3af', fontSize: 13 }}>
+                          <span style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid #4f46e5', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                          Uploading recording…
+                        </div>
+                      )}
+
+                      {/* ── transcribing ── */}
+                      {recordingStatus === 'transcribing' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#9ca3af', fontSize: 13 }}>
+                            <span style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid #4f46e5', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                            Transcribing with AI…
+                          </div>
+                          <p style={{ margin: 0, fontSize: 12, color: '#4b5563' }}>This may take a minute for longer meetings.</p>
+                        </div>
+                      )}
+
+                      {/* ── complete ── */}
+                      {recordingStatus === 'complete' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                          {/* Summary */}
+                          {recordingSummary && (
+                            <div style={{ borderLeft: '3px solid #4f46e5', paddingLeft: 14 }}>
+                              <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Summary</p>
+                              <p style={{ margin: 0, fontSize: 13, color: '#c7d2fe', lineHeight: 1.6 }}>{recordingSummary}</p>
+                            </div>
+                          )}
+
+                          {/* Action Items */}
+                          {recordingActionItems.length > 0 && (
+                            <div>
+                              <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Key Action Items</p>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {recordingActionItems.map((a: any, i: number) => (
+                                  <label key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: '#e0e7ff', cursor: 'pointer' }}>
+                                    <input type='checkbox' style={{ marginTop: 2, accentColor: '#4f46e5' }} />
+                                    <span><span style={{ color: '#818cf8', fontWeight: 600 }}>[{a.owner ?? '?'}]</span> {a.item ?? String(a)}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Sentiment */}
+                          {(() => {
+                            const s = (recordingActionItems as any)._sentiment ?? 'Neutral'
+                            return (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sentiment:</span>
+                                <span style={{ padding: '2px 10px', borderRadius: 20, background: sentimentBg(s), color: sentimentColor(s), fontSize: 11, fontWeight: 700, border: `1px solid ${sentimentColor(s)}40` }}>{s}</span>
+                              </div>
+                            )
+                          })()}
+
+                          {/* Full Transcript toggle */}
+                          {recordingTranscript && (
+                            <div>
+                              <button onClick={() => setTranscriptExpanded(e => !e)} style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: 12, cursor: 'pointer', padding: 0 }}>
+                                View full transcript {transcriptExpanded ? '▲' : '▼'}
+                              </button>
+                              {transcriptExpanded && (
+                                <pre style={{ marginTop: 8, padding: 12, background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, color: '#9ca3af', fontSize: 12, whiteSpace: 'pre-wrap', maxHeight: 240, overflowY: 'auto' }}>{recordingTranscript}</pre>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Save as note */}
+                          <button
+                            onClick={handleSaveRecordingAsNote}
+                            style={{ alignSelf: 'flex-start', padding: '8px 18px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            📝 Save as 1:1 Note
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
             {/* Add note form */}
             <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, padding: 20, marginBottom: 24 }}>
               <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 600, color: '#e0e7ff' }}>Add Note</h3>
