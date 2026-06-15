@@ -51,17 +51,16 @@ export async function POST(req: NextRequest) {
         .single()
       const empEmail = (empProfile as { email: string; name: string | null } | null)?.email
 
-      if (empEmail && process.env.RESEND_API_KEY) {
+      if (empEmail) {
         const managerName = (profile as { name: string | null; email: string }).name ||
           (profile as { name: string | null; email: string }).email
         const currentYear = new Date().getFullYear()
         const APP_URL = process.env.NEXT_PUBLIC_APP_URL ||
-          'https://performance-review-app-git-main-automation-7724s-projects.vercel.app'
+          'https://performance-review-app-three.vercel.app'
 
-        const { Resend } = await import('resend')
-        const resend = new Resend(process.env.RESEND_API_KEY)
-        await resend.emails.send({
-          from: 'Performance Review <onboarding@resend.dev>',
+        try {
+        const { sendEmail } = await import('@/lib/email')
+        await sendEmail({
           to: empEmail,
           subject: 'Your Performance Review is ready to sign',
           html: `
@@ -88,6 +87,7 @@ export async function POST(req: NextRequest) {
 </body>
 </html>`,
         })
+        } catch { /* non-critical */ }
       }
     }
 

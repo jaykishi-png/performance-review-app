@@ -255,6 +255,13 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [settingsEmailOnSASubmit, setSettingsEmailOnSASubmit] = useState(false)
   const [settingsEmailOnLowScore, setSettingsEmailOnLowScore] = useState(false)
   const [settingsSaved, setSettingsSaved] = useState(false)
+  // Email SMTP settings
+  const [smtpEmail, setSmtpEmail] = useState('')
+  const [smtpPassword, setSmtpPassword] = useState('')
+  const [smtpDisplayName, setSmtpDisplayName] = useState('Performance Review')
+  const [smtpSaved, setSmtpSaved] = useState(false)
+  const [smtpSaving, setSmtpSaving] = useState(false)
+  const [smtpError, setSmtpError] = useState('')
 
   useEffect(() => {
     try {
@@ -271,6 +278,33 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
       }
     } catch { /* ignore */ }
   }, [])
+
+  useEffect(() => {
+    fetch('/api/settings').then(r => r.json()).then(data => {
+      if (data.smtp_email) setSmtpEmail(data.smtp_email)
+      if (data.smtp_display_name) setSmtpDisplayName(data.smtp_display_name)
+    }).catch(() => {})
+  }, [])
+
+  async function saveSmtpSettings() {
+    setSmtpSaving(true)
+    setSmtpError('')
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ smtp_email: smtpEmail, smtp_password: smtpPassword || undefined, smtp_display_name: smtpDisplayName }),
+      })
+      if (!res.ok) throw new Error('Failed to save')
+      setSmtpSaved(true)
+      setSmtpPassword('')
+      setTimeout(() => setSmtpSaved(false), 2500)
+    } catch {
+      setSmtpError('Failed to save. Please try again.')
+    } finally {
+      setSmtpSaving(false)
+    }
+  }
 
   function saveSettings() {
     try {
@@ -1578,6 +1612,67 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             label="Email admin on low score alert (2 stars or below)"
             description="Sends an alert to admin when an employee self-rates at 2 stars or below in their assessment."
           />
+        </div>
+
+        {/* Section 5 — Email / SMTP */}
+        <div style={sectionCard}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+            <div style={sectionTitle}>Email Configuration</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {smtpSaved && <span style={{ fontSize: 12, color: '#34d399', fontWeight: 600 }}>✓ Saved</span>}
+              {smtpError && <span style={{ fontSize: 12, color: '#f87171' }}>{smtpError}</span>}
+              <button
+                onClick={saveSmtpSettings}
+                disabled={smtpSaving}
+                style={{ padding: '6px 16px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: smtpSaving ? 0.6 : 1 }}
+              >
+                {smtpSaving ? 'Saving…' : 'Save Email Settings'}
+              </button>
+            </div>
+          </div>
+          <div style={sectionDesc}>Connect a Gmail account to send invite and notification emails without domain verification.</div>
+
+          <div style={{ background: '#1a1c2e', border: '1px solid #2a2d4e', borderRadius: 8, padding: '10px 16px', marginBottom: 20, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <span style={{ color: '#818cf8', fontSize: 14, flexShrink: 0 }}>ℹ</span>
+            <span style={{ fontSize: 12, color: '#818cf8', lineHeight: 1.5 }}>
+              Use a Gmail App Password — not your regular password. Generate one at{' '}
+              <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" style={{ color: '#a5b4fc' }}>myaccount.google.com/apppasswords</a>.
+              2-Step Verification must be enabled on the account.
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div>
+              <label style={lbl}>Gmail Address</label>
+              <input
+                value={smtpEmail}
+                onChange={e => setSmtpEmail(e.target.value)}
+                placeholder="e.g. automation@rushmediateam.com"
+                style={inp}
+                type="email"
+              />
+            </div>
+            <div>
+              <label style={lbl}>Display Name</label>
+              <input
+                value={smtpDisplayName}
+                onChange={e => setSmtpDisplayName(e.target.value)}
+                placeholder="Performance Review"
+                style={inp}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label style={lbl}>App Password {smtpEmail && <span style={{ color: '#4b5563', fontWeight: 400 }}>(leave blank to keep existing)</span>}</label>
+            <input
+              value={smtpPassword}
+              onChange={e => setSmtpPassword(e.target.value)}
+              placeholder={smtpEmail ? '••••••••••••••••' : 'Paste 16-character app password'}
+              style={inp}
+              type="password"
+            />
+          </div>
         </div>
       </div>
     )

@@ -142,11 +142,9 @@ export async function GET(req: NextRequest) {
   const now = new Date()
 
   async function sendEmail(to: string, subject: string, html: string) {
-    if (!process.env.RESEND_API_KEY) return
     try {
-      const { Resend } = await import('resend')
-      const resend = new Resend(process.env.RESEND_API_KEY)
-      await resend.emails.send({ from: 'Performance Review <onboarding@resend.dev>', to, subject, html })
+      const { sendEmail: send } = await import('@/lib/email')
+      await send({ to, subject, html })
     } catch { /* non-fatal */ }
   }
 

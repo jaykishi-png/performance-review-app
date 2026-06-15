@@ -69,12 +69,10 @@ export async function POST(req: NextRequest) {
         })
 
       // Send email to admin
-      if (process.env.RESEND_API_KEY) {
-        const { Resend } = await import('resend')
-        const resend = new Resend(process.env.RESEND_API_KEY)
+      try {
+        const { sendEmail } = await import('@/lib/email')
         const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-        await resend.emails.send({
-          from: 'Performance Review <onboarding@resend.dev>',
+        await sendEmail({
           to: 'videoteam@rushmediateam.com',
           subject: `1:1 Meeting Complete — ${employeeName} signed`,
           html: `
@@ -101,8 +99,8 @@ export async function POST(req: NextRequest) {
   </div>
 </body>
 </html>`,
-        }).catch(() => { /* non-critical */ })
-      }
+        })
+      } catch { /* non-critical */ }
     }
 
     return NextResponse.json({ ok: true, signedAt: now })

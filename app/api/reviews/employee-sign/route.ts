@@ -77,11 +77,9 @@ export async function POST(req: NextRequest) {
           reference_id: reviewId,
         })
 
-      if (process.env.RESEND_API_KEY) {
-        const { Resend } = await import('resend')
-        const resend = new Resend(process.env.RESEND_API_KEY)
-        await resend.emails.send({
-          from: 'Performance Review <onboarding@resend.dev>',
+      try {
+        const { sendEmail } = await import('@/lib/email')
+        await sendEmail({
           to: 'videoteam@rushmediateam.com',
           subject: `Performance Review Fully Signed — ${employeeName}`,
           html: `
@@ -104,8 +102,8 @@ export async function POST(req: NextRequest) {
   </div>
 </body>
 </html>`,
-        }).catch(() => { /* non-critical */ })
-      }
+        })
+      } catch { /* non-critical */ }
     }
 
     return NextResponse.json({ ok: true, signedAt: now })

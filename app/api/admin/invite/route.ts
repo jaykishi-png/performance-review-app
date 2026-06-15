@@ -1,6 +1,6 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ||
   'https://performance-review-app-three.vercel.app'
@@ -60,25 +60,21 @@ export async function POST(request: Request) {
       (mgr as { name: string | null; email: string } | null)?.email || ''
   }
 
-  // Send email via Resend
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const resend = new Resend(process.env.RESEND_API_KEY)
-      const roleLabel = role === 'admin' ? 'Administrator' : role === 'manager' ? 'Manager' : 'Employee'
-
-      await resend.emails.send({
-        from: 'Performance Review <onboarding@resend.dev>',
-        to: email,
-        subject: `You've been invited to Performance Review`,
-        html: buildInviteEmail({ email, role: roleLabel, inviterName, managerName, inviteLink }),
-      })
-    } catch (err) {
-      console.error('[invite] email send failed:', err)
-      // Still return success — invite record created, link available as fallback
-    }
+  // Send invite email
+  let emailSent = false
+  try {
+    const roleLabel = role === 'admin' ? 'Administrator' : role === 'manager' ? 'Manager' : 'Employee'
+    await sendEmail({
+      to: email,
+      subject: `You've been invited to Performance Review`,
+      html: buildInviteEmail({ email, role: roleLabel, inviterName, managerName, inviteLink }),
+    })
+    emailSent = true
+  } catch (err) {
+    console.error('[invite] email send failed:', err)
   }
 
-  return NextResponse.json({ inviteLink, emailSent: !!process.env.RESEND_API_KEY })
+  return NextResponse.json({ inviteLink, emailSent })
 }
 
 function buildInviteEmail({ email, role, inviterName, managerName, inviteLink }: {

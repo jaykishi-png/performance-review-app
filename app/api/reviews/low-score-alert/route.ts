@@ -53,14 +53,10 @@ export async function POST(req: NextRequest) {
         reference_id: referenceId,
       })
 
-      // Send email if Resend is configured
-      if (process.env.RESEND_API_KEY) {
-        const APP_URL = process.env.NEXT_PUBLIC_APP_URL ||
-          'https://performance-review-app-git-main-automation-7724s-projects.vercel.app'
-        const { Resend } = await import('resend')
-        const resend = new Resend(process.env.RESEND_API_KEY)
-        await resend.emails.send({
-          from: 'Performance Review <onboarding@resend.dev>',
+      try {
+        const { sendEmail } = await import('@/lib/email')
+        const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://performance-review-app-three.vercel.app'
+        await sendEmail({
           to: admin.email,
           subject: `⚠️ ${title}`,
           html: `
@@ -84,8 +80,8 @@ export async function POST(req: NextRequest) {
   </div>
 </body>
 </html>`,
-        }).catch(() => { /* non-critical */ })
-      }
+        })
+      } catch { /* non-critical */ }
     }
 
     return NextResponse.json({ ok: true, notified: !existing })

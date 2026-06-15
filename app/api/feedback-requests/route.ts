@@ -1,6 +1,6 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+
 
 export const dynamic = 'force-dynamic'
 
@@ -153,13 +153,11 @@ export async function POST(req: NextRequest) {
     reviewerEmail || 'Reviewer'
 
   // Send email to reviewer
-  if (process.env.RESEND_API_KEY && reviewerEmail) {
+  if (reviewerEmail) {
     try {
-      const resend = new Resend(process.env.RESEND_API_KEY)
+      const { sendEmail } = await import('@/lib/email')
       const feedbackLink = `${APP_URL}/feedback/${token}`
-
-      await resend.emails.send({
-        from: 'Performance Review <onboarding@resend.dev>',
+      await sendEmail({
         to: reviewerEmail,
         subject: `${requestorName} has requested your feedback`,
         html: buildFeedbackRequestEmail({ requestorName, reviewerName, year, feedbackLink }),
