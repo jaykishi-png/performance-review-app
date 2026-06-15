@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_PATHS = ['/login', '/api/auth/callback', '/api/auth/signout', '/forbidden', '/api/cron/', '/api/performance-review/', '/api/self-reviews/', '/api/one-on-one-notes/', '/api/quarterly-checkins/']
+const PUBLIC_PATHS = ['/login', '/api/auth/callback', '/api/auth/signout', '/forbidden', '/api/cron/', '/api/performance-review/', '/api/self-reviews/', '/api/one-on-one-notes/', '/api/quarterly-checkins/', '/feedback/', '/api/peer-feedback/token', '/api/feedback-requests/']
 
 export async function middleware(request: NextRequest) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {

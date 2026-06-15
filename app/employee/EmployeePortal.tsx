@@ -6,13 +6,13 @@ import {
   ChevronLeft, ChevronRight, FileText, BookOpen, BookMarked,
   Send, LogOut, CheckCircle2, Star, Plus, X, Loader2,
   ExternalLink, Clock, Bell, Target, User, ChevronDown,
-  BarChart2, History, Pencil, Check, Sparkles,
+  BarChart2, History, Pencil, Check, Sparkles, Users,
 } from 'lucide-react'
 import { SignaturePad, SignatureDisplay, encodeSignature, decodeSignature, type SignatureResult } from '@/components/SignaturePad'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Page = 'self-assessment' | 'reviews' | 'timeline' | 'goals' | 'checkins' | 'guide' | 'glossary'
+type Page = 'self-assessment' | 'reviews' | 'timeline' | 'goals' | 'checkins' | 'feedback' | 'guide' | 'glossary'
 
 type Goal = {
   id: string
@@ -122,6 +122,7 @@ const NAV_ITEMS: { id: Page; label: string; icon: React.FC<{ size: number; color
   { id: 'timeline',        label: 'Review Timeline',      icon: History    },
   { id: 'goals',           label: 'Goals Tracker',        icon: Target     },
   { id: 'checkins',        label: 'Quarterly Check-ins',  icon: Sparkles   },
+  { id: 'feedback',        label: '360 Feedback',         icon: Users      },
   { id: 'guide',           label: 'Employee Guide',       icon: BookOpen   },
   { id: 'glossary',        label: 'Competency Glossary',  icon: BookMarked },
 ]
@@ -379,6 +380,19 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   // All quarters check-ins for timeline display
   const [allCheckins, setAllCheckins] = useState<Array<{ quarter: number; employee_submitted_at: string | null; manager_submitted_at: string | null }>>([])
 
+  // ── 360 Feedback state ────────────────────────────────────────────────────
+  const [feedbackSent, setFeedbackSent] = useState<any[]>([])
+  const [feedbackReceived, setFeedbackReceived] = useState<any[]>([])
+  const [feedbackLoading, setFeedbackLoading] = useState(false)
+  const [peers, setPeers] = useState<{id:string,name:string,email:string}[]>([])
+  const [selectedPeer, setSelectedPeer] = useState('')
+  const [feedbackMessage, setFeedbackMessage] = useState('')
+  const [feedbackAnon, setFeedbackAnon] = useState(false)
+  const [feedbackSending, setFeedbackSending] = useState(false)
+  const [feedbackSendError, setFeedbackSendError] = useState<string|null>(null)
+  const [feedbackSendSuccess, setFeedbackSendSuccess] = useState(false)
+
+
   useEffect(() => {
     if (page !== 'timeline') return
     fetch(`/api/quarterly-checkins?employee_id=${profile.id}&year=${CI_YEAR}`)
@@ -547,6 +561,24 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
       .then(r => r.json())
       .then(data => { if (data.reviews) setManagerReviews(data.reviews) })
       .catch(() => {})
+  }, [page])
+
+  // Fetch 360 feedback data when Feedback page opens
+  useEffect(() => {
+    if (page !== 'feedback') return
+    setFeedbackLoading(true)
+    Promise.all([
+      fetch('/api/feedback-requests?role=requestor').then(r=>r.json()),
+      fetch('/api/feedback-requests?role=reviewer').then(r=>r.json()),
+      fetch('/api/admin/users').then(r=>r.json()),
+    ]).then(([sent, received, allUsers]) => {
+      setFeedbackSent(Array.isArray(sent) ? sent : [])
+      setFeedbackReceived(Array.isArray(received) ? received : [])
+      const myId = profile.id
+      const peerList = (allUsers.users || allUsers || []).filter((u:any) => u.id !== myId && u.is_active && u.role !== 'dev_admin')
+      setPeers(peerList.map((u:any) => ({ id: u.id, name: u.name || u.email, email: u.email })))
+      setFeedbackLoading(false)
+    }).catch(() => setFeedbackLoading(false))
   }, [page])
 
   async function handleEmployeeSign(reviewId: string, result: SignatureResult) {
@@ -1717,6 +1749,180 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     )
   }
 
+  // ── Page: 360 Feedback ────────────────────────────────────────────────────
+  function renderFeedback() {
+    const currentYear = new Date().getFullYear()
+    const alreadyRequestedIds = new Set(feedbackSent.filter((r:any) => r.year === currentYear).map((r:any) => r.reviewer_id))
+
+    async function sendFeedbackRequest() {
+      if (!selectedPeer) return
+      setFeedbackSending(true)
+      setFeedbackSendError(null)
+      setFeedbackSendSuccess(false)
+      try {
+        const res = await fetch('/api/feedback-requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reviewer_id: selectedPeer, year: currentYear, message: feedbackMessage, is_anonymous: feedbackAnon }),
+        })
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}))
+          setFeedbackSendError(d.error || 'Failed to send request.')
+        } else {
+          const refreshed = await fetch('/api/feedback-requests?role=requestor').then(r=>r.json())
+          setFeedbackSent(Array.isArray(refreshed) ? refreshed : [])
+          setSelectedPeer('')
+          setFeedbackMessage('')
+          setFeedbackAnon(false)
+          setFeedbackSendSuccess(true)
+          setTimeout(() => setFeedbackSendSuccess(false), 4000)
+        }
+      } catch {
+        setFeedbackSendError('Network error. Please try again.')
+      } finally {
+        setFeedbackSending(false)
+      }
+    }
+
+    async function cancelFeedbackRequest(id: string) {
+      await fetch(`/api/feedback-requests?id=${id}`, { method: 'DELETE' }).catch(() => {})
+      setFeedbackSent(prev => prev.filter((r:any) => r.id !== id))
+    }
+
+    function statusBadge(status: string) {
+      const styles: Record<string, React.CSSProperties> = {
+        pending:   { background: '#451a03', color: '#fbbf24', border: '1px solid #78350f' },
+        submitted: { background: '#052e16', color: '#34d399', border: '1px solid #065f46' },
+        declined:  { background: '#1c1c1c', color: '#9ca3af', border: '1px solid #374151' },
+      }
+      const s = styles[status] || styles.pending
+      return (
+        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, textTransform: 'capitalize', ...s }}>
+          {status}
+        </span>
+      )
+    }
+
+    const availablePeers = peers.filter(p => !alreadyRequestedIds.has(p.id))
+
+    return (
+      <div style={{ padding: '32px', maxWidth: 720, margin: '0 auto' }}>
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 700, color: '#f0f2fa' }}>360 Feedback</h1>
+          <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Request feedback from colleagues. Responses are collected and shared with your manager.</p>
+        </div>
+
+        {/* Requests Sent */}
+        <div style={{ background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#f0f2fa' }}>Feedback I&apos;ve Requested</h2>
+            {feedbackSent.length > 0 && (
+              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#1e2130', color: '#9ca3af' }}>{feedbackSent.length}</span>
+            )}
+          </div>
+          {feedbackLoading ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#6b7280', fontSize: 13 }}>
+              <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Loading…
+            </div>
+          ) : feedbackSent.length === 0 ? (
+            <p style={{ margin: 0, fontSize: 13, color: '#4b5563' }}>No requests sent yet.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {feedbackSent.map((req: any) => (
+                <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 14px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#c4c9d4' }}>{req.reviewer_name || req.reviewer_email || req.reviewer_id}</span>
+                    <span style={{ fontSize: 11, color: '#4b5563' }}>Sent {req.created_at ? new Date(req.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {statusBadge(req.status || 'pending')}
+                    {(!req.status || req.status === 'pending') && (
+                      <button onClick={() => cancelFeedbackRequest(req.id)} style={{ fontSize: 11, color: '#f87171', background: 'none', border: '1px solid #3b1515', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Request New Feedback */}
+        <div style={{ background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 20 }}>
+          <h2 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#f0f2fa' }}>Request New Feedback</h2>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#9ca3af', display: 'block', marginBottom: 6 }}>Select Colleague</label>
+            <select
+              value={selectedPeer}
+              onChange={e => setSelectedPeer(e.target.value)}
+              style={{ width: '100%', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '9px 12px', color: selectedPeer ? '#f0f2fa' : '#4b5563', fontSize: 13, outline: 'none' }}
+            >
+              <option value="">— Choose a colleague —</option>
+              {availablePeers.map(p => (
+                <option key={p.id} value={p.id}>{p.name} ({p.email})</option>
+              ))}
+            </select>
+            {availablePeers.length === 0 && !feedbackLoading && (
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: '#4b5563' }}>You&apos;ve already sent requests to all available colleagues this year.</p>
+            )}
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#9ca3af', display: 'block', marginBottom: 6 }}>Message <span style={{ fontWeight: 400, color: '#4b5563' }}>(optional)</span></label>
+            <textarea
+              value={feedbackMessage}
+              onChange={e => setFeedbackMessage(e.target.value)}
+              placeholder="Add context for your reviewer (optional)"
+              rows={3}
+              style={{ width: '100%', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '9px 12px', color: '#f0f2fa', fontSize: 13, resize: 'vertical', outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <input type="checkbox" id="feedbackAnon" checked={feedbackAnon} onChange={e => setFeedbackAnon(e.target.checked)} style={{ cursor: 'pointer' }} />
+            <label htmlFor="feedbackAnon" style={{ fontSize: 13, color: '#9ca3af', cursor: 'pointer' }}>Request anonymous response</label>
+          </div>
+          {feedbackSendError && (
+            <div style={{ marginBottom: 12, fontSize: 13, color: '#f87171', background: '#1f0a0a', border: '1px solid #3b1515', borderRadius: 8, padding: '8px 12px' }}>{feedbackSendError}</div>
+          )}
+          {feedbackSendSuccess && (
+            <div style={{ marginBottom: 12, fontSize: 13, color: '#34d399', background: '#052e16', border: '1px solid #065f46', borderRadius: 8, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <CheckCircle2 size={14} /> Request sent!
+            </div>
+          )}
+          <button
+            onClick={sendFeedbackRequest}
+            disabled={!selectedPeer || feedbackSending}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 20px', background: selectedPeer && !feedbackSending ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', color: selectedPeer && !feedbackSending ? '#fff' : '#4b5563', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: selectedPeer && !feedbackSending ? 'pointer' : 'default', transition: 'all 0.2s' }}
+          >
+            {feedbackSending ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Sending…</> : <><Send size={14} /> Send Request</>}
+          </button>
+        </div>
+
+        {/* Feedback Received (pending review tasks) */}
+        {feedbackReceived.length > 0 && (
+          <div style={{ background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px' }}>
+            <h2 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: '#f0f2fa' }}>Feedback I&apos;ve Received</h2>
+            <p style={{ margin: '0 0 16px', fontSize: 12, color: '#4b5563' }}>The full content of feedback written about you is visible to your manager only.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {feedbackReceived.map((req: any) => (
+                <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 14px' }}>
+                  <span style={{ fontSize: 13, color: '#c4c9d4' }}>Feedback requested by <strong>{req.requestor_name || req.requestor_email || 'a colleague'}</strong></span>
+                  {req.status === 'submitted' ? (
+                    <span style={{ fontSize: 12, color: '#34d399', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={13} /> Submitted</span>
+                  ) : req.token ? (
+                    <a href={`/feedback/${req.token}`} style={{ fontSize: 12, color: '#818cf8', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      Submit Feedback <ExternalLink size={11} />
+                    </a>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
   const displayName = profileName || profile.email
 
@@ -1921,6 +2127,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           {page === 'timeline' && renderTimelinePage()}
           {page === 'goals'     && renderGoalsPage()}
           {page === 'checkins'  && renderCheckins()}
+          {page === 'feedback'  && renderFeedback()}
           {page === 'guide'     && renderGuidePage()}
           {page === 'glossary'  && renderGlossaryPage()}
         </div>

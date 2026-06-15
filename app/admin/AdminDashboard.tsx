@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, FileText, RefreshCw, BarChart2,
   ClipboardList, CalendarCheck, Settings, ChevronLeft, ChevronRight,
-  Plus, LogOut, ExternalLink, Bell,
+  Plus, LogOut, ExternalLink, Bell, Star,
 } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ type CheckinRecord = {
   employee_pulse: number | null
 }
 
-type Page = 'dashboard' | 'users' | 'reviews' | 'cycles' | 'analytics' | 'checkins' | 'audit' | 'settings'
+type Page = 'dashboard' | 'users' | 'reviews' | 'cycles' | 'analytics' | 'checkins' | 'feedback' | 'audit' | 'settings'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -96,6 +96,7 @@ const NAV: { id: Page; label: string; icon: React.FC<{ size: number; color?: str
   { id: 'cycles',    label: 'Review Cycles',  icon: RefreshCw       },
   { id: 'analytics', label: 'Analytics',      icon: BarChart2       },
   { id: 'checkins',  label: 'Check-ins',      icon: CalendarCheck   },
+  { id: 'feedback',  label: '360 Feedback',   icon: Star            },
   { id: 'audit',     label: 'Audit Log',      icon: ClipboardList   },
   { id: 'settings',  label: 'Settings',       icon: Settings        },
 ]
@@ -219,6 +220,29 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [checkinsLoading, setCheckinsLoading] = useState(false)
   const [checkinsError, setCheckinsError] = useState<string | null>(null)
   const [checkinsQuarter, setCheckinsQuarter] = useState<1 | 2 | 3 | 4>(2)
+
+  // 360 Feedback state
+  type FeedbackRequestRecord = {
+    id: string; year: number; message: string | null; is_anonymous: boolean; status: string
+    created_at: string
+    requestor: { id: string; name: string | null; email: string } | null
+    reviewer: { id: string; name: string | null; email: string } | null
+  }
+  const [feedbackRequests, setFeedbackRequests] = useState<FeedbackRequestRecord[]>([])
+  const [feedbackLoading, setFeedbackLoading] = useState(false)
+  const [feedbackError, setFeedbackError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (page === 'feedback' && feedbackRequests.length === 0 && !feedbackLoading) {
+      setFeedbackLoading(true)
+      setFeedbackError(null)
+      fetch('/api/feedback-requests?all=true&year=2026')
+        .then(r => r.ok ? r.json() : Promise.reject('Failed to load feedback requests'))
+        .then((data: { requests: FeedbackRequestRecord[] }) => setFeedbackRequests(data.requests ?? []))
+        .catch(() => setFeedbackError('Failed to load 360 feedback data.'))
+        .finally(() => setFeedbackLoading(false))
+    }
+  }, [page, feedbackRequests.length, feedbackLoading])
 
   // Settings state
   const [settingsDriveFolderUrl, setSettingsDriveFolderUrl] = useState('')
@@ -1624,6 +1648,25 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           {statCard('Reviews In Progress', inProgressReviews.length)}
         </div>
 
+        {/* 360 Feedback Overview */}
+        <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Star size={18} color="#fff" />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#f0f2fa', marginBottom: 3 }}>360 Peer Reviews</div>
+              <div style={{ fontSize: 13, color: '#6b7280' }}>Track peer feedback participation across the org.</div>
+            </div>
+          </div>
+          <button
+            onClick={() => setPage('feedback' as Page)}
+            style={{ padding: '8px 20px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
+          >
+            View 360 Feedback →
+          </button>
+        </div>
+
         <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#f0f2fa', marginBottom: 16 }}>Review Status Distribution</div>
           <div style={{ display: 'flex', height: 28, borderRadius: 8, overflow: 'hidden', marginBottom: 14 }}>
@@ -2036,6 +2079,97 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     )
   }
 
+  function renderFeedbackAdmin() {
+    const total = feedbackRequests.length
+    const submitted = feedbackRequests.filter(r => r.status === 'submitted').length
+    const pending = feedbackRequests.filter(r => r.status === 'pending').length
+    const responseRate = total > 0 ? Math.round((submitted / total) * 100) : 0
+
+    const statusBg: Record<string, string> = { submitted: '#0d2b1f', pending: '#1f1a0d', cancelled: '#1a1010' }
+    const statusColor: Record<string, string> = { submitted: '#34d399', pending: '#f59e0b', cancelled: '#f87171' }
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>360 Feedback</h1>
+          <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Org-wide peer feedback request participation for 2026.</p>
+        </div>
+
+        {/* Summary stat cards */}
+        <div style={{ display: 'flex', gap: 16, marginBottom: 28, flexWrap: 'wrap' }}>
+          {[
+            { label: 'Total Requests', value: total },
+            { label: 'Submitted', value: submitted },
+            { label: 'Pending', value: pending },
+            { label: 'Response Rate', value: `${responseRate}%` },
+          ].map(({ label, value }) => (
+            <div key={label} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', flex: 1, minWidth: 140 }}>
+              <div style={{ fontSize: 28, fontWeight: 700, color: '#f0f2fa', marginBottom: 4 }}>{value}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#9ca3af' }}>{label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Table */}
+        <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#f0f2fa', marginBottom: 16 }}>All Feedback Requests</div>
+
+          {feedbackLoading && (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: '#6b7280', fontSize: 13 }}>Loading...</div>
+          )}
+          {feedbackError && (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: '#f87171', fontSize: 13 }}>{feedbackError}</div>
+          )}
+          {!feedbackLoading && !feedbackError && total === 0 && (
+            <div style={{ textAlign: 'center', padding: '48px 0' }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>⭐</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>No feedback requests yet</div>
+              <div style={{ fontSize: 13, color: '#4b5563' }}>Employees can send peer feedback requests from the Check-ins tab.</div>
+            </div>
+          )}
+          {!feedbackLoading && !feedbackError && total > 0 && (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #1e2130' }}>
+                  {['Requestor', 'Reviewer', 'Status', 'Anonymous?', 'Submitted'].map(h => (
+                    <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontWeight: 600, color: '#6b7280', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {feedbackRequests.map(r => (
+                  <tr key={r.id} style={{ borderBottom: '1px solid #1a1c2a' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#0d0f1a')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                    <td style={{ padding: '10px 12px', color: '#d1d5db' }}>
+                      {r.requestor?.name || r.requestor?.email || '—'}
+                    </td>
+                    <td style={{ padding: '10px 12px', color: '#d1d5db' }}>
+                      {r.reviewer?.name || r.reviewer?.email || '—'}
+                    </td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <span style={{ background: statusBg[r.status] || '#1e2130', color: statusColor[r.status] || '#9ca3af', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                        {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 12px', color: '#6b7280' }}>
+                      {r.is_anonymous ? 'Yes' : 'No'}
+                    </td>
+                    <td style={{ padding: '10px 12px', color: '#6b7280' }}>
+                      {r.status === 'submitted'
+                        ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                        : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   function renderPlaceholder(title: string, description: string, icon: string, items: string[]) {
     return (
       <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
@@ -2155,6 +2289,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         {page === 'analytics' && renderAnalytics()}
 
         {page === 'checkins' && renderCheckinsAdmin()}
+
+        {page === 'feedback' && renderFeedbackAdmin()}
 
         {page === 'audit' && renderAuditLog()}
 

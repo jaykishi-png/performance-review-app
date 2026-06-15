@@ -2568,7 +2568,7 @@ export function PerformanceReviewForm() {
   const [form, setForm] = useState<FormData>(defaultForm())
   const [saves, setSaves] = useState<SavedReview[]>([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notifications' | 'cycles' | 'meeting' | 'notes' | 'checkins'>('reviews')
+  const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notifications' | 'cycles' | 'meeting' | 'notes' | 'checkins' | 'peer-feedback'>('reviews')
   const [reviewsExpanded, setReviewsExpanded] = useState(true)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [showDirectReports, setShowDirectReports] = useState(false)
@@ -3253,6 +3253,11 @@ export function PerformanceReviewForm() {
   const [managerGoalProgress, setManagerGoalProgress] = useState('')
   const [checkinSaving, setCheckinSaving] = useState(false)
 
+  // Peer feedback (360°) state
+  const [pf360EmployeeId, setPf360EmployeeId] = useState('')
+  const [pf360Data, setPf360Data] = useState<any[]>([])
+  const [pf360Loading, setPf360Loading] = useState(false)
+
   const fetchCheckin = async (empId: string, quarter: number) => {
     if (!empId) return
     setCheckinsLoading(true)
@@ -3439,6 +3444,135 @@ export function PerformanceReviewForm() {
               </div>
             )}
           </>
+        )}
+      </div>
+    )
+  }
+
+  const renderPeerFeedback = () => {
+    const activeEmployees = dbTeam.filter(r => r.is_active)
+    const selectedEmp = activeEmployees.find(r => r.id === pf360EmployeeId)
+    const avgRating = pf360Data.length > 0
+      ? (pf360Data.reduce((sum, item) => sum + (item.q3_collab_rating || 0), 0) / pf360Data.length).toFixed(1)
+      : null
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
+        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Peer Reviews (360°)</h1>
+        <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Aggregated peer feedback submitted for your direct reports.</p>
+
+        {/* Employee selector */}
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Select Employee</label>
+          <select
+            value={pf360EmployeeId}
+            onChange={async e => {
+              const empId = e.target.value
+              setPf360EmployeeId(empId)
+              setPf360Data([])
+              if (!empId) return
+              setPf360Loading(true)
+              try {
+                const res = await fetch(`/api/peer-feedback?requestor_id=${empId}&year=2026`)
+                if (res.ok) {
+                  const json = await res.json()
+                  setPf360Data(Array.isArray(json) ? json : (json.data ?? []))
+                }
+              } catch { /* offline */ }
+              setPf360Loading(false)
+            }}
+            style={{ padding: '8px 12px', background: '#0d1117', border: '1px solid #1e2130', borderRadius: 8, color: '#e0e7ff', fontSize: 13, minWidth: 240, cursor: 'pointer' }}
+          >
+            <option value=''>— Choose an employee —</option>
+            {activeEmployees.map(r => (
+              <option key={r.id} value={r.id}>{r.name} — {r.position}</option>
+            ))}
+          </select>
+        </div>
+
+        {pf360EmployeeId && (
+          pf360Loading ? (
+            <div style={{ textAlign: 'center', padding: 40, color: '#6b7280', fontSize: 14 }}>Loading peer feedback…</div>
+          ) : pf360Data.length === 0 ? (
+            <div style={{ padding: '32px 24px', background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 32, marginBottom: 10 }}>⭐</div>
+              <p style={{ margin: 0, fontSize: 14, color: '#6b7280' }}>No peer feedback submitted for <strong style={{ color: '#e0e7ff' }}>{selectedEmp?.name || 'this employee'}</strong> yet.</p>
+            </div>
+          ) : (
+            <>
+              {/* Aggregate summary */}
+              <div style={{ marginBottom: 24, padding: '16px 20px', background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 24 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Submissions</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#e0e7ff' }}>{pf360Data.length} review{pf360Data.length !== 1 ? 's' : ''}</div>
+                </div>
+                {avgRating !== null && (
+                  <div style={{ borderLeft: '1px solid #1e2130', paddingLeft: 24 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Avg Collaboration Rating</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#f59e0b' }}>{avgRating} / 5.0 ★</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Individual feedback cards */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {pf360Data.map((item, idx) => {
+                  const reviewerName = item.is_anonymous ? 'Anonymous Reviewer' : (item.reviewer_name || item.reviewer_email || 'Unknown')
+                  return (
+                    <div key={idx} style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, padding: 20 }}>
+                      {/* Card header */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: item.is_anonymous ? '#1e2130' : 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+                          {item.is_anonymous ? '?' : reviewerName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#e0e7ff' }}>{reviewerName}</div>
+                          {item.submitted_at && <div style={{ fontSize: 11, color: '#6b7280' }}>Submitted {new Date(item.submitted_at).toLocaleDateString()}</div>}
+                        </div>
+                        {item.q3_collab_rating > 0 && (
+                          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {[1,2,3,4,5].map(s => (
+                              <span key={s} style={{ fontSize: 16, color: s <= item.q3_collab_rating ? '#f59e0b' : '#374151' }}>★</span>
+                            ))}
+                            <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 4 }}>{item.q3_collab_rating}/5</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Fields */}
+                      {item.q1_strengths && (
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Strengths</div>
+                          <div style={{ fontSize: 13, color: '#d1d5db', lineHeight: 1.6, background: '#13151f', borderRadius: 8, padding: '10px 12px' }}>{item.q1_strengths}</div>
+                        </div>
+                      )}
+
+                      {item.q2_improvements && (
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Areas for Growth</div>
+                          <div style={{ fontSize: 13, color: '#d1d5db', lineHeight: 1.6, background: '#13151f', borderRadius: 8, padding: '10px 12px' }}>{item.q2_improvements}</div>
+                        </div>
+                      )}
+
+                      {item.q3_collab_text && (
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Collaboration Notes</div>
+                          <div style={{ fontSize: 13, color: '#d1d5db', lineHeight: 1.6, background: '#13151f', borderRadius: 8, padding: '10px 12px' }}>{item.q3_collab_text}</div>
+                        </div>
+                      )}
+
+                      {item.additional_comments && (
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Additional Comments</div>
+                          <div style={{ fontSize: 13, color: '#d1d5db', lineHeight: 1.6, background: '#13151f', borderRadius: 8, padding: '10px 12px' }}>{item.additional_comments}</div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )
         )}
       </div>
     )
@@ -3934,6 +4068,20 @@ export function PerformanceReviewForm() {
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                 <span style={{ fontSize: 14 }}>📊</span>
                 {!sidebarCollapsed && 'Check-ins'}
+              </button>
+            )
+          })()}
+
+          {/* Peer Reviews */}
+          {(() => {
+            const active = activePage === 'peer-feedback'
+            return (
+              <button onClick={() => setActivePage('peer-feedback')} title={sidebarCollapsed ? 'Peer Reviews' : undefined}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                <span style={{ fontSize: 14 }}>⭐</span>
+                {!sidebarCollapsed && 'Peer Reviews'}
               </button>
             )
           })()}
@@ -4733,6 +4881,9 @@ export function PerformanceReviewForm() {
 
         {/* ── Check-ins page ── */}
         {activePage === 'checkins' && renderCheckins()}
+
+        {/* ── Peer Reviews (360°) page ── */}
+        {activePage === 'peer-feedback' && renderPeerFeedback()}
 
         {/* ── Performance Reviews (form) ── */}
         {activePage === 'reviews' && (!currentReviewId ? (

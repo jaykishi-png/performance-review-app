@@ -1,0 +1,295 @@
+import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { Resend } from 'resend'
+
+export const dynamic = 'force-dynamic'
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ||
+  'https://performance-review-app-git-main-automation-7724s-projects.vercel.app'
+
+// ---------------------------------------------------------------------------
+// GET — list feedback requests for the current user
+// ?role=requestor  → requests I created (I am the requestor)
+// ?role=reviewer   → requests I was asked to complete (I am the reviewer)
+// ---------------------------------------------------------------------------
+export async function GET(req: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const svc = createServiceClient()
+  const role = req.nextUrl.searchParams.get('role') ?? 'requestor'
+  const all = req.nextUrl.searchParams.get('all') === 'true'
+  const year = req.nextUrl.searchParams.get('year')
+
+  // Admin-only: fetch all requests across the org
+  if (all) {
+    const { data: profile } = await svc
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    const userRole = (profile as { role: string } | null)?.role
+    if (userRole !== 'admin' && userRole !== 'dev_admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    let adminQuery = svc
+      .from('feedback_requests')
+      .select(`
+        id, year, message, is_anonymous, status, token, created_at,
+        requestor:profiles!feedback_requests_requestor_id_fkey(id, name, email),
+        reviewer:profiles!feedback_requests_reviewer_id_fkey(id, name, email)
+      `)
+      .order('created_at', { ascending: false })
+    if (year) adminQuery = adminQuery.eq('year', parseInt(year))
+    const { data: allData, error: allError } = await adminQuery
+    if (allError) return NextResponse.json({ error: allError.message }, { status: 500 })
+    return NextResponse.json({ requests: allData ?? [] })
+  }
+
+  let query = svc
+    .from('feedback_requests')
+    .select(`
+      id, year, message, is_anonymous, status, token, created_at,
+      requestor:profiles!feedback_requests_requestor_id_fkey(id, name, email),
+      reviewer:profiles!feedback_requests_reviewer_id_fkey(id, name, email)
+    `)
+    .order('created_at', { ascending: false })
+
+  if (role === 'reviewer') {
+    query = query.eq('reviewer_id', user.id)
+  } else {
+    query = query.eq('requestor_id', user.id)
+  }
+
+  const { data, error } = await query
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ requests: data ?? [] })
+}
+
+// ---------------------------------------------------------------------------
+// POST — create a feedback request
+// Body: { reviewer_id, year, message?, is_anonymous? }
+// ---------------------------------------------------------------------------
+export async function POST(req: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const svc = createServiceClient()
+  const body = await req.json() as {
+    reviewer_id: string
+    year: number
+    message?: string
+    is_anonymous?: boolean
+  }
+
+  const { reviewer_id, year, message, is_anonymous } = body
+
+  if (!reviewer_id || !year) {
+    return NextResponse.json({ error: 'reviewer_id and year are required' }, { status: 400 })
+  }
+
+  // Cannot request feedback from yourself
+  if (reviewer_id === user.id) {
+    return NextResponse.json({ error: 'You cannot request feedback from yourself' }, { status: 400 })
+  }
+
+  // Check for duplicate
+  const { data: existing } = await svc
+    .from('feedback_requests')
+    .select('id')
+    .eq('requestor_id', user.id)
+    .eq('reviewer_id', reviewer_id)
+    .eq('year', year)
+    .maybeSingle()
+
+  if (existing) {
+    return NextResponse.json(
+      { error: 'A feedback request for this reviewer and year already exists' },
+      { status: 409 }
+    )
+  }
+
+  // Get requestor profile
+  const { data: requestorProfile } = await svc
+    .from('profiles')
+    .select('name, email')
+    .eq('id', user.id)
+    .single()
+
+  // Get reviewer profile
+  const { data: reviewerProfile } = await svc
+    .from('profiles')
+    .select('name, email')
+    .eq('id', reviewer_id)
+    .single()
+
+  const token = crypto.randomUUID()
+
+  const { data: newRequest, error: insertError } = await svc
+    .from('feedback_requests')
+    .insert({
+      requestor_id: user.id,
+      reviewer_id,
+      year,
+      message: message ?? null,
+      is_anonymous: is_anonymous ?? false,
+      status: 'pending',
+      token,
+    })
+    .select()
+    .single()
+
+  if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
+
+  const requestorName = (requestorProfile as { name: string | null; email: string } | null)?.name ||
+    (requestorProfile as { name: string | null; email: string } | null)?.email ||
+    user.email || 'A colleague'
+
+  const reviewerEmail = (reviewerProfile as { name: string | null; email: string } | null)?.email
+  const reviewerName = (reviewerProfile as { name: string | null; email: string } | null)?.name ||
+    reviewerEmail || 'Reviewer'
+
+  // Send email to reviewer
+  if (process.env.RESEND_API_KEY && reviewerEmail) {
+    try {
+      const resend = new Resend(process.env.RESEND_API_KEY)
+      const feedbackLink = `${APP_URL}/feedback/${token}`
+
+      await resend.emails.send({
+        from: 'Performance Review <onboarding@resend.dev>',
+        to: reviewerEmail,
+        subject: `${requestorName} has requested your feedback`,
+        html: buildFeedbackRequestEmail({ requestorName, reviewerName, year, feedbackLink }),
+      })
+    } catch (err) {
+      console.error('[feedback-requests] email send failed:', err)
+    }
+  }
+
+  // Create in-app notification for reviewer
+  await svc.from('notifications').insert({
+    user_id: reviewer_id,
+    type: 'feedback_request',
+    title: 'Feedback requested',
+    body: `${requestorName} has asked for your 360 feedback`,
+    reference_id: newRequest.id,
+  })
+
+  return NextResponse.json({ request: newRequest }, { status: 201 })
+}
+
+// ---------------------------------------------------------------------------
+// DELETE — cancel a pending request
+// ?id=UUID
+// ---------------------------------------------------------------------------
+export async function DELETE(req: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const id = req.nextUrl.searchParams.get('id')
+  if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+
+  const svc = createServiceClient()
+
+  // Verify ownership and status
+  const { data: request } = await svc
+    .from('feedback_requests')
+    .select('id, requestor_id, status')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (!request) return NextResponse.json({ error: 'Request not found' }, { status: 404 })
+
+  if ((request as { requestor_id: string }).requestor_id !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  if ((request as { status: string }).status !== 'pending') {
+    return NextResponse.json({ error: 'Only pending requests can be cancelled' }, { status: 400 })
+  }
+
+  const { error: deleteError } = await svc
+    .from('feedback_requests')
+    .delete()
+    .eq('id', id)
+
+  if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 })
+
+  return NextResponse.json({ ok: true })
+}
+
+// ---------------------------------------------------------------------------
+// Email template
+// ---------------------------------------------------------------------------
+function buildFeedbackRequestEmail({
+  requestorName,
+  reviewerName,
+  year,
+  feedbackLink,
+}: {
+  requestorName: string
+  reviewerName: string
+  year: number
+  feedbackLink: string
+}) {
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0b0d14;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#f0f2fa;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0b0d14;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="540" cellpadding="0" cellspacing="0" style="background:#13151f;border:1px solid #1e2130;border-radius:16px;overflow:hidden;max-width:540px;width:100%;">
+
+        <!-- Header -->
+        <tr><td style="padding:32px 40px 24px;border-bottom:1px solid #1e2130;">
+          <table cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:10px;width:40px;height:40px;text-align:center;vertical-align:middle;font-size:20px;">📋</td>
+              <td style="padding-left:12px;font-size:18px;font-weight:700;color:#f0f2fa;">Performance Review</td>
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="padding:32px 40px;">
+          <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#f0f2fa;letter-spacing:-0.3px;">
+            Feedback requested
+          </h1>
+          <p style="margin:0 0 20px;font-size:15px;color:#9ca3af;line-height:1.6;">
+            Hi <strong style="color:#c4c9d4;">${reviewerName}</strong>,
+          </p>
+          <p style="margin:0 0 20px;font-size:15px;color:#9ca3af;line-height:1.6;">
+            <strong style="color:#c4c9d4;">${requestorName}</strong> has asked for your feedback as part of their <strong style="color:#c4c9d4;">${year}</strong> performance review.
+            This takes about 5 minutes. Your response can be anonymous.
+          </p>
+
+          <!-- CTA Button -->
+          <table cellpadding="0" cellspacing="0" style="margin:28px 0;">
+            <tr><td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:10px;">
+              <a href="${feedbackLink}" style="display:block;padding:14px 32px;font-size:15px;font-weight:600;color:#fff;text-decoration:none;text-align:center;">
+                Give Feedback →
+              </a>
+            </td></tr>
+          </table>
+
+          <p style="margin:0;font-size:11px;color:#374151;line-height:1.6;">
+            If the button doesn&apos;t work, copy and paste this link:<br>
+            <span style="color:#4f46e5;">${feedbackLink}</span>
+          </p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:20px 40px;border-top:1px solid #1e2130;text-align:center;">
+          <p style="margin:0;font-size:11px;color:#374151;">Performance Review · You received this because ${requestorName} listed you as a peer reviewer.</p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+}
