@@ -12,7 +12,7 @@ import { SignaturePad, SignatureDisplay, encodeSignature, decodeSignature, type 
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Page = 'self-assessment' | 'reviews' | 'timeline' | 'goals' | 'guide' | 'glossary'
+type Page = 'self-assessment' | 'reviews' | 'timeline' | 'goals' | 'checkins' | 'guide' | 'glossary'
 
 type Goal = {
   id: string
@@ -121,6 +121,7 @@ const NAV_ITEMS: { id: Page; label: string; icon: React.FC<{ size: number; color
   { id: 'reviews',         label: 'Performance Reviews',  icon: BarChart2  },
   { id: 'timeline',        label: 'Review Timeline',      icon: History    },
   { id: 'goals',           label: 'Goals Tracker',        icon: Target     },
+  { id: 'checkins',        label: 'Quarterly Check-ins',  icon: Sparkles   },
   { id: 'guide',           label: 'Employee Guide',       icon: BookOpen   },
   { id: 'glossary',        label: 'Competency Glossary',  icon: BookMarked },
 ]
@@ -345,6 +346,58 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   const managerReviewComplete = managerReviews.length > 0
   const bothSigned = managerReviews.some(r => r.employee_signed_at)
   const effectivePhase = bothSigned ? 'complete' : managerReviewComplete ? 'meeting' : activeCycle?.phase ?? 'sa_open'
+
+  // ── Quarterly check-ins state ─────────────────────────────────────────────
+  const CI_YEAR = 2026
+  const [ciActiveQ, setCiActiveQ] = useState(1)
+  const [ciLoading, setCiLoading] = useState(false)
+  const [ciSaving, setCiSaving] = useState(false)
+  const [ciSavedFlash, setCiSavedFlash] = useState(false)
+  const [ciPulse, setCiPulse] = useState(0)
+  const [ciMyUpdate, setCiMyUpdate] = useState('')
+  const [ciMyGoalNotes, setCiMyGoalNotes] = useState('')
+  const [ciStatus, setCiStatus] = useState<'draft' | 'submitted'>('draft')
+  const [ciSubmittedAt, setCiSubmittedAt] = useState<string | null>(null)
+  const [ciManagerPulse, setCiManagerPulse] = useState<number | null>(null)
+  const [ciManagerUpdate, setCiManagerUpdate] = useState<string | null>(null)
+  const [ciManagerSubmittedAt, setCiManagerSubmittedAt] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (page !== 'checkins') return
+    let cancelled = false
+    setCiLoading(true)
+    fetch(`/api/quarterly-checkins?employee_id=${profile.id}&year=${CI_YEAR}&quarter=${ciActiveQ}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { myPulse?: number; myUpdate?: string; myGoalNotes?: string; status?: string; submittedAt?: string | null; managerPulse?: number | null; managerUpdate?: string | null; managerSubmittedAt?: string | null } | null) => {
+        if (cancelled) return
+        setCiPulse(data?.myPulse ?? 0)
+        setCiMyUpdate(data?.myUpdate ?? '')
+        setCiMyGoalNotes(data?.myGoalNotes ?? '')
+        setCiStatus((data?.status ?? 'draft') as 'draft' | 'submitted')
+        setCiSubmittedAt(data?.submittedAt ?? null)
+        setCiManagerPulse(data?.managerPulse ?? null)
+        setCiManagerUpdate(data?.managerUpdate ?? null)
+        setCiManagerSubmittedAt(data?.managerSubmittedAt ?? null)
+        setCiLoading(false)
+      })
+      .catch(() => { if (!cancelled) setCiLoading(false) })
+    return () => { cancelled = true }
+  }, [page, ciActiveQ])
+
+  async function saveCiDraft() {
+    setCiSaving(true)
+    await fetch('/api/quarterly-checkins', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employee_id: profile.id, year: CI_YEAR, quarter: ciActiveQ, myPulse: ciPulse, myUpdate: ciMyUpdate, myGoalNotes: ciMyGoalNotes, status: 'draft' }) })
+    setCiSaving(false); setCiSavedFlash(true); setTimeout(() => setCiSavedFlash(false), 2000)
+  }
+
+  async function submitCiCheckin() {
+    setCiSaving(true)
+    const res = await fetch('/api/quarterly-checkins', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employee_id: profile.id, year: CI_YEAR, quarter: ciActiveQ, myPulse: ciPulse, myUpdate: ciMyUpdate, myGoalNotes: ciMyGoalNotes, status: 'submitted' }) })
+    const data = await res.json()
+    setCiSaving(false)
+    setCiStatus('submitted')
+    setCiSubmittedAt(data.submittedAt ?? new Date().toISOString())
+  }
 
   // DB notifications state
   const [cycleNotifs, setCycleNotifs] = useState<{ id: string; type: string; title: string; body: string; created_at: string }[]>([])
@@ -1180,6 +1233,126 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     )
   }
 
+  // ── Page: Quarterly Check-ins ─────────────────────────────────────────────
+  function renderCheckins() {
+    const QUARTERS = [{ label: 'Q1', n: 1 }, { label: 'Q2', n: 2 }, { label: 'Q3', n: 3 }]
+    const isSubmitted = ciStatus === 'submitted'
+    const PULSE_EMOJIS: Record<number, string> = { 1: '😔', 2: '😕', 3: '😐', 4: '🙂', 5: '😄' }
+    const PULSE_LABELS = ['', 'Struggling', 'Below Expectations', 'On Track', 'Going Well', 'Thriving']
+    const managerDotColor = (p: number | null) => p === null ? '#6b7280' : p >= 4 ? '#34d399' : p >= 3 ? '#fbbf24' : '#f87171'
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Quarterly Check-ins</h1>
+          <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Share how each quarter is going — a quick pulse, an update for your manager, and notes on your goals.</p>
+        </div>
+
+        {/* Quarter tabs */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 28 }}>
+          {QUARTERS.map(q => (
+            <button key={q.n} onClick={() => setCiActiveQ(q.n)}
+              style={{ padding: '7px 20px', borderRadius: 8, border: `1px solid ${ciActiveQ === q.n ? '#4f46e5' : '#1e2130'}`, background: ciActiveQ === q.n ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : 'transparent', color: ciActiveQ === q.n ? '#fff' : '#9ca3af', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
+              {q.label} {CI_YEAR}
+            </button>
+          ))}
+        </div>
+
+        {ciLoading ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#6b7280', fontSize: 13 }}>
+            <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Loading…
+          </div>
+        ) : (
+          <>
+            {/* MY CHECK-IN */}
+            <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: 24, marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+                <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#f0f2fa' }}>My Check-in</h2>
+                {isSubmitted && ciSubmittedAt && (
+                  <span style={{ fontSize: 11, color: '#4b5563', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <CheckCircle2 size={12} color="#34d399" /> Submitted {new Date(ciSubmittedAt).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+
+              {/* Pulse selector */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 10, letterSpacing: '0.05em', textTransform: 'uppercase' }}>How is your performance going this quarter?</div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <button key={n} onClick={() => { if (!isSubmitted) setCiPulse(n) }}
+                      style={{ width: 52, height: 52, borderRadius: 12, border: `2px solid ${ciPulse === n ? '#4f46e5' : '#1e2130'}`, background: ciPulse === n ? 'rgba(79,70,229,0.15)' : 'transparent', fontSize: 24, cursor: isSubmitted ? 'default' : 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      title={`${n} — ${PULSE_LABELS[n]}`}>
+                      {PULSE_EMOJIS[n]}
+                    </button>
+                  ))}
+                </div>
+                {ciPulse > 0 && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: '#818cf8' }}>{PULSE_LABELS[ciPulse]}</div>
+                )}
+              </div>
+
+              {/* Written update */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6, letterSpacing: '0.05em', textTransform: 'uppercase' }}>What should your manager know about this quarter?</div>
+                <textarea value={ciMyUpdate} onChange={e => { if (!isSubmitted) setCiMyUpdate(e.target.value) }}
+                  disabled={isSubmitted} placeholder="Share any highlights, blockers, wins, or context your manager should be aware of…"
+                  rows={4} style={{ width: '100%', background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', color: '#f0f2fa', fontSize: 13, resize: 'vertical', boxSizing: 'border-box', outline: 'none', opacity: isSubmitted ? 0.6 : 1 }} />
+              </div>
+
+              {/* Goal notes */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6, letterSpacing: '0.05em', textTransform: 'uppercase' }}>How are your goals tracking?</div>
+                <textarea value={ciMyGoalNotes} onChange={e => { if (!isSubmitted) setCiMyGoalNotes(e.target.value) }}
+                  disabled={isSubmitted} placeholder="Note progress, any changes to priorities, or goals at risk…"
+                  rows={3} style={{ width: '100%', background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', color: '#f0f2fa', fontSize: 13, resize: 'vertical', boxSizing: 'border-box', outline: 'none', opacity: isSubmitted ? 0.6 : 1 }} />
+              </div>
+
+              {!isSubmitted && (
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={saveCiDraft} disabled={ciSaving}
+                    style={{ padding: '9px 20px', background: 'transparent', color: ciSavedFlash ? '#34d399' : '#9ca3af', border: `1px solid ${ciSavedFlash ? '#34d399' : '#2a2d3a'}`, borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {ciSavedFlash ? <><Check size={13} /> Saved</> : ciSaving ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Saving…</> : 'Save Draft'}
+                  </button>
+                  <button onClick={submitCiCheckin} disabled={ciSaving || ciPulse === 0}
+                    style={{ padding: '9px 22px', background: ciPulse === 0 ? '#1e2130' : 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: ciPulse === 0 ? '#4b5563' : '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: ciPulse === 0 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Send size={13} /> Submit Check-in
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* MANAGER VIEW */}
+            <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: 24 }}>
+              <h2 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#f0f2fa' }}>Manager View</h2>
+              {ciManagerSubmittedAt ? (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                    <div style={{ width: 12, height: 12, borderRadius: '50%', background: managerDotColor(ciManagerPulse), flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, color: '#c4c9d4' }}>
+                      {ciManagerPulse !== null ? `Pulse: ${PULSE_LABELS[ciManagerPulse]}` : 'No pulse rating'}
+                    </span>
+                  </div>
+                  {ciManagerUpdate && (
+                    <p style={{ margin: '0 0 8px', fontSize: 13, color: '#9ca3af', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{ciManagerUpdate}</p>
+                  )}
+                  <div style={{ fontSize: 11, color: '#4b5563', marginTop: 8 }}>
+                    Submitted {new Date(ciManagerSubmittedAt).toLocaleDateString()}
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#4b5563', fontSize: 13 }}>
+                  <Clock size={14} />
+                  Your manager hasn&apos;t completed their check-in yet.
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    )
+  }
+
   // ── Page: Employee Guide ──────────────────────────────────────────────────
   function renderGuidePage() {
     return (
@@ -1549,9 +1722,10 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           )}
           {page === 'reviews'  && renderReviewsPage()}
           {page === 'timeline' && renderTimelinePage()}
-          {page === 'goals'    && renderGoalsPage()}
-          {page === 'guide'    && renderGuidePage()}
-          {page === 'glossary' && renderGlossaryPage()}
+          {page === 'goals'     && renderGoalsPage()}
+          {page === 'checkins'  && renderCheckins()}
+          {page === 'guide'     && renderGuidePage()}
+          {page === 'glossary'  && renderGlossaryPage()}
         </div>
 
         {/* Self Assessment bottom nav */}

@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, FileText, RefreshCw, BarChart2,
-  ClipboardList, Settings, ChevronLeft, ChevronRight,
+  ClipboardList, CalendarCheck, Settings, ChevronLeft, ChevronRight,
   Plus, LogOut, ExternalLink, Bell,
 } from 'lucide-react'
 
@@ -64,7 +64,21 @@ type Props = {
   employeeCycles: EmployeeCycleRecord[]
 }
 
-type Page = 'dashboard' | 'users' | 'reviews' | 'cycles' | 'analytics' | 'audit' | 'settings'
+type CheckinRecord = {
+  id: string
+  employee_id: string
+  employee_name: string | null
+  manager_id: string | null
+  manager_name: string | null
+  quarter: number
+  year: number
+  manager_submitted_at: string | null
+  employee_submitted_at: string | null
+  manager_pulse: number | null
+  employee_pulse: number | null
+}
+
+type Page = 'dashboard' | 'users' | 'reviews' | 'cycles' | 'analytics' | 'checkins' | 'audit' | 'settings'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -81,6 +95,7 @@ const NAV: { id: Page; label: string; icon: React.FC<{ size: number; color?: str
   { id: 'reviews',   label: 'Reviews',        icon: FileText        },
   { id: 'cycles',    label: 'Review Cycles',  icon: RefreshCw       },
   { id: 'analytics', label: 'Analytics',      icon: BarChart2       },
+  { id: 'checkins',  label: 'Check-ins',      icon: CalendarCheck   },
   { id: 'audit',     label: 'Audit Log',      icon: ClipboardList   },
   { id: 'settings',  label: 'Settings',       icon: Settings        },
 ]
@@ -199,6 +214,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [auditPage, setAuditPage] = useState(1)
   const AUDIT_PAGE_SIZE = 50
 
+  // Check-ins state
+  const [checkins, setCheckins] = useState<CheckinRecord[]>([])
+  const [checkinsLoading, setCheckinsLoading] = useState(false)
+  const [checkinsError, setCheckinsError] = useState<string | null>(null)
+  const [checkinsQuarter, setCheckinsQuarter] = useState<1 | 2 | 3 | 4>(2)
+
   // Settings state
   const [settingsDriveFolderUrl, setSettingsDriveFolderUrl] = useState('')
   const [settingsSaDriveFolderUrl, setSettingsSaDriveFolderUrl] = useState('')
@@ -264,6 +285,18 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
       fetchAuditLogs()
     }
   }, [page, auditLogs.length, auditLoading, fetchAuditLogs])
+
+  useEffect(() => {
+    if (page === 'checkins' && checkins.length === 0 && !checkinsLoading) {
+      setCheckinsLoading(true)
+      setCheckinsError(null)
+      fetch('/api/quarterly-checkins?all=true&year=2026')
+        .then(r => r.ok ? r.json() : Promise.reject('Failed to load check-ins'))
+        .then((data: { checkins: CheckinRecord[] }) => setCheckins(data.checkins ?? []))
+        .catch(() => setCheckinsError('Failed to load check-in data.'))
+        .finally(() => setCheckinsLoading(false))
+    }
+  }, [page, checkins.length, checkinsLoading])
 
   function openNewCycle() {
     setEditingCycle(null)
@@ -1651,6 +1684,20 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           </table>
         </div>
 
+        {/* Check-ins shortcut */}
+        <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '18px 24px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#f0f2fa', marginBottom: 4 }}>Quarterly Check-ins</div>
+            <div style={{ fontSize: 13, color: '#6b7280' }}>View manager and employee check-in submissions by quarter.</div>
+          </div>
+          <button
+            onClick={() => setPage('checkins' as Page)}
+            style={{ padding: '8px 20px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          >
+            View Check-ins →
+          </button>
+        </div>
+
         <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#f0f2fa' }}>Self-Assessment Tracking</div>
@@ -1680,6 +1727,128 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             </tbody>
           </table>
         </div>
+      </div>
+    )
+  }
+
+  function renderCheckinsAdmin() {
+    const activeEmployees = users.filter(u => u.role === 'employee' && u.is_active)
+    const quarterCheckins = checkins.filter(c => c.quarter === checkinsQuarter && c.year === 2026)
+    const managerSubmitted = quarterCheckins.filter(c => c.manager_submitted_at).length
+    const employeeSubmitted = quarterCheckins.filter(c => c.employee_submitted_at).length
+    const total = activeEmployees.length
+
+    function pulseDot(pulse: number | null) {
+      if (pulse === null) return <span style={{ color: '#4b5563' }}>—</span>
+      const colors = ['', '#f87171', '#fb923c', '#facc15', '#60a5fa', '#34d399']
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: colors[pulse] ?? '#9ca3af', display: 'inline-block' }} />
+          <span style={{ color: '#d1d5db', fontSize: 12 }}>{pulse}/5</span>
+        </span>
+      )
+    }
+
+    function submittedBadge(date: string | null) {
+      if (date) return (
+        <span style={{ color: '#34d399', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+          <span>✓</span>
+          <span>{new Date(date).toLocaleDateString()}</span>
+        </span>
+      )
+      return <span style={{ color: '#4b5563', fontSize: 12 }}>Pending</span>
+    }
+
+    // Build display rows: one per active employee, merging any submitted checkin record
+    const rows = activeEmployees.map(emp => {
+      const record = quarterCheckins.find(c => c.employee_id === emp.id)
+      const manager = users.find(u => u.id === emp.manager_id)
+      return {
+        employeeName: emp.name || emp.email,
+        managerName: manager ? (manager.name || manager.email) : '—',
+        managerSubmittedAt: record?.manager_submitted_at ?? null,
+        employeeSubmittedAt: record?.employee_submitted_at ?? null,
+        managerPulse: record?.manager_pulse ?? null,
+        employeePulse: record?.employee_pulse ?? null,
+      }
+    })
+
+    return (
+      <div style={{ padding: '24px 28px', maxWidth: 1200 }}>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#f0f2fa' }}>Quarterly Check-ins</h1>
+          <p style={{ margin: '6px 0 0', color: '#6b7280', fontSize: 14 }}>Overview of manager and employee check-in submissions by quarter.</p>
+        </div>
+
+        {/* Quarter selector */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          {([1, 2, 3, 4] as const).map(q => (
+            <button
+              key={q}
+              onClick={() => setCheckinsQuarter(q)}
+              style={{
+                padding: '6px 18px', borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none',
+                background: checkinsQuarter === q ? '#6366f1' : '#1e2130',
+                color: checkinsQuarter === q ? '#fff' : '#9ca3af',
+                transition: 'background 0.15s',
+              }}
+            >
+              Q{q}
+            </button>
+          ))}
+        </div>
+
+        {/* Summary row */}
+        <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 10, padding: '14px 20px', marginBottom: 20, display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ color: '#9ca3af', fontSize: 13 }}>
+            <span style={{ color: '#818cf8', fontWeight: 700 }}>{managerSubmitted}</span> manager check-in{managerSubmitted !== 1 ? 's' : ''} submitted
+          </span>
+          <span style={{ color: '#4b5563' }}>·</span>
+          <span style={{ color: '#9ca3af', fontSize: 13 }}>
+            <span style={{ color: '#34d399', fontWeight: 700 }}>{employeeSubmitted}</span> employee check-in{employeeSubmitted !== 1 ? 's' : ''} submitted out of <span style={{ color: '#f0f2fa', fontWeight: 700 }}>{total}</span> employees
+          </span>
+        </div>
+
+        {/* Loading / error states */}
+        {checkinsLoading && (
+          <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Loading check-in data…</div>
+        )}
+        {checkinsError && (
+          <div style={{ padding: '16px', background: '#1a0d0d', border: '1px solid #5c2020', borderRadius: 8, color: '#f87171', fontSize: 13, marginBottom: 16 }}>{checkinsError}</div>
+        )}
+
+        {/* Table */}
+        {!checkinsLoading && (
+          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #1e2130' }}>
+                  {['Employee', 'Manager', 'Manager Submitted', 'Employee Submitted', 'Pulse (Manager)', 'Pulse (Employee)'].map(h => (
+                    <th key={h} style={{ textAlign: 'left', padding: '10px 14px', color: '#6b7280', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#4b5563' }}>
+                      No check-ins submitted for Q{checkinsQuarter} yet.
+                    </td>
+                  </tr>
+                ) : rows.map((row, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #1a1c2a' }}>
+                    <td style={{ padding: '10px 14px', color: '#f0f2fa', fontWeight: 500 }}>{row.employeeName}</td>
+                    <td style={{ padding: '10px 14px', color: '#9ca3af' }}>{row.managerName}</td>
+                    <td style={{ padding: '10px 14px' }}>{submittedBadge(row.managerSubmittedAt)}</td>
+                    <td style={{ padding: '10px 14px' }}>{submittedBadge(row.employeeSubmittedAt)}</td>
+                    <td style={{ padding: '10px 14px' }}>{pulseDot(row.managerPulse)}</td>
+                    <td style={{ padding: '10px 14px' }}>{pulseDot(row.employeePulse)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     )
   }
@@ -1984,6 +2153,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         {page === 'cycles' && renderCycles()}
 
         {page === 'analytics' && renderAnalytics()}
+
+        {page === 'checkins' && renderCheckinsAdmin()}
 
         {page === 'audit' && renderAuditLog()}
 

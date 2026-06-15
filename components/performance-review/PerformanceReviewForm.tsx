@@ -2568,7 +2568,7 @@ export function PerformanceReviewForm() {
   const [form, setForm] = useState<FormData>(defaultForm())
   const [saves, setSaves] = useState<SavedReview[]>([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notifications' | 'cycles' | 'meeting'>('reviews')
+  const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notifications' | 'cycles' | 'meeting' | 'notes' | 'checkins'>('reviews')
   const [reviewsExpanded, setReviewsExpanded] = useState(true)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [showDirectReports, setShowDirectReports] = useState(false)
@@ -3032,6 +3032,418 @@ export function PerformanceReviewForm() {
 
   const ROLE_COLORS: Record<string, string> = { admin: '#818cf8', manager: '#34d399', employee: '#60a5fa' }
 
+  // ── 1:1 Notes page ─────────────────────────────────────────────────────────
+  const [notesEmployeeId, setNotesEmployeeId] = useState<string>('')
+  const [notesList, setNotesList] = useState<Array<{ id: string; date: string; note: string; tags: string[] }>>([])
+  const [notesLoading, setNotesLoading] = useState(false)
+  const [notesError, setNotesError] = useState('')
+  const [newNoteDate, setNewNoteDate] = useState('2026-06-15')
+  const [newNoteText, setNewNoteText] = useState('')
+  const [newNoteTags, setNewNoteTags] = useState<string[]>([])
+  const [notesSaving, setNotesSaving] = useState(false)
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
+  const [editNoteText, setEditNoteText] = useState('')
+  const [editNoteDate, setEditNoteDate] = useState('')
+  const [editNoteTags, setEditNoteTags] = useState<string[]>([])
+
+  const NOTE_TAGS = [
+    { id: 'recognition', label: 'Recognition', color: '#16a34a', bg: 'rgba(22,163,74,0.15)' },
+    { id: 'concern', label: 'Concern', color: '#dc2626', bg: 'rgba(220,38,38,0.15)' },
+    { id: 'goal_update', label: 'Goal Update', color: '#2563eb', bg: 'rgba(37,99,235,0.15)' },
+    { id: 'general', label: 'General', color: '#6b7280', bg: 'rgba(107,114,128,0.15)' },
+  ]
+
+  const fetchNotes = async (empId: string) => {
+    if (!empId) return
+    setNotesLoading(true)
+    setNotesError('')
+    try {
+      const res = await fetch(`/api/one-on-one-notes?employee_id=${empId}`)
+      if (!res.ok) throw new Error('Failed to fetch notes')
+      const data = await res.json()
+      setNotesList(data.notes || [])
+    } catch (e: unknown) {
+      setNotesError(e instanceof Error ? e.message : 'Error loading notes')
+    } finally {
+      setNotesLoading(false)
+    }
+  }
+
+  const handleSaveNote = async () => {
+    if (!notesEmployeeId || !newNoteText.trim()) return
+    setNotesSaving(true)
+    try {
+      const res = await fetch('/api/one-on-one-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employee_id: notesEmployeeId, date: newNoteDate, note: newNoteText.trim(), tags: newNoteTags }),
+      })
+      if (!res.ok) throw new Error('Failed to save note')
+      setNewNoteText('')
+      setNewNoteTags([])
+      await fetchNotes(notesEmployeeId)
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Error saving note')
+    } finally {
+      setNotesSaving(false)
+    }
+  }
+
+  const handleDeleteNote = async (noteId: string) => {
+    if (!confirm('Delete this note?')) return
+    try {
+      await fetch(`/api/one-on-one-notes?id=${noteId}`, { method: 'DELETE' })
+      setNotesList(prev => prev.filter(n => n.id !== noteId))
+    } catch {
+      alert('Error deleting note')
+    }
+  }
+
+  const handleUpdateNote = async (noteId: string) => {
+    try {
+      const res = await fetch('/api/one-on-one-notes', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: noteId, date: editNoteDate, note: editNoteText.trim(), tags: editNoteTags }),
+      })
+      if (!res.ok) throw new Error('Failed to update note')
+      setEditingNoteId(null)
+      await fetchNotes(notesEmployeeId)
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Error updating note')
+    }
+  }
+
+  const toggleNewNoteTag = (tagId: string) => {
+    setNewNoteTags(prev => prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId])
+  }
+
+  const renderNotes = () => {
+    const activeEmployees = dbTeam.filter(r => r.is_active)
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
+        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>1:1 Notes</h1>
+        <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Track notes and observations from your 1:1 conversations.</p>
+
+        {/* Employee selector */}
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Select Employee</label>
+          <select
+            value={notesEmployeeId}
+            onChange={e => { setNotesEmployeeId(e.target.value); fetchNotes(e.target.value) }}
+            style={{ padding: '8px 12px', background: '#0d1117', border: '1px solid #1e2130', borderRadius: 8, color: '#e0e7ff', fontSize: 13, minWidth: 240, cursor: 'pointer' }}
+          >
+            <option value=''>— Choose an employee —</option>
+            {activeEmployees.map(r => (
+              <option key={r.id} value={r.id}>{r.name} — {r.position}</option>
+            ))}
+          </select>
+        </div>
+
+        {notesEmployeeId && (
+          <>
+            {/* Add note form */}
+            <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, padding: 20, marginBottom: 24 }}>
+              <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 600, color: '#e0e7ff' }}>Add Note</h3>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, color: '#6b7280', marginBottom: 4 }}>Date</label>
+                  <input
+                    type='date'
+                    value={newNoteDate}
+                    onChange={e => setNewNoteDate(e.target.value)}
+                    style={{ padding: '6px 10px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 6, color: '#e0e7ff', fontSize: 13 }}
+                  />
+                </div>
+              </div>
+              <textarea
+                value={newNoteText}
+                onChange={e => setNewNoteText(e.target.value)}
+                placeholder='Write your note here...'
+                rows={4}
+                style={{ width: '100%', padding: '10px 12px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, color: '#e0e7ff', fontSize: 13, resize: 'vertical', boxSizing: 'border-box', marginBottom: 12 }}
+              />
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+                {NOTE_TAGS.map(tag => (
+                  <button key={tag.id} onClick={() => toggleNewNoteTag(tag.id)}
+                    style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${newNoteTags.includes(tag.id) ? tag.color : '#1e2130'}`, background: newNoteTags.includes(tag.id) ? tag.bg : 'transparent', color: newNoteTags.includes(tag.id) ? tag.color : '#6b7280', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                    {tag.label}
+                  </button>
+                ))}
+              </div>
+              <button onClick={handleSaveNote} disabled={!newNoteText.trim() || notesSaving}
+                style={{ padding: '8px 20px', background: !newNoteText.trim() || notesSaving ? '#1e2130' : 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: !newNoteText.trim() || notesSaving ? '#4b5563' : 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: !newNoteText.trim() || notesSaving ? 'not-allowed' : 'pointer' }}>
+                {notesSaving ? 'Saving…' : 'Save Note'}
+              </button>
+            </div>
+
+            {/* Notes feed */}
+            {notesLoading ? (
+              <div style={{ textAlign: 'center', padding: 40, color: '#6b7280', fontSize: 14 }}>Loading notes…</div>
+            ) : notesError ? (
+              <div style={{ padding: 16, background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: 8, color: '#f87171', fontSize: 13 }}>{notesError}</div>
+            ) : notesList.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 40, color: '#6b7280', fontSize: 14, background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12 }}>
+                No notes yet for this employee. Add your first note above.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[...notesList].reverse().map(note => (
+                  <div key={note.id} style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 10, padding: 16 }}>
+                    {editingNoteId === note.id ? (
+                      <>
+                        <div style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
+                          <input type='date' value={editNoteDate} onChange={e => setEditNoteDate(e.target.value)}
+                            style={{ padding: '5px 9px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 6, color: '#e0e7ff', fontSize: 12 }} />
+                        </div>
+                        <textarea value={editNoteText} onChange={e => setEditNoteText(e.target.value)} rows={3}
+                          style={{ width: '100%', padding: '8px 10px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 6, color: '#e0e7ff', fontSize: 13, resize: 'vertical', boxSizing: 'border-box', marginBottom: 10 }} />
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                          {NOTE_TAGS.map(tag => (
+                            <button key={tag.id} onClick={() => setEditNoteTags(prev => prev.includes(tag.id) ? prev.filter(t => t !== tag.id) : [...prev, tag.id])}
+                              style={{ padding: '3px 10px', borderRadius: 20, border: `1px solid ${editNoteTags.includes(tag.id) ? tag.color : '#1e2130'}`, background: editNoteTags.includes(tag.id) ? tag.bg : 'transparent', color: editNoteTags.includes(tag.id) ? tag.color : '#6b7280', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                              {tag.label}
+                            </button>
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={() => handleUpdateNote(note.id)} style={{ padding: '6px 16px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Save</button>
+                          <button onClick={() => setEditingNoteId(null)} style={{ padding: '6px 14px', background: 'transparent', color: '#6b7280', border: '1px solid #1e2130', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                          <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>{note.date}</span>
+                          {note.tags?.map(tagId => {
+                            const tag = NOTE_TAGS.find(t => t.id === tagId)
+                            return tag ? <span key={tagId} style={{ padding: '2px 8px', borderRadius: 20, background: tag.bg, color: tag.color, fontSize: 10, fontWeight: 700, border: `1px solid ${tag.color}` }}>{tag.label}</span> : null
+                          })}
+                          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                            <button onClick={() => { setEditingNoteId(note.id); setEditNoteText(note.note); setEditNoteDate(note.date); setEditNoteTags(note.tags || []) }}
+                              style={{ padding: '4px 12px', background: 'transparent', color: '#818cf8', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Edit</button>
+                            <button onClick={() => handleDeleteNote(note.id)}
+                              style={{ padding: '4px 12px', background: 'transparent', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Delete</button>
+                          </div>
+                        </div>
+                        <p style={{ margin: 0, fontSize: 13, color: '#d1d5db', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{note.note}</p>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // ── Check-ins page ──────────────────────────────────────────────────────────
+  const [checkinsEmployeeId, setCheckinsEmployeeId] = useState<string>('')
+  const [checkinsQuarter, setCheckinsQuarter] = useState<number>(2)
+  const [checkinData, setCheckinData] = useState<{
+    manager?: { pulse: number; notes: string; goal_progress: string; submitted_at?: string }
+    employee?: { pulse: number; notes: string; submitted_at?: string }
+  } | null>(null)
+  const [checkinsLoading, setCheckinsLoading] = useState(false)
+  const [checkinsError, setCheckinsError] = useState('')
+  const [managerPulse, setManagerPulse] = useState<number>(0)
+  const [managerNotes, setManagerNotes] = useState('')
+  const [managerGoalProgress, setManagerGoalProgress] = useState('')
+  const [checkinSaving, setCheckinSaving] = useState(false)
+
+  const fetchCheckin = async (empId: string, quarter: number) => {
+    if (!empId) return
+    setCheckinsLoading(true)
+    setCheckinsError('')
+    try {
+      const res = await fetch(`/api/quarterly-checkins?employee_id=${empId}&year=2026&quarter=${quarter}`)
+      if (!res.ok) throw new Error('Failed to fetch check-in data')
+      const data = await res.json()
+      setCheckinData(data)
+      if (data.manager) {
+        setManagerPulse(data.manager.pulse || 0)
+        setManagerNotes(data.manager.notes || '')
+        setManagerGoalProgress(data.manager.goal_progress || '')
+      } else {
+        setManagerPulse(0)
+        setManagerNotes('')
+        setManagerGoalProgress('')
+      }
+    } catch (e: unknown) {
+      setCheckinsError(e instanceof Error ? e.message : 'Error loading check-in')
+    } finally {
+      setCheckinsLoading(false)
+    }
+  }
+
+  const handleSaveCheckin = async (submit: boolean) => {
+    if (!checkinsEmployeeId) return
+    setCheckinSaving(true)
+    try {
+      const res = await fetch('/api/quarterly-checkins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employee_id: checkinsEmployeeId,
+          year: 2026,
+          quarter: checkinsQuarter,
+          role: 'manager',
+          pulse: managerPulse,
+          notes: managerNotes,
+          goal_progress: managerGoalProgress,
+          submitted: submit,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to save check-in')
+      await fetchCheckin(checkinsEmployeeId, checkinsQuarter)
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Error saving check-in')
+    } finally {
+      setCheckinSaving(false)
+    }
+  }
+
+  const renderCheckins = () => {
+    const activeEmployees = dbTeam.filter(r => r.is_active)
+    const QUARTERS = [1, 2, 3]
+    const QUARTER_LABELS: Record<number, string> = { 1: 'Q1 (Jan–Mar)', 2: 'Q2 (Apr–Jun)', 3: 'Q3 (Jul–Sep)' }
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
+        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Quarterly Check-ins</h1>
+        <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Track quarterly pulse check-ins for your direct reports — 2026.</p>
+
+        {/* Employee selector */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Select Employee</label>
+          <select
+            value={checkinsEmployeeId}
+            onChange={e => { setCheckinsEmployeeId(e.target.value); fetchCheckin(e.target.value, checkinsQuarter) }}
+            style={{ padding: '8px 12px', background: '#0d1117', border: '1px solid #1e2130', borderRadius: 8, color: '#e0e7ff', fontSize: 13, minWidth: 240, cursor: 'pointer' }}
+          >
+            <option value=''>— Choose an employee —</option>
+            {activeEmployees.map(r => (
+              <option key={r.id} value={r.id}>{r.name} — {r.position}</option>
+            ))}
+          </select>
+        </div>
+
+        {checkinsEmployeeId && (
+          <>
+            {/* Quarter tabs */}
+            <div style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '1px solid #1e2130', paddingBottom: 0 }}>
+              {QUARTERS.map(q => (
+                <button key={q} onClick={() => { setCheckinsQuarter(q); fetchCheckin(checkinsEmployeeId, q) }}
+                  style={{ padding: '8px 20px', borderRadius: '8px 8px 0 0', border: '1px solid', borderBottom: checkinsQuarter === q ? '1px solid #0d1117' : '1px solid #1e2130', borderColor: checkinsQuarter === q ? '#1e2130' : '#1e2130', background: checkinsQuarter === q ? '#0d1117' : 'transparent', color: checkinsQuarter === q ? '#e0e7ff' : '#6b7280', fontSize: 13, fontWeight: checkinsQuarter === q ? 700 : 400, cursor: 'pointer', position: 'relative', top: 1 }}>
+                  {QUARTER_LABELS[q]}
+                </button>
+              ))}
+            </div>
+
+            {checkinsLoading ? (
+              <div style={{ textAlign: 'center', padding: 40, color: '#6b7280', fontSize: 14 }}>Loading check-in data…</div>
+            ) : checkinsError ? (
+              <div style={{ padding: 16, background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: 8, color: '#f87171', fontSize: 13 }}>{checkinsError}</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                {/* Manager submission */}
+                <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, padding: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#e0e7ff' }}>Manager Check-in</h3>
+                    {checkinData?.manager?.submitted_at && (
+                      <span style={{ fontSize: 11, color: '#34d399', fontWeight: 600, background: 'rgba(52,211,153,0.1)', padding: '3px 8px', borderRadius: 6 }}>
+                        Submitted {new Date(checkinData.manager.submitted_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Pulse rating */}
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>Pulse Rating</label>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <button key={star} onClick={() => setManagerPulse(star)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: star <= managerPulse ? '#f59e0b' : '#374151', padding: 0, lineHeight: 1 }}>
+                          ★
+                        </button>
+                      ))}
+                      {managerPulse > 0 && <span style={{ fontSize: 12, color: '#6b7280', alignSelf: 'center', marginLeft: 4 }}>{managerPulse}/5</span>}
+                    </div>
+                  </div>
+
+                  {/* Overall notes */}
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>Overall Notes for This Quarter</label>
+                    <textarea value={managerNotes} onChange={e => setManagerNotes(e.target.value)} rows={4} placeholder='Share your overall observations for this quarter…'
+                      style={{ width: '100%', padding: '9px 11px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, color: '#e0e7ff', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
+                  </div>
+
+                  {/* Goal progress */}
+                  <div style={{ marginBottom: 18 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>How Are Goals Tracking?</label>
+                    <textarea value={managerGoalProgress} onChange={e => setManagerGoalProgress(e.target.value)} rows={3} placeholder='Summarize progress toward this employee&apos;s goals…'
+                      style={{ width: '100%', padding: '9px 11px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, color: '#e0e7ff', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button onClick={() => handleSaveCheckin(true)} disabled={checkinSaving || managerPulse === 0}
+                      style={{ padding: '8px 18px', background: managerPulse === 0 || checkinSaving ? '#1e2130' : 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: managerPulse === 0 || checkinSaving ? '#4b5563' : 'white', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: managerPulse === 0 || checkinSaving ? 'not-allowed' : 'pointer' }}>
+                      {checkinSaving ? 'Saving…' : checkinData?.manager?.submitted_at ? 'Update Submission' : 'Submit'}
+                    </button>
+                    <button onClick={() => handleSaveCheckin(false)} disabled={checkinSaving}
+                      style={{ padding: '8px 16px', background: 'transparent', color: '#9ca3af', border: '1px solid #1e2130', borderRadius: 8, fontSize: 12, cursor: checkinSaving ? 'not-allowed' : 'pointer' }}>
+                      Save Draft
+                    </button>
+                  </div>
+                </div>
+
+                {/* Employee section (read-only) */}
+                <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, padding: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#e0e7ff' }}>Employee Check-in</h3>
+                    {checkinData?.employee?.submitted_at ? (
+                      <span style={{ fontSize: 11, color: '#34d399', fontWeight: 600, background: 'rgba(52,211,153,0.1)', padding: '3px 8px', borderRadius: 6 }}>
+                        Submitted {new Date(checkinData.employee.submitted_at).toLocaleDateString()}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600, background: 'rgba(245,158,11,0.1)', padding: '3px 8px', borderRadius: 6 }}>Awaiting</span>
+                    )}
+                  </div>
+
+                  {checkinData?.employee ? (
+                    <>
+                      <div style={{ marginBottom: 14 }}>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>Pulse Rating</label>
+                        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <span key={star} style={{ fontSize: 20, color: star <= (checkinData.employee?.pulse || 0) ? '#f59e0b' : '#374151' }}>★</span>
+                          ))}
+                          <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 6 }}>{checkinData.employee.pulse}/5</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>Employee Notes</label>
+                        <p style={{ margin: 0, fontSize: 13, color: '#d1d5db', lineHeight: 1.6, background: '#13151f', padding: '10px 12px', borderRadius: 8, border: '1px solid #1e2130', whiteSpace: 'pre-wrap' }}>
+                          {checkinData.employee.notes || 'No notes provided.'}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 140, color: '#4b5563', fontSize: 13, gap: 8 }}>
+                      <span style={{ fontSize: 28 }}>⏳</span>
+                      <span>Awaiting employee check-in for {QUARTER_LABELS[checkinsQuarter]}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', height: '100vh', background: '#0b0d14', color: 'white', overflow: 'hidden', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
       {/* Overlay panels */}
@@ -3494,6 +3906,34 @@ export function PerformanceReviewForm() {
                 <Users size={15} color={active ? '#818cf8' : '#6b7280'} />
                 {!sidebarCollapsed && '1:1 Meeting'}
                 {signedSaves.length > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: '#34d399', color: '#0d0f1a', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{signedSaves.length}</span>}
+              </button>
+            )
+          })()}
+
+          {/* 1:1 Notes */}
+          {(() => {
+            const active = activePage === 'notes'
+            return (
+              <button onClick={() => setActivePage('notes')} title={sidebarCollapsed ? '1:1 Notes' : undefined}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                <span style={{ fontSize: 14 }}>📝</span>
+                {!sidebarCollapsed && '1:1 Notes'}
+              </button>
+            )
+          })()}
+
+          {/* Check-ins */}
+          {(() => {
+            const active = activePage === 'checkins'
+            return (
+              <button onClick={() => setActivePage('checkins')} title={sidebarCollapsed ? 'Check-ins' : undefined}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                <span style={{ fontSize: 14 }}>📊</span>
+                {!sidebarCollapsed && 'Check-ins'}
               </button>
             )
           })()}
@@ -4287,6 +4727,12 @@ export function PerformanceReviewForm() {
             </div>
           )
         })()}
+
+        {/* ── 1:1 Notes page ── */}
+        {activePage === 'notes' && renderNotes()}
+
+        {/* ── Check-ins page ── */}
+        {activePage === 'checkins' && renderCheckins()}
 
         {/* ── Performance Reviews (form) ── */}
         {activePage === 'reviews' && (!currentReviewId ? (
