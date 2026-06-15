@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     // Get submitted self-review for the first match
     const { data: sr } = await serviceClient
       .from('self_reviews')
-      .select('strengths, growth_areas, goal_reflections, overall_rating, overall_comments, status')
+      .select('strengths, growth_areas, goals_objectives, goal_reflections, overall_rating, overall_comments, status')
       .eq('employee_id', (candidates[0] as { id: string }).id)
       .eq('status', 'submitted')
       .single()
@@ -54,7 +54,8 @@ export async function GET(req: NextRequest) {
 
     const s = sr as {
       strengths: string; growth_areas: string;
-      goal_reflections: { goal: string; reflection: string }[];
+      goals_objectives: { description: string; outcome: string; reasoning?: string }[] | null;
+      goal_reflections: { goal: string; reflection: string }[] | null;
       overall_rating: number | null; overall_comments: string
     }
 
@@ -64,10 +65,16 @@ export async function GET(req: NextRequest) {
       4: 'Exceeds Expectations', 5: 'Outstanding',
     }
 
-    const goalText = (s.goal_reflections ?? [])
-      .filter(g => g.goal?.trim())
-      .map((g, i) => `Goal ${i + 1}: ${g.goal}\n${g.reflection}`)
-      .join('\n\n')
+    // Prefer goals_objectives (current SA template); fall back to legacy goal_reflections
+    const goalsObjItems = (s.goals_objectives ?? []).filter(g => g.description?.trim())
+    const goalText = goalsObjItems.length > 0
+      ? goalsObjItems
+          .map(g => g.description + ': ' + g.outcome + (g.reasoning ? ' — ' + g.reasoning : ''))
+          .join('\n')
+      : (s.goal_reflections ?? [])
+          .filter(g => g.goal?.trim())
+          .map((g, i) => `Goal ${i + 1}: ${g.goal}\n${g.reflection}`)
+          .join('\n\n')
 
     const text = [
       `EMPLOYEE SELF-REVIEW`,
@@ -78,7 +85,7 @@ export async function GET(req: NextRequest) {
       ``,
       `AREAS FOR GROWTH`,
       s.growth_areas,
-      goalText ? `\nGOAL REFLECTIONS\n${goalText}` : '',
+      goalText ? `\nGOALS & OBJECTIVES\n${goalText}` : '',
       ``,
       `OVERALL SELF-RATING: ${s.overall_rating ? `${s.overall_rating}/5 — ${RATINGS[s.overall_rating]}` : 'Not rated'}`,
       s.overall_comments ? `\nADDITIONAL COMMENTS\n${s.overall_comments}` : '',

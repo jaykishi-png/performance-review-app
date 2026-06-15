@@ -206,6 +206,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   const [manualLinkValue, setManualLinkValue] = useState('')
   const [manualLinkError, setManualLinkError] = useState('')
   const [manualLinkSaving, setManualLinkSaving] = useState(false)
+  const [goalsImportMsg, setGoalsImportMsg] = useState<string | null>(null)
 
   async function saveManualDriveLink() {
     const val = manualLinkValue.trim()
@@ -255,10 +256,23 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     employee_signed_at: string | null
     employee_signature: string | null
     updated_at: string
+    form_data?: {
+      goals?: Array<{ text: string; status: string; explanation?: string }>
+      nextGoals?: Array<{ text: string; targetDate?: string }>
+      overallScore?: number
+      overallSummary?: string
+      supervisorName?: string
+      competencyOne?: { competency: string; examples: string[] }
+      competencyTwo?: { competency: string; examples: string[] }
+      competencyThree?: { competency: string; examples: string[] }
+      competencyFour?: { competency: string; examples: string[] }
+      competencyFive?: { competency: string; examples: string[] }
+    }
   }>>([])
   const [signingId, setSigningId] = useState<string | null>(null)
   const [signLoading, setSignLoading] = useState(false)
   const [signError, setSignError] = useState('')
+  const [expandedReviewId, setExpandedReviewId] = useState<string | null>(null)
 
   // AI draft state — competency examples: key = `${compIdx}-${exIdx}`
   type CompAIState = { showPrompt: boolean; context: string; loading: boolean; error: string }
@@ -361,6 +375,19 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   const [ciManagerPulse, setCiManagerPulse] = useState<number | null>(null)
   const [ciManagerUpdate, setCiManagerUpdate] = useState<string | null>(null)
   const [ciManagerSubmittedAt, setCiManagerSubmittedAt] = useState<string | null>(null)
+
+  // All quarters check-ins for timeline display
+  const [allCheckins, setAllCheckins] = useState<Array<{ quarter: number; employee_submitted_at: string | null; manager_submitted_at: string | null }>>([])
+
+  useEffect(() => {
+    if (page !== 'timeline') return
+    fetch(`/api/quarterly-checkins?employee_id=${profile.id}&year=${CI_YEAR}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((json: { data?: Array<{ quarter: number; employee_submitted_at: string | null; manager_submitted_at: string | null }> } | null) => {
+        setAllCheckins(json?.data ?? [])
+      })
+      .catch(() => {})
+  }, [page])
 
   useEffect(() => {
     if (page !== 'checkins') return
@@ -1001,58 +1028,178 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             <div style={{ fontSize: 14, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>No reviews yet</div>
             <p style={{ margin: 0, fontSize: 12, color: '#4b5563', lineHeight: 1.6 }}>When your manager completes and signs your performance review, it will appear here.</p>
           </div>
-        ) : managerReviews.map(r => (
-          <div key={r.id} style={{ ...card, marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 14, color: '#e5e7eb', marginBottom: 4 }}>{new Date(r.manager_signed_at).getFullYear()} Performance Review</div>
-                {r.employee_position && <div style={{ fontSize: 12, color: '#6b7280' }}>{r.employee_position}</div>}
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                {r.drive_url && <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}><ExternalLink size={12} /> Drive</a>}
-              </div>
-            </div>
-            {/* Signatures */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: r.employee_signed_at ? 0 : 12 }}>
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Manager</div>
-                <div style={{ padding: '10px 12px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
-                  <SignatureDisplay stored={r.manager_signature} date={r.manager_signed_at} />
+        ) : managerReviews.map(r => {
+          const isExpanded = expandedReviewId === r.id
+          const fd = r.form_data
+          const score = fd?.overallScore ?? r.overall_score ?? 0
+          const competencies = [fd?.competencyOne, fd?.competencyTwo, fd?.competencyThree, fd?.competencyFour, fd?.competencyFive].filter(Boolean) as Array<{ competency: string; examples: string[] }>
+          return (
+            <div key={r.id} style={{ ...card, marginBottom: 12, padding: 0, overflow: 'hidden' }}>
+              {/* Card header */}
+              <div style={{ padding: '16px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: '#e5e7eb', marginBottom: 4 }}>{new Date(r.manager_signed_at).getFullYear()} Performance Review</div>
+                    {r.employee_position && <div style={{ fontSize: 12, color: '#6b7280' }}>{r.employee_position}</div>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
+                    {r.drive_url && <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}><ExternalLink size={12} /> Drive</a>}
+                    <button
+                      onClick={() => setExpandedReviewId(isExpanded ? null : r.id)}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: '#13151f', color: '#818cf8', border: '1px solid #2a2d3a', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      {isExpanded ? '▲ Hide Details' : '▼ View Details'}
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>You</div>
-                {r.employee_signed_at ? (
-                  <div style={{ padding: '10px 12px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
-                    <SignatureDisplay stored={r.employee_signature} date={r.employee_signed_at} />
+                {/* Signatures */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: r.employee_signed_at ? 0 : 12 }}>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Manager</div>
+                    <div style={{ padding: '10px 12px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                      <SignatureDisplay stored={r.manager_signature} date={r.manager_signed_at} />
+                    </div>
                   </div>
-                ) : (
-                  <div style={{ padding: '6px 10px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8, fontSize: 11, fontWeight: 600, color: '#f59e0b' }}>
-                    Awaiting your signature
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>You</div>
+                    {r.employee_signed_at ? (
+                      <div style={{ padding: '10px 12px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                        <SignatureDisplay stored={r.employee_signature} date={r.employee_signed_at} />
+                      </div>
+                    ) : (
+                      <div style={{ padding: '6px 10px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8, fontSize: 11, fontWeight: 600, color: '#f59e0b' }}>
+                        Awaiting your signature
+                      </div>
+                    )}
                   </div>
+                </div>
+                {!r.employee_signed_at && (
+                  signingId === r.id ? (
+                    <div style={{ background: '#0a0c14', border: '1px solid #2a2d3a', borderRadius: 10, padding: '16px' }}>
+                      <p style={{ margin: '0 0 12px', fontSize: 13, color: '#9ca3af' }}>By signing, you acknowledge that you have reviewed this performance evaluation and discussed it with your manager.</p>
+                      <SignaturePad
+                        onSign={result => handleEmployeeSign(r.id, result)}
+                        loading={signLoading}
+                        error={signError}
+                        buttonLabel="✍️ Sign & Acknowledge"
+                        onCancel={() => { setSigningId(null); setSignError('') }}
+                      />
+                    </div>
+                  ) : (
+                    <button onClick={() => { setSigningId(r.id); setSignError('') }} style={{ padding: '8px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                      ✍️ Sign &amp; Acknowledge
+                    </button>
+                  )
                 )}
               </div>
-            </div>
-            {!r.employee_signed_at && (
-              signingId === r.id ? (
-                <div style={{ background: '#0a0c14', border: '1px solid #2a2d3a', borderRadius: 10, padding: '16px' }}>
-                  <p style={{ margin: '0 0 12px', fontSize: 13, color: '#9ca3af' }}>By signing, you acknowledge that you have reviewed this performance evaluation and discussed it with your manager.</p>
-                  <SignaturePad
-                    onSign={result => handleEmployeeSign(r.id, result)}
-                    loading={signLoading}
-                    error={signError}
-                    buttonLabel="✍️ Sign & Acknowledge"
-                    onCancel={() => { setSigningId(null); setSignError('') }}
-                  />
+
+              {/* Expanded detail panel */}
+              {isExpanded && fd && (
+                <div style={{ background: '#0d1425', borderTop: '1px solid #1e2130', borderLeft: '3px solid #4f46e5', padding: '20px', borderBottomLeftRadius: 10, borderBottomRightRadius: 10 }}>
+
+                  {/* Overall Score */}
+                  {(score > 0 || fd.overallSummary) && (
+                    <div style={{ marginBottom: 20 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Overall Score</div>
+                      {score > 0 && (
+                        <div style={{ fontSize: 22, marginBottom: 6, letterSpacing: 2 }}>
+                          {Array.from({ length: 5 }, (_, i) => (
+                            <span key={i} style={{ color: i < score ? '#fbbf24' : '#374151' }}>{i < score ? '★' : '☆'}</span>
+                          ))}
+                          <span style={{ fontSize: 13, color: '#9ca3af', marginLeft: 8 }}>{score} / 5</span>
+                        </div>
+                      )}
+                      {fd.overallSummary && (
+                        <p style={{ margin: 0, fontSize: 13, color: '#d1d5db', lineHeight: 1.6 }}>{fd.overallSummary}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Goals */}
+                  {fd.goals && fd.goals.length > 0 && (
+                    <div style={{ marginBottom: 20 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Goals &amp; Objectives</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {fd.goals.map((g, i) => {
+                          const statusStyle =
+                            g.status === 'Successful' ? { bg: '#052e16', color: '#34d399', border: '#1a4a35' } :
+                            g.status === 'Unsuccessful' ? { bg: '#1f0a0a', color: '#f87171', border: '#4a1a1a' } :
+                            { bg: '#1f1a0d', color: '#fbbf24', border: '#92400e' }
+                          return (
+                            <div key={i} style={{ padding: '10px 12px', background: '#0a0c14', border: '1px solid #1e2130', borderRadius: 8 }}>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                                <div style={{ fontSize: 13, color: '#e5e7eb', flex: 1 }}>{g.text}</div>
+                                {g.status && (
+                                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', background: statusStyle.bg, color: statusStyle.color, border: `1px solid ${statusStyle.border}`, borderRadius: 4, flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    {g.status}
+                                  </span>
+                                )}
+                              </div>
+                              {g.explanation && (
+                                <div style={{ marginTop: 6, fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>{g.explanation}</div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Competencies */}
+                  {competencies.length > 0 && (
+                    <div style={{ marginBottom: 20 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Competencies</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {competencies.map((c, i) => {
+                          const validExamples = (c.examples || []).filter(e => e && e.trim()).slice(0, 3)
+                          return (
+                            <div key={i} style={{ padding: '12px 14px', background: '#0a0c14', border: '1px solid #1e2130', borderRadius: 8 }}>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: '#c7d2fe', marginBottom: validExamples.length ? 8 : 0 }}>{c.competency}</div>
+                              {validExamples.length > 0 && (
+                                <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                  {validExamples.map((ex, j) => (
+                                    <li key={j} style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.5 }}>{ex}</li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Next Year's Goals */}
+                  {fd.nextGoals && fd.nextGoals.length > 0 && (
+                    <div style={{ marginBottom: 20 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Next Year&apos;s Goals</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {fd.nextGoals.map((ng, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, padding: '10px 12px', background: '#0a0c14', border: '1px solid #1e2130', borderRadius: 8 }}>
+                            <div style={{ fontSize: 13, color: '#e5e7eb', flex: 1 }}>{ng.text}</div>
+                            {ng.targetDate && (
+                              <span style={{ fontSize: 11, color: '#818cf8', flexShrink: 0 }}>Target: {ng.targetDate}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Drive Document */}
+                  {r.drive_url && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Drive Document</div>
+                      <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: 'linear-gradient(135deg,#4f46e5,#6d28d9)', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+                        <ExternalLink size={14} /> Open Google Doc →
+                      </a>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <button onClick={() => { setSigningId(r.id); setSignError('') }} style={{ padding: '8px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                  ✍️ Sign &amp; Acknowledge
-                </button>
-              )
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          )
+        })}
       </div>
     )
   }
@@ -1092,7 +1239,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
           <div>
             <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Goals Tracker</h1>
-            <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Track your progress between review cycles. Goals can pre-populate your next self-assessment.</p>
+            <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Track your progress between review cycles. Click &apos;Import Goals into SA&apos; to pre-fill your Next Year&apos;s Goals.</p>
           </div>
           <button onClick={() => { setShowAddGoal(true); setGoalForm({ title: '', description: '', status: 'not_started', target_date: '', notes: '' }) }}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
@@ -1114,6 +1261,32 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                 <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{s.label}</div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Import Goals into SA callout */}
+        {!isSubmitted && goals.filter(g => g.status !== 'complete').length > 0 && (
+          <div style={{ ...card, border: '1px solid rgba(99,102,241,0.35)', background: 'rgba(79,70,229,0.06)', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#c7d2fe', marginBottom: 3 }}>Pre-fill Next Year&apos;s Goals in your Self-Assessment</div>
+              <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>Import your active goals as a starting point for the Next Year&apos;s Goals section.</div>
+              {goalsImportMsg && <div style={{ marginTop: 6, fontSize: 12, color: '#34d399', fontWeight: 600 }}>{goalsImportMsg}</div>}
+            </div>
+            <button
+              onClick={() => {
+                const active = goals.filter(g => g.status !== 'complete')
+                setReview(r => ({ ...r, next_year_goals: active.map(g => ({ goal: g.title, objective: g.description || '' })) }))
+                setGoalsImportMsg(`Imported ${active.length} goal${active.length !== 1 ? 's' : ''} — redirecting…`)
+                setTimeout(() => {
+                  setGoalsImportMsg(null)
+                  setPage('self-assessment')
+                  setStep(7)
+                }, 1200)
+              }}
+              style={{ flexShrink: 0, padding: '8px 18px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              Import Goals into SA →
+            </button>
           </div>
         )}
 
@@ -1201,10 +1374,34 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
 
   // ── Page: Review Timeline ──────────────────────────────────────────────────
   function renderTimelinePage() {
-    const events: { icon: string; label: string; time: string; color: string }[] = []
-    if (review.submitted_at) events.push({ icon: '✅', label: 'Self-assessment submitted', time: new Date(review.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), color: '#34d399' })
-    if (driveUrl) events.push({ icon: '📤', label: 'Exported to Google Drive', time: 'Recent', color: '#818cf8' })
-    if (review.status === 'draft') events.push({ icon: '💾', label: 'Draft in progress', time: 'Auto-saved', color: '#f59e0b' })
+    const events: { icon: string; label: string; time: string; color: string; sortKey: string }[] = []
+    const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    if (review.submitted_at) events.push({ icon: '✅', label: 'Self-assessment submitted', time: fmtDate(review.submitted_at), color: '#34d399', sortKey: review.submitted_at })
+    if (driveUrl) events.push({ icon: '📤', label: 'Exported to Google Drive', time: 'Recent', color: '#818cf8', sortKey: '9999' })
+    if (review.status === 'draft') events.push({ icon: '💾', label: 'Draft in progress', time: 'Auto-saved', color: '#f59e0b', sortKey: '0000' })
+
+    // Quarterly check-in events
+    for (const qn of [1, 2, 3]) {
+      const ci = allCheckins.find(c => c.quarter === qn)
+      if (ci?.employee_submitted_at) {
+        events.push({ icon: '📋', label: `Q${qn} Check-in Submitted`, time: fmtDate(ci.employee_submitted_at), color: '#34d399', sortKey: ci.employee_submitted_at })
+      } else {
+        events.push({ icon: '🔘', label: `Q${qn} Check-in`, time: 'Pending', color: '#4b5563', sortKey: `pending-q${qn}` })
+      }
+      if (ci?.manager_submitted_at) {
+        events.push({ icon: '👤', label: `Q${qn} Manager Check-in`, time: fmtDate(ci.manager_submitted_at), color: '#818cf8', sortKey: ci.manager_submitted_at })
+      }
+    }
+
+    // Sort: real timestamps first (ISO strings sort lexicographically), pending/special last
+    events.sort((a, b) => {
+      const aReal = /^\d{4}-\d{2}-\d{2}/.test(a.sortKey)
+      const bReal = /^\d{4}-\d{2}-\d{2}/.test(b.sortKey)
+      if (aReal && bReal) return a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0
+      if (aReal) return -1
+      if (bReal) return 1
+      return a.sortKey < b.sortKey ? -1 : 1
+    })
 
     return (
       <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
