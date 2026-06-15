@@ -15,7 +15,7 @@ type UserRecord = {
   is_active: boolean; manager_id: string | null; start_date: string | null; created_at: string; position: string | null; division: string | null; pronouns: string | null
 }
 type InviteRecord = {
-  id: string; email: string; role: string; created_at: string; expires_at: string; accepted_at: string | null
+  id: string; email: string; role: string; created_at: string; expires_at: string; accepted_at: string | null; token: string
 }
 type SelfAssessmentStatus = { employee_id: string; status: string; submitted_at: string | null }
 type ReviewRecord = {
@@ -823,26 +823,36 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead><tr>{['Email', 'Role', 'Invited', 'Expires', ''].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr></thead>
               <tbody>
-                {invites.map(inv => (
+                {invites.map(inv => {
+                  const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://performance-review-app-three.vercel.app'}/login?invite=${inv.token}`
+                  return (
                   <tr key={inv.id}>
                     <td style={{ ...td, color: '#e5e7eb' }}>{inv.email}</td>
                     <td style={td}><span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500, background: `${ROLE_COLORS[inv.role] ?? '#64748b'}18`, color: ROLE_COLORS[inv.role] ?? '#64748b' }}>{ROLE_LABELS[inv.role] ?? inv.role}</span></td>
                     <td style={{ ...td, color: '#6b7280' }}>{new Date(inv.created_at).toLocaleDateString()}</td>
                     <td style={{ ...td, color: '#6b7280' }}>{new Date(inv.expires_at).toLocaleDateString()}</td>
                     <td style={{ ...td, textAlign: 'right' }}>
-                      {resentInviteId === inv.id ? (
-                        <span style={{ fontSize: 12, color: '#34d399', fontWeight: 600 }}>✓ Sent</span>
-                      ) : (
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                         <button
-                          onClick={() => resendInvite(inv)}
-                          disabled={resendingInviteId === inv.id}
-                          style={{ padding: '4px 12px', background: 'transparent', border: '1px solid #2a2d3e', borderRadius: 6, color: resendingInviteId === inv.id ? '#4b5563' : '#a5b4fc', fontSize: 12, cursor: resendingInviteId === inv.id ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
-                          {resendingInviteId === inv.id ? 'Sending…' : '↩ Resend'}
+                          onClick={() => navigator.clipboard.writeText(inviteLink)}
+                          style={{ padding: '4px 12px', background: 'transparent', border: '1px solid #2a2d3e', borderRadius: 6, color: '#34d399', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}>
+                          📋 Copy Link
                         </button>
-                      )}
+                        {resentInviteId === inv.id ? (
+                          <span style={{ fontSize: 12, color: '#34d399', fontWeight: 600 }}>✓ Sent</span>
+                        ) : (
+                          <button
+                            onClick={() => resendInvite(inv)}
+                            disabled={resendingInviteId === inv.id}
+                            style={{ padding: '4px 12px', background: 'transparent', border: '1px solid #2a2d3e', borderRadius: 6, color: resendingInviteId === inv.id ? '#4b5563' : '#a5b4fc', fontSize: 12, cursor: resendingInviteId === inv.id ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
+                            {resendingInviteId === inv.id ? 'Sending…' : '↩ Resend'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           )}

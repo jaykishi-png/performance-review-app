@@ -27,7 +27,7 @@ export default async function AdminPage() {
 
   const { data: invites } = await serviceClient
     .from('invites')
-    .select('id, email, role, created_at, expires_at, accepted_at')
+    .select('id, email, role, created_at, expires_at, accepted_at, token')
     .is('accepted_at', null)
     .gt('expires_at', new Date().toISOString())
     .order('created_at', { ascending: false })
