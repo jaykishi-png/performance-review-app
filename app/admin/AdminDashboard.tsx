@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, FileText, RefreshCw, BarChart2,
@@ -39,6 +39,19 @@ type EmployeeCycleRecord = {
   manager_signed_at: string | null; employee_signed_at: string | null
   admin_confirmed_at: string | null; confirmed_by: string | null
   created_at: string; updated_at: string
+}
+
+type AuditLogRecord = {
+  id: string
+  actor_user_id: string
+  actor_name: string | null
+  actor_email: string | null
+  action: string
+  target_type: string
+  target_id: string
+  target_name: string | null
+  metadata: { changes?: Record<string, unknown>; actor_role?: string } | null
+  created_at: string
 }
 
 type Props = {
@@ -175,11 +188,82 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [cyclesTab, setCyclesTab] = useState<'manual' | 'employee'>('manual')
   const [confirmingCycle, setConfirmingCycle] = useState<string | null>(null)
 
+  // Audit log state
+  const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>([])
+  const [auditLoading, setAuditLoading] = useState(false)
+  const [auditError, setAuditError] = useState<string | null>(null)
+  const [auditSearch, setAuditSearch] = useState('')
+  const [auditActionFilter, setAuditActionFilter] = useState('all')
+  const [auditDateFrom, setAuditDateFrom] = useState('')
+  const [auditDateTo, setAuditDateTo] = useState('')
+  const [auditPage, setAuditPage] = useState(1)
+  const AUDIT_PAGE_SIZE = 50
+
+  // Settings state
+  const [settingsDriveFolderUrl, setSettingsDriveFolderUrl] = useState('')
+  const [settingsSaDriveFolderUrl, setSettingsSaDriveFolderUrl] = useState('')
+  const [settingsOrgName, setSettingsOrgName] = useState('')
+  const [settingsAiDraftsEnabled, setSettingsAiDraftsEnabled] = useState(true)
+  const [settingsSaLocked, setSettingsSaLocked] = useState(false)
+  const [settingsEmailOnSASubmit, setSettingsEmailOnSASubmit] = useState(false)
+  const [settingsEmailOnLowScore, setSettingsEmailOnLowScore] = useState(false)
+  const [settingsSaved, setSettingsSaved] = useState(false)
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('admin_settings')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (parsed.driveFolderUrl !== undefined) setSettingsDriveFolderUrl(parsed.driveFolderUrl)
+        if (parsed.saDriveFolderUrl !== undefined) setSettingsSaDriveFolderUrl(parsed.saDriveFolderUrl)
+        if (parsed.orgName !== undefined) setSettingsOrgName(parsed.orgName)
+        if (parsed.aiDraftsEnabled !== undefined) setSettingsAiDraftsEnabled(parsed.aiDraftsEnabled)
+        if (parsed.saLocked !== undefined) setSettingsSaLocked(parsed.saLocked)
+        if (parsed.emailOnSASubmit !== undefined) setSettingsEmailOnSASubmit(parsed.emailOnSASubmit)
+        if (parsed.emailOnLowScore !== undefined) setSettingsEmailOnLowScore(parsed.emailOnLowScore)
+      }
+    } catch { /* ignore */ }
+  }, [])
+
+  function saveSettings() {
+    try {
+      localStorage.setItem('admin_settings', JSON.stringify({
+        driveFolderUrl: settingsDriveFolderUrl,
+        saDriveFolderUrl: settingsSaDriveFolderUrl,
+        orgName: settingsOrgName,
+        aiDraftsEnabled: settingsAiDraftsEnabled,
+        saLocked: settingsSaLocked,
+        emailOnSASubmit: settingsEmailOnSASubmit,
+        emailOnLowScore: settingsEmailOnLowScore,
+      }))
+      setSettingsSaved(true)
+      setTimeout(() => setSettingsSaved(false), 2500)
+    } catch { /* ignore */ }
+  }
+
   async function confirmEmployeeCycleComplete(id: string) {
     await fetch('/api/admin/employee-cycles', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
     setConfirmingCycle(null)
     router.refresh()
   }
+
+  const fetchAuditLogs = useCallback(async () => {
+    setAuditLoading(true)
+    setAuditError(null)
+    try {
+      const res = await fetch('/api/admin/audit-logs')
+      if (!res.ok) { setAuditError('Failed to load audit logs'); return }
+      const data = await res.json() as { logs: AuditLogRecord[] }
+      setAuditLogs(data.logs ?? [])
+    } catch { setAuditError('Network error') }
+    finally { setAuditLoading(false) }
+  }, [])
+
+  useEffect(() => {
+    if (page === 'audit' && auditLogs.length === 0 && !auditLoading) {
+      fetchAuditLogs()
+    }
+  }, [page, auditLogs.length, auditLoading, fetchAuditLogs])
 
   function openNewCycle() {
     setEditingCycle(null)
@@ -1248,6 +1332,541 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     )
   }
 
+  function renderSettings() {
+    const sectionCard: React.CSSProperties = { background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '24px 28px', marginBottom: 20 }
+    const sectionTitle: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: '#f0f2fa', marginBottom: 4 }
+    const sectionDesc: React.CSSProperties = { fontSize: 12, color: '#6b7280', marginBottom: 20 }
+    const divider: React.CSSProperties = { height: 1, background: '#1e2130', margin: '18px 0' }
+
+    function Toggle({ checked, onChange, label, description }: { checked: boolean; onChange: (v: boolean) => void; label: string; description: string }) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <div style={{ fontSize: 13, color: '#e5e7eb', fontWeight: 500, marginBottom: 2 }}>{label}</div>
+            <div style={{ fontSize: 11, color: '#6b7280' }}>{description}</div>
+          </div>
+          <button
+            onClick={() => onChange(!checked)}
+            style={{
+              width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', flexShrink: 0,
+              background: checked ? 'linear-gradient(135deg,#4f46e5,#7c3aed)' : '#1e2130',
+              position: 'relative', transition: 'background 0.2s',
+            }}
+          >
+            <div style={{
+              width: 18, height: 18, borderRadius: '50%', background: '#fff',
+              position: 'absolute', top: 3, left: checked ? 23 : 3,
+              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+            }} />
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 720, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
+          <div>
+            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Settings</h1>
+            <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Configure integrations, org defaults, and review controls.</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {settingsSaved && (
+              <span style={{ fontSize: 12, color: '#34d399', fontWeight: 600 }}>✓ Saved</span>
+            )}
+            <button
+              onClick={saveSettings}
+              style={{ padding: '8px 20px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Save Settings
+            </button>
+          </div>
+        </div>
+
+        {/* localStorage note */}
+        <div style={{ background: '#1a1c2e', border: '1px solid #2a2d4e', borderRadius: 8, padding: '10px 16px', marginBottom: 20, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <span style={{ color: '#818cf8', fontSize: 14, flexShrink: 0 }}>ℹ</span>
+          <span style={{ fontSize: 12, color: '#818cf8', lineHeight: 1.5 }}>Settings are stored in your browser&apos;s local storage and apply to this admin session. They persist across page refreshes on this device.</span>
+        </div>
+
+        {/* Section 1 — Google Drive Integration */}
+        <div style={sectionCard}>
+          <div style={sectionTitle}>Google Drive Integration</div>
+          <div style={sectionDesc}>Set the destination folders where exported reviews and self-assessments are saved.</div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={lbl}>Performance Reviews Folder URL</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                value={settingsDriveFolderUrl}
+                onChange={e => setSettingsDriveFolderUrl(e.target.value)}
+                placeholder="https://drive.google.com/drive/folders/…"
+                style={inp}
+              />
+              {settingsDriveFolderUrl && (
+                <a href={settingsDriveFolderUrl} target="_blank" rel="noopener noreferrer"
+                  style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '8px 12px', background: '#0d1a13', color: '#34d399', borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35', whiteSpace: 'nowrap' }}>
+                  <ExternalLink size={11} /> Open
+                </a>
+              )}
+            </div>
+            {settingsDriveFolderUrl && <div style={{ fontSize: 11, color: '#4b5563', marginTop: 5 }}>Saved: <span style={{ color: '#6b7280' }}>{settingsDriveFolderUrl}</span></div>}
+          </div>
+
+          <div>
+            <label style={lbl}>Self Assessments Folder URL</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                value={settingsSaDriveFolderUrl}
+                onChange={e => setSettingsSaDriveFolderUrl(e.target.value)}
+                placeholder="https://drive.google.com/drive/folders/…"
+                style={inp}
+              />
+              {settingsSaDriveFolderUrl && (
+                <a href={settingsSaDriveFolderUrl} target="_blank" rel="noopener noreferrer"
+                  style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '8px 12px', background: '#0d1a13', color: '#34d399', borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35', whiteSpace: 'nowrap' }}>
+                  <ExternalLink size={11} /> Open
+                </a>
+              )}
+            </div>
+            {settingsSaDriveFolderUrl && <div style={{ fontSize: 11, color: '#4b5563', marginTop: 5 }}>Saved: <span style={{ color: '#6b7280' }}>{settingsSaDriveFolderUrl}</span></div>}
+          </div>
+        </div>
+
+        {/* Section 2 — Organization */}
+        <div style={sectionCard}>
+          <div style={sectionTitle}>Organization</div>
+          <div style={sectionDesc}>Basic organizational information used across the review system.</div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div>
+              <label style={lbl}>Organization Name</label>
+              <input
+                value={settingsOrgName}
+                onChange={e => setSettingsOrgName(e.target.value)}
+                placeholder="e.g. Inno Supps"
+                style={inp}
+              />
+            </div>
+            <div>
+              <label style={lbl}>Admin Email</label>
+              <input value={currentUser.email} readOnly style={{ ...inp, color: '#6b7280', cursor: 'not-allowed', opacity: 0.7 }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3 — Review Controls */}
+        <div style={sectionCard}>
+          <div style={sectionTitle}>Review Controls</div>
+          <div style={sectionDesc}>Control manager capabilities and org-wide self-assessment availability.</div>
+
+          <Toggle
+            checked={settingsAiDraftsEnabled}
+            onChange={setSettingsAiDraftsEnabled}
+            label="Allow managers to use AI draft tools"
+            description="When enabled, managers can generate AI-assisted draft content during the review process."
+          />
+          <div style={divider} />
+          <Toggle
+            checked={!settingsSaLocked}
+            onChange={v => setSettingsSaLocked(!v)}
+            label="Self-assessment open org-wide"
+            description="When disabled, employees cannot start or edit their self-assessment regardless of cycle dates."
+          />
+        </div>
+
+        {/* Section 4 — Notification Settings */}
+        <div style={sectionCard}>
+          <div style={sectionTitle}>Notification Settings</div>
+          <div style={sectionDesc}>Configure automated email alerts for review activity.</div>
+
+          <Toggle
+            checked={settingsEmailOnSASubmit}
+            onChange={setSettingsEmailOnSASubmit}
+            label="Email managers when employee submits SA"
+            description="Sends an automated email to the assigned manager when their employee submits a self-assessment."
+          />
+          <div style={divider} />
+          <Toggle
+            checked={settingsEmailOnLowScore}
+            onChange={setSettingsEmailOnLowScore}
+            label="Email admin on low score alert (2 stars or below)"
+            description="Sends an alert to admin when an employee self-rates at 2 stars or below in their assessment."
+          />
+        </div>
+      </div>
+    )
+  }
+
+  function renderAnalytics() {
+    const employees = users.filter(u => u.role === 'employee' && u.is_active)
+    const exportedReviews = reviews.filter(r => r.drive_url)
+    const saSubmitted = selfAssessments.filter(s => s.status === 'submitted')
+    const inProgressReviews = reviews.filter(r => reviewStatus(r) === 'in_progress')
+
+    const statusCounts: Record<string, number> = { not_started: 0, in_progress: 0, complete: 0, exported: 0 }
+    for (const r of reviews) statusCounts[reviewStatus(r)]++
+    const totalReviews = reviews.length || 1
+
+    const managerMap: Record<string, { name: string; assigned: number; complete: number; exported: number }> = {}
+    for (const r of reviews) {
+      if (!managerMap[r.user_id]) {
+        const mgr = users.find(u => u.id === r.user_id)
+        managerMap[r.user_id] = { name: mgr?.name || mgr?.email || r.user_id, assigned: 0, complete: 0, exported: 0 }
+      }
+      managerMap[r.user_id].assigned++
+      const st = reviewStatus(r)
+      if (st === 'complete' || st === 'exported') managerMap[r.user_id].complete++
+      if (st === 'exported') managerMap[r.user_id].exported++
+    }
+    const managerRows = Object.values(managerMap).sort((a, b) => b.assigned - a.assigned)
+
+    const saDraft = selfAssessments.filter(s => s.status === 'draft').length
+    const saNotStarted = Math.max(0, employees.length - saSubmitted.length - saDraft)
+
+    const saRows = employees.map(emp => {
+      const sa = selfAssessments.find(s => s.employee_id === emp.id)
+      return { name: emp.name || emp.email, status: sa?.status || 'not_started', submitted_at: sa?.submitted_at || null }
+    }).sort((a, b) => {
+      const order: Record<string, number> = { submitted: 0, draft: 1, not_started: 2 }
+      return (order[a.status] ?? 2) - (order[b.status] ?? 2)
+    })
+
+    function downloadCSV() {
+      const headers = ['Employee', 'Position', 'Status', 'Manager', 'Exported', 'Manager Signed', 'Employee Signed']
+      const csvRows = reviews.map(r => {
+        const mgr = users.find(u => u.id === r.user_id)
+        return [
+          r.employee_name,
+          r.employee_position || '',
+          reviewStatus(r),
+          mgr?.name || mgr?.email || '',
+          r.drive_url ? 'Yes' : 'No',
+          r.manager_signed_at || '',
+          r.employee_signed_at || '',
+        ]
+      })
+      const csv = [headers, ...csvRows].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
+      const blob = new Blob([csv], { type: 'text/csv' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = 'reviews_export.csv'; a.click()
+      URL.revokeObjectURL(url)
+    }
+
+    const statCard = (label: string, value: number | string, sub?: string) => (
+      <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', flex: 1, minWidth: 160 }}>
+        <div style={{ fontSize: 28, fontWeight: 700, color: '#f0f2fa', marginBottom: 4 }}>{value}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#9ca3af' }}>{label}</div>
+        {sub && <div style={{ fontSize: 11, color: '#4b5563', marginTop: 4 }}>{sub}</div>}
+      </div>
+    )
+
+    const statusLabel: Record<string, string> = { not_started: 'Not Started', in_progress: 'In Progress', complete: 'Complete', exported: 'Exported' }
+    const statusBgColor: Record<string, string> = { not_started: '#374151', in_progress: '#1e3a5f', complete: '#1a3a2a', exported: '#312e81' }
+    const statusBarColor: Record<string, string> = { not_started: '#374151', in_progress: '#1e40af', complete: '#166534', exported: '#4f46e5' }
+
+    const statusPill = (st: string) => (
+      <span style={{ background: statusBgColor[st] || '#1e2130', color: '#d1d5db', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 500 }}>
+        {statusLabel[st] || st}
+      </span>
+    )
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div>
+            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Analytics</h1>
+            <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Organization-wide performance data and reporting.</p>
+          </div>
+          <button onClick={downloadCSV} style={{ padding: '9px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            ⬇ Export CSV
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', gap: 16, marginBottom: 28, flexWrap: 'wrap' }}>
+          {statCard('Total Employees', employees.length, 'Active, role=employee')}
+          {statCard('Reviews Exported', exportedReviews.length, `of ${reviews.length} total`)}
+          {statCard('Self-Assessments Submitted', saSubmitted.length, `of ${employees.length} employees`)}
+          {statCard('Reviews In Progress', inProgressReviews.length)}
+        </div>
+
+        <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#f0f2fa', marginBottom: 16 }}>Review Status Distribution</div>
+          <div style={{ display: 'flex', height: 28, borderRadius: 8, overflow: 'hidden', marginBottom: 14 }}>
+            {(['not_started', 'in_progress', 'complete', 'exported'] as const).map(st => {
+              const pct = (statusCounts[st] / totalReviews) * 100
+              if (pct === 0) return null
+              return (
+                <div key={st} style={{ width: `${pct}%`, background: statusBarColor[st], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#fff', fontWeight: 600 }}>
+                  {pct >= 10 ? `${Math.round(pct)}%` : ''}
+                </div>
+              )
+            })}
+          </div>
+          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+            {(['not_started', 'in_progress', 'complete', 'exported'] as const).map(st => (
+              <div key={st} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#9ca3af' }}>
+                <div style={{ width: 12, height: 12, borderRadius: 3, background: statusBarColor[st] }} />
+                {statusLabel[st]}: <strong style={{ color: '#f0f2fa', marginLeft: 2 }}>{statusCounts[st]}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#f0f2fa', marginBottom: 16 }}>Completion Rate by Manager</div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #1e2130' }}>
+                {['Manager', 'Assigned', 'Completed', 'Exported', 'Completion %'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '6px 10px', color: '#6b7280', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {managerRows.map((row, i) => {
+                const pct = row.assigned > 0 ? Math.round((row.complete / row.assigned) * 100) : 0
+                return (
+                  <tr key={i} style={{ borderBottom: '1px solid #1a1c2a' }}>
+                    <td style={{ padding: '8px 10px', color: '#f0f2fa' }}>{row.name}</td>
+                    <td style={{ padding: '8px 10px', color: '#9ca3af' }}>{row.assigned}</td>
+                    <td style={{ padding: '8px 10px', color: '#9ca3af' }}>{row.complete}</td>
+                    <td style={{ padding: '8px 10px', color: '#9ca3af' }}>{row.exported}</td>
+                    <td style={{ padding: '8px 10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 60, height: 6, background: '#1e2130', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{ width: `${pct}%`, height: '100%', background: pct === 100 ? '#22c55e' : pct > 50 ? '#3b82f6' : '#f59e0b', borderRadius: 3 }} />
+                        </div>
+                        <span style={{ color: pct === 100 ? '#22c55e' : '#9ca3af', fontWeight: 600 }}>{pct}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+              {managerRows.length === 0 && (
+                <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: '#4b5563' }}>No review data</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#f0f2fa' }}>Self-Assessment Tracking</div>
+            <span style={{ background: '#0d2b1f', color: '#34d399', padding: '2px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600 }}>Submitted: {saSubmitted.length}</span>
+            <span style={{ background: '#1e1f3a', color: '#818cf8', padding: '2px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600 }}>Draft: {saDraft}</span>
+            <span style={{ background: '#1a1c2a', color: '#6b7280', padding: '2px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600 }}>Not Started: {saNotStarted}</span>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #1e2130' }}>
+                {['Employee', 'Status', 'Submitted At'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '6px 10px', color: '#6b7280', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {saRows.map((row, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid #1a1c2a' }}>
+                  <td style={{ padding: '8px 10px', color: '#f0f2fa' }}>{row.name}</td>
+                  <td style={{ padding: '8px 10px' }}>{statusPill(row.status)}</td>
+                  <td style={{ padding: '8px 10px', color: '#6b7280', fontSize: 12 }}>{row.submitted_at ? new Date(row.submitted_at).toLocaleDateString() : '—'}</td>
+                </tr>
+              ))}
+              {saRows.length === 0 && (
+                <tr><td colSpan={3} style={{ padding: '20px', textAlign: 'center', color: '#4b5563' }}>No employee data</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+
+  const ACTION_META: Record<string, { label: string; color: string; bg: string; border: string; icon: string }> = {
+    user_update:     { label: 'User Update',    color: '#60a5fa', bg: '#0d1625', border: '#1e3a5f',                 icon: '✏️' },
+    role_change:     { label: 'Role Change',     color: '#818cf8', bg: '#13151f', border: 'rgba(129,140,248,0.3)', icon: '🔑' },
+    user_invite:     { label: 'Invite Sent',     color: '#34d399', bg: '#0d1a13', border: '#1a4a35',               icon: '✉️' },
+    user_deactivate: { label: 'Deactivated',     color: '#f87171', bg: '#1a0d0d', border: '#5c2020',               icon: '🚫' },
+    user_reactivate: { label: 'Reactivated',     color: '#34d399', bg: '#0d1a13', border: '#1a4a35',               icon: '✅' },
+    review_delete:   { label: 'Review Deleted',  color: '#f87171', bg: '#1a0d0d', border: '#5c2020',               icon: '🗑️' },
+    cycle_create:    { label: 'Cycle Created',   color: '#f59e0b', bg: '#1f1a0d', border: '#92400e',               icon: '🔄' },
+    cycle_update:    { label: 'Cycle Updated',   color: '#f59e0b', bg: '#1f1a0d', border: '#92400e',               icon: '🔄' },
+    cycle_delete:    { label: 'Cycle Deleted',   color: '#f87171', bg: '#1a0d0d', border: '#5c2020',               icon: '🗑️' },
+    cycle_publish:   { label: 'Cycle Published', color: '#34d399', bg: '#0d1a13', border: '#1a4a35',               icon: '▶️' },
+    cycle_close:     { label: 'Cycle Closed',    color: '#6b7280', bg: '#13151f', border: '#2a2d3a',               icon: '■'  },
+  }
+
+  function getActionMeta(action: string) {
+    return ACTION_META[action] ?? { label: action, color: '#9ca3af', bg: '#13151f', border: '#2a2d3a', icon: '•' }
+  }
+
+  function renderAuditLog() {
+    const actionTypes = ['all', ...Array.from(new Set(auditLogs.map(l => l.action))).sort()]
+
+    const filtered = auditLogs.filter(log => {
+      if (auditActionFilter !== 'all' && log.action !== auditActionFilter) return false
+      if (auditDateFrom && new Date(log.created_at) < new Date(auditDateFrom + 'T00:00:00')) return false
+      if (auditDateTo   && new Date(log.created_at) > new Date(auditDateTo   + 'T23:59:59')) return false
+      if (auditSearch) {
+        const q          = auditSearch.toLowerCase()
+        const actorEmail = (log.actor_email  ?? log.actor_user_id ?? '').toLowerCase()
+        const actorName  = (log.actor_name   ?? '').toLowerCase()
+        const targetStr  = (log.target_name  ?? log.target_id ?? '').toLowerCase()
+        const actionStr  = log.action.toLowerCase()
+        if (!actorEmail.includes(q) && !actorName.includes(q) && !targetStr.includes(q) && !actionStr.includes(q)) return false
+      }
+      return true
+    })
+
+    const paginated = filtered.slice(0, auditPage * AUDIT_PAGE_SIZE)
+    const hasMore   = filtered.length > paginated.length
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div>
+            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Audit Log</h1>
+            <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Full activity trail for compliance and security. Showing last 200 records.</p>
+          </div>
+          <button onClick={() => { setAuditLogs([]); fetchAuditLogs() }} disabled={auditLoading}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: 'transparent', color: auditLoading ? '#4b5563' : '#9ca3af', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 12, cursor: auditLoading ? 'default' : 'pointer' }}>
+            {auditLoading ? '⟳ Loading…' : '↻ Refresh'}
+          </button>
+        </div>
+
+        {/* Filter bar */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input value={auditSearch} onChange={e => { setAuditSearch(e.target.value); setAuditPage(1) }}
+            placeholder="Search actor, target, action…" style={{ ...inp, maxWidth: 260 }} />
+          <select value={auditActionFilter} onChange={e => { setAuditActionFilter(e.target.value); setAuditPage(1) }}
+            style={{ ...inp, maxWidth: 180, appearance: 'none' as const }}>
+            {actionTypes.map(a => (
+              <option key={a} value={a}>{a === 'all' ? 'All actions' : getActionMeta(a).label}</option>
+            ))}
+          </select>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 11, color: '#4b5563' }}>From</span>
+            <input type="date" value={auditDateFrom} onChange={e => { setAuditDateFrom(e.target.value); setAuditPage(1) }}
+              style={{ ...inp, width: 140 }} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 11, color: '#4b5563' }}>To</span>
+            <input type="date" value={auditDateTo} onChange={e => { setAuditDateTo(e.target.value); setAuditPage(1) }}
+              style={{ ...inp, width: 140 }} />
+          </div>
+          {(auditSearch || auditActionFilter !== 'all' || auditDateFrom || auditDateTo) && (
+            <button onClick={() => { setAuditSearch(''); setAuditActionFilter('all'); setAuditDateFrom(''); setAuditDateTo(''); setAuditPage(1) }}
+              style={{ padding: '8px 12px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 12, cursor: 'pointer' }}>
+              Clear
+            </button>
+          )}
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: '#4b5563' }}>{filtered.length} events</span>
+        </div>
+
+        {/* Table */}
+        <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflow: 'hidden' }}>
+          {auditLoading ? (
+            <div style={{ padding: '60px', textAlign: 'center', color: '#6b7280', fontSize: 13 }}>Loading audit logs…</div>
+          ) : auditError ? (
+            <div style={{ padding: '60px', textAlign: 'center' }}>
+              <div style={{ fontSize: 32, marginBottom: 10 }}>⚠️</div>
+              <div style={{ fontSize: 14, color: '#f87171', marginBottom: 8 }}>{auditError}</div>
+              <button onClick={fetchAuditLogs}
+                style={{ padding: '7px 16px', background: '#13151f', color: '#9ca3af', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 12, cursor: 'pointer' }}>
+                Retry
+              </button>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>
+              <div style={{ fontSize: 32, marginBottom: 10 }}>📋</div>
+              <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 6 }}>
+                {auditLogs.length === 0 ? 'No audit log entries found' : 'No entries match your filters'}
+              </div>
+              <div style={{ fontSize: 12 }}>
+                {auditLogs.length === 0 ? 'Audit events will appear here as admins take actions.' : 'Try adjusting your search or filters.'}
+              </div>
+            </div>
+          ) : (
+            <>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>{['Timestamp', 'Actor', 'Action', 'Target Type', 'Target', 'Details'].map(h => <th key={h} style={th}>{h}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {paginated.map((log, i) => {
+                    const meta    = getActionMeta(log.action)
+                    const changes = log.metadata?.changes
+                    return (
+                      <tr key={log.id} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(13,15,26,0.4)' }}>
+                        <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: 12, color: '#c4c9d4', fontWeight: 500 }}>
+                            {new Date(log.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#4b5563', marginTop: 2 }}>
+                            {new Date(log.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </div>
+                        </td>
+                        <td style={td}>
+                          {log.actor_name && <div style={{ fontSize: 12, color: '#e5e7eb', fontWeight: 500 }}>{log.actor_name}</div>}
+                          <div style={{ fontSize: 11, color: '#6b7280', marginTop: log.actor_name ? 1 : 0 }}>
+                            {log.actor_email ?? (log.actor_user_id.slice(0, 8) + '…')}
+                          </div>
+                          {log.metadata?.actor_role && (
+                            <span style={{ padding: '1px 6px', borderRadius: 10, fontSize: 9, fontWeight: 700, background: `${ROLE_COLORS[log.metadata.actor_role] ?? '#64748b'}20`, color: ROLE_COLORS[log.metadata.actor_role] ?? '#64748b', marginTop: 3, display: 'inline-block' }}>
+                              {ROLE_LABELS[log.metadata.actor_role] ?? log.metadata.actor_role}
+                            </span>
+                          )}
+                        </td>
+                        <td style={td}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: meta.bg, color: meta.color, border: `1px solid ${meta.border}`, whiteSpace: 'nowrap' }}>
+                            <span style={{ fontSize: 12 }}>{meta.icon}</span>
+                            {meta.label}
+                          </span>
+                        </td>
+                        <td style={{ ...td, fontSize: 12, color: '#9ca3af', textTransform: 'capitalize' }}>{log.target_type}</td>
+                        <td style={td}>
+                          {log.target_name
+                            ? <div style={{ fontSize: 12, color: '#e5e7eb' }}>{log.target_name}</div>
+                            : <div style={{ fontSize: 11, color: '#4b5563', fontFamily: 'monospace' }}>{log.target_id.slice(0, 12)}…</div>
+                          }
+                        </td>
+                        <td style={td}>
+                          {changes && Object.keys(changes).length > 0 ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              {Object.entries(changes).map(([key, val]) => (
+                                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+                                  <span style={{ color: '#6b7280', textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}:</span>
+                                  <span style={{ color: '#c4c9d4', fontWeight: 500 }}>
+                                    {val === null ? <span style={{ color: '#374151', fontStyle: 'italic' }}>removed</span> : String(val)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : <span style={{ fontSize: 11, color: '#374151' }}>—</span>}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+              {hasMore && (
+                <div style={{ padding: '16px 20px', borderTop: '1px solid #1e2130', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 12, color: '#4b5563' }}>Showing {paginated.length} of {filtered.length}</span>
+                  <button onClick={() => setAuditPage(p => p + 1)}
+                    style={{ padding: '7px 18px', background: '#1e2130', color: '#9ca3af', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    Load More
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   function renderPlaceholder(title: string, description: string, icon: string, items: string[]) {
     return (
       <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
@@ -1364,41 +1983,11 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
         {page === 'cycles' && renderCycles()}
 
-        {page === 'analytics' && renderPlaceholder(
-          'Analytics', 'Organization-wide performance data and reporting.',
-          '📊', [
-            'Overall rating distribution across the org',
-            'Completion rates by team and review cycle',
-            'Self-assessment submission tracking',
-            'Manager review velocity (time to complete)',
-            'Export raw data to CSV',
-            'Year-over-year trend comparisons',
-          ]
-        )}
+        {page === 'analytics' && renderAnalytics()}
 
-        {page === 'audit' && renderPlaceholder(
-          'Audit Log', 'Full activity trail for compliance and security.',
-          '📋', [
-            'All user creation, role, and deactivation events',
-            'Review submission and reopen events',
-            'Drive export activity',
-            'Login and session events',
-            'Admin configuration changes',
-            'Filterable by date range, actor, and action type',
-          ]
-        )}
+        {page === 'audit' && renderAuditLog()}
 
-        {page === 'settings' && renderPlaceholder(
-          'Settings', 'Configure system-wide settings, Drive integration, and review templates.',
-          '⚙️', [
-            'Google Drive folder URL for manager reviews',
-            'Review template management (competency frameworks)',
-            'Self-assessment unlock/lock controls',
-            'AI draft tool access per role',
-            'Notification and reminder settings',
-            'Organization name and branding',
-          ]
-        )}
+        {page === 'settings' && renderSettings()}
       </main>
 
       {/* ── Invite Modal ── */}
