@@ -2,11 +2,38 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams } from 'next/navigation'
-import { Suspense } from 'react'
+import { Suspense, useEffect, useState } from 'react'
+
+type InviteInfo = {
+  email: string
+  role: string
+  inviter_name: string
+  error?: string
+}
 
 function LoginContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
+  const inviteToken = searchParams.get('invite')
+
+  const [invite, setInvite] = useState<InviteInfo | null>(null)
+  const [inviteLoading, setInviteLoading] = useState(!!inviteToken)
+  const [inviteError, setInviteError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!inviteToken) return
+    fetch(`/api/admin/invite/lookup?token=${inviteToken}`)
+      .then(r => r.json())
+      .then((data: InviteInfo) => {
+        if (data.error) {
+          setInviteError(data.error)
+        } else {
+          setInvite(data)
+        }
+      })
+      .catch(() => setInviteError('Could not load invite details.'))
+      .finally(() => setInviteLoading(false))
+  }, [inviteToken])
 
   async function signInWithGoogle() {
     const supabase = createClient()
@@ -17,6 +44,8 @@ function LoginContent() {
       },
     })
   }
+
+  const isInviteFlow = !!inviteToken
 
   return (
     <div style={{
@@ -29,14 +58,14 @@ function LoginContent() {
     }}>
       <div style={{
         width: '100%',
-        maxWidth: 400,
+        maxWidth: 420,
         padding: '48px 40px',
         background: '#13151f',
         border: '1px solid #1e2130',
         borderRadius: 16,
         textAlign: 'center',
       }}>
-        {/* Logo mark */}
+        {/* Logo */}
         <div style={{
           width: 56,
           height: 56,
@@ -51,72 +80,142 @@ function LoginContent() {
           ⭐
         </div>
 
-        <h1 style={{
-          margin: '0 0 8px',
-          fontSize: 22,
-          fontWeight: 700,
-          color: '#f0f2fa',
-          letterSpacing: '-0.3px',
-        }}>
-          Performance Review
-        </h1>
-        <p style={{
-          margin: '0 0 36px',
-          fontSize: 14,
-          color: '#6b7280',
-          lineHeight: 1.5,
-        }}>
-          Sign in with your work Google account to continue
-        </p>
+        {inviteLoading ? (
+          // Loading state while fetching invite
+          <>
+            <h1 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700, color: '#f0f2fa' }}>
+              Performance Review
+            </h1>
+            <p style={{ margin: '0 0 36px', fontSize: 14, color: '#6b7280' }}>
+              Loading your invitation…
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <div style={{
+                width: 24, height: 24, border: '2px solid #1e2130',
+                borderTop: '2px solid #4f46e5', borderRadius: '50%',
+                animation: 'spin 0.8s linear infinite',
+              }} />
+            </div>
+            <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+          </>
+        ) : inviteError ? (
+          // Invalid / expired invite
+          <>
+            <h1 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700, color: '#f0f2fa' }}>
+              Invite Link Issue
+            </h1>
+            <div style={{
+              background: '#2d1515', border: '1px solid #5c2020',
+              borderRadius: 8, padding: '12px 16px', margin: '0 0 24px',
+              fontSize: 14, color: '#f87171', lineHeight: 1.5,
+            }}>
+              {inviteError}
+            </div>
+            <p style={{ margin: '0', fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
+              Contact your admin for a new invite link.
+            </p>
+          </>
+        ) : isInviteFlow && invite ? (
+          // Personalized invite experience
+          <>
+            {/* Invite badge */}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'rgba(79,70,229,0.15)', border: '1px solid rgba(79,70,229,0.3)',
+              borderRadius: 20, padding: '4px 12px', marginBottom: 20,
+              fontSize: 12, fontWeight: 600, color: '#a5b4fc', letterSpacing: '0.03em',
+            }}>
+              <span>✉️</span> You&apos;ve been invited
+            </div>
 
-        {error && (
-          <div style={{
-            background: '#2d1515',
-            border: '1px solid #5c2020',
-            borderRadius: 8,
-            padding: '10px 14px',
-            marginBottom: 20,
-            fontSize: 13,
-            color: '#f87171',
-          }}>
-            Authentication failed. Please try again.
-          </div>
+            <h1 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 700, color: '#f0f2fa', letterSpacing: '-0.3px' }}>
+              Welcome to Performance Review
+            </h1>
+            <p style={{ margin: '0 0 24px', fontSize: 14, color: '#9ca3af', lineHeight: 1.6 }}>
+              <strong style={{ color: '#c4c9d4' }}>{invite.inviter_name}</strong> has invited you
+              to join as a <strong style={{ color: '#c4c9d4' }}>{invite.role}</strong>.
+            </p>
+
+            {/* Email pill */}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: '#0d0f1a', border: '1px solid #1e2130',
+              borderRadius: 8, padding: '7px 14px', marginBottom: 28,
+              fontSize: 13, color: '#6b7280',
+            }}>
+              <span style={{ color: '#34d399' }}>●</span>
+              Sign in with <strong style={{ color: '#c4c9d4', marginLeft: 4 }}>{invite.email}</strong>
+            </div>
+
+            {error && (
+              <div style={{
+                background: '#2d1515', border: '1px solid #5c2020', borderRadius: 8,
+                padding: '10px 14px', marginBottom: 20, fontSize: 13, color: '#f87171',
+              }}>
+                Authentication failed. Make sure you sign in with {invite.email}.
+              </div>
+            )}
+
+            <button
+              onClick={signInWithGoogle}
+              style={{
+                width: '100%', padding: '13px 20px',
+                background: '#fff', color: '#1a1a1a', border: 'none',
+                borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              }}
+              onMouseOver={e => (e.currentTarget.style.opacity = '0.9')}
+              onMouseOut={e => (e.currentTarget.style.opacity = '1')}
+            >
+              <GoogleIcon />
+              Accept Invitation with Google
+            </button>
+
+            <p style={{ marginTop: 20, fontSize: 12, color: '#374151', lineHeight: 1.6 }}>
+              Use your <strong style={{ color: '#6b7280' }}>{invite.email}</strong> Google account.<br />
+              This invite expires in 7 days.
+            </p>
+          </>
+        ) : (
+          // Standard login
+          <>
+            <h1 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700, color: '#f0f2fa', letterSpacing: '-0.3px' }}>
+              Performance Review
+            </h1>
+            <p style={{ margin: '0 0 36px', fontSize: 14, color: '#6b7280', lineHeight: 1.5 }}>
+              Sign in with your work Google account to continue
+            </p>
+
+            {error && (
+              <div style={{
+                background: '#2d1515', border: '1px solid #5c2020', borderRadius: 8,
+                padding: '10px 14px', marginBottom: 20, fontSize: 13, color: '#f87171',
+              }}>
+                Authentication failed. Please try again.
+              </div>
+            )}
+
+            <button
+              onClick={signInWithGoogle}
+              style={{
+                width: '100%', padding: '12px 20px',
+                background: '#fff', color: '#1a1a1a', border: 'none',
+                borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              }}
+              onMouseOver={e => (e.currentTarget.style.opacity = '0.9')}
+              onMouseOut={e => (e.currentTarget.style.opacity = '1')}
+            >
+              <GoogleIcon />
+              Sign in with Google
+            </button>
+
+            <p style={{ marginTop: 28, fontSize: 12, color: '#374151', lineHeight: 1.6 }}>
+              Access is managed by your organization.<br />
+              Contact your admin if you need access.
+            </p>
+          </>
         )}
-
-        <button
-          onClick={signInWithGoogle}
-          style={{
-            width: '100%',
-            padding: '12px 20px',
-            background: '#fff',
-            color: '#1a1a1a',
-            border: 'none',
-            borderRadius: 10,
-            fontSize: 15,
-            fontWeight: 600,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-            transition: 'opacity 0.15s',
-          }}
-          onMouseOver={e => (e.currentTarget.style.opacity = '0.9')}
-          onMouseOut={e => (e.currentTarget.style.opacity = '1')}
-        >
-          <GoogleIcon />
-          Sign in with Google
-        </button>
-
-        <p style={{
-          marginTop: 28,
-          fontSize: 12,
-          color: '#374151',
-          lineHeight: 1.6,
-        }}>
-          Access is managed by your organization.
-          <br />Contact your admin if you need access.
-        </p>
       </div>
     </div>
   )

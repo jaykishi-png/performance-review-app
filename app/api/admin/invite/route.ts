@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ||
-  'https://performance-review-app-git-main-automation-7724s-projects.vercel.app'
+  'https://performance-review-app-three.vercel.app'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
