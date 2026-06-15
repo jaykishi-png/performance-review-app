@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
         const { Resend } = await import('resend')
         const resend = new Resend(process.env.RESEND_API_KEY)
         await resend.emails.send({
-          from: 'Performance Review <onboarding@resend.dev>',
+          from: 'Performance Review <reviews@innosupps.com>',
           to: admin.email,
           subject: `⚠️ ${title}`,
           html: `

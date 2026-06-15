@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
         const resend = new Resend(process.env.RESEND_API_KEY)
         const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
         await resend.emails.send({
-          from: 'Performance Review <onboarding@resend.dev>',
+          from: 'Performance Review <reviews@innosupps.com>',
           to: 'videoteam@rushmediateam.com',
           subject: `1:1 Meeting Complete — ${employeeName} signed`,
           html: `

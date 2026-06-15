@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       const roleLabel = role === 'admin' ? 'Administrator' : role === 'manager' ? 'Manager' : 'Employee'
 
       await resend.emails.send({
-        from: 'Performance Review <onboarding@resend.dev>',
+        from: 'Performance Review <reviews@innosupps.com>',
         to: email,
         subject: `You've been invited to Performance Review`,
         html: buildInviteEmail({ email, role: roleLabel, inviterName, managerName, inviteLink }),

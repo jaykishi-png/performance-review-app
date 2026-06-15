@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
       const feedbackLink = `${APP_URL}/feedback/${token}`
 
       await resend.emails.send({
-        from: 'Performance Review <onboarding@resend.dev>',
+        from: 'Performance Review <reviews@innosupps.com>',
         to: reviewerEmail,
         subject: `${requestorName} has requested your feedback`,
         html: buildFeedbackRequestEmail({ requestorName, reviewerName, year, feedbackLink }),
