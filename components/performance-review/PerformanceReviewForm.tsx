@@ -3090,13 +3090,13 @@ export function PerformanceReviewForm() {
     try {
       const res = await fetch(`/api/recordings?employee_id=${empId}`)
       if (!res.ok) return
-      const data = await res.json()
-      const sessions: any[] = Array.isArray(data) ? data : (data.recordings ?? [])
+      const body = await res.json()
+      const sessions: any[] = Array.isArray(body) ? body : (body.data ?? body.recordings ?? [])
       // Find the most recent active (non-declined, non-complete) session
       const active = sessions.filter((s: any) => s.status !== 'complete' && s.status !== 'declined').pop()
       if (active) {
         setRecordingSessionId(active.id)
-        if (active.manager_consented && active.employee_consented) {
+        if (active.consent_manager && active.consent_employee) {
           setRecordingStatus('consented')
         } else if (active.status === 'pending_consent') {
           setRecordingStatus('pending_consent')
@@ -3213,7 +3213,7 @@ export function PerformanceReviewForm() {
                   const res = await fetch(`/api/recordings?employee_id=${notesEmployeeId}`)
                   if (res.ok) {
                     const data = await res.json()
-                    const sessions: any[] = Array.isArray(data) ? data : (data.recordings ?? [])
+                    const sessions: any[] = Array.isArray(data) ? data : (data.data ?? data.recordings ?? [])
                     setRecordings(sessions)
                     // Find active session: prefer recordingSessionId match, else most recent non-complete
                     const active = recordingSessionId
@@ -3223,7 +3223,7 @@ export function PerformanceReviewForm() {
                       setRecordingSessionId(active.id)
                       if (active.status === 'declined') {
                         setRecordingStatus('idle')
-                      } else if (active.manager_consented && active.employee_consented) {
+                      } else if (active.consent_manager && active.consent_employee) {
                         setRecordingStatus('consented')
                       } else if (active.status === 'pending_consent') {
                         setRecordingStatus('pending_consent')
