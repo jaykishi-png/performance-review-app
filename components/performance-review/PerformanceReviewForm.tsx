@@ -3060,6 +3060,9 @@ export function PerformanceReviewForm() {
   const [recordingActionItems, setRecordingActionItems] = useState<any[]>([])
   const [recordingPanelOpen, setRecordingPanelOpen] = useState(false)
   const [transcriptExpanded, setTranscriptExpanded] = useState(false)
+  const [savedRecordingSessions, setSavedRecordingSessions] = useState<Array<{
+    id: string; date: string; summary: string | null; transcript: string | null; actionItems: any[]; expandedInPanel: boolean
+  }>>([])
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const waveformCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const waveformAnimRef = useRef<number | null>(null)
@@ -3431,6 +3434,53 @@ export function PerformanceReviewForm() {
                         </div>
                       )}
 
+                      {/* ── saved past sessions ── */}
+                      {savedRecordingSessions.length > 0 && (
+                        <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {savedRecordingSessions.map((session, idx) => (
+                            <div key={session.id} style={{ background: '#0a0c14', border: '1px solid #1e2235', borderRadius: 8, overflow: 'hidden' }}>
+                              <button
+                                onClick={() => setSavedRecordingSessions(prev => prev.map((s, i) => i === idx ? { ...s, expandedInPanel: !s.expandedInPanel } : s))}
+                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                              >
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontSize: 11, color: '#34d399', fontWeight: 700 }}>✓ Saved</span>
+                                  <span style={{ fontSize: 12, color: '#6b7280' }}>{session.date}</span>
+                                </span>
+                                <span style={{ fontSize: 13, color: '#4b5563', transform: session.expandedInPanel ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▾</span>
+                              </button>
+                              {session.expandedInPanel && (
+                                <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                  {session.summary && (
+                                    <div>
+                                      <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Summary</p>
+                                      <p style={{ margin: 0, fontSize: 12, color: '#c7d2fe', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{session.summary}</p>
+                                    </div>
+                                  )}
+                                  {session.actionItems.length > 0 && (
+                                    <div>
+                                      <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Action Items</p>
+                                      {session.actionItems.map((a: any, i: number) => (
+                                        <div key={i} style={{ fontSize: 12, color: '#e0e7ff', marginBottom: 3 }}>
+                                          <span style={{ color: '#818cf8', fontWeight: 600 }}>[{a.owner ?? '?'}]</span> {a.item ?? String(a)}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {session.transcript && (
+                                    <details style={{ fontSize: 12, color: '#6b7280' }}>
+                                      <summary style={{ cursor: 'pointer', marginBottom: 6 }}>View transcript</summary>
+                                      <pre style={{ margin: 0, padding: 10, background: '#13151f', borderRadius: 6, color: '#9ca3af', fontSize: 11, whiteSpace: 'pre-wrap', maxHeight: 180, overflowY: 'auto' }}>{session.transcript}</pre>
+                                    </details>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                          <div style={{ height: 1, background: '#1e2235', margin: '4px 0' }} />
+                        </div>
+                      )}
+
                       {/* ── idle ── */}
                       {recordingStatus === 'idle' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
@@ -3608,7 +3658,15 @@ export function PerformanceReviewForm() {
                                   })
                                   if (res.ok) {
                                     await fetchNotes(notesEmployeeId)
-                                    // Reset recording panel so a new meeting can be started
+                                    // Archive into saved sessions list, reset active recording
+                                    setSavedRecordingSessions(prev => [...prev, {
+                                      id: recordingSessionId ?? String(Date.now()),
+                                      date: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
+                                      summary: recordingSummary,
+                                      transcript: recordingTranscript,
+                                      actionItems: recordingActionItems,
+                                      expandedInPanel: false,
+                                    }])
                                     setRecordingStatus('idle')
                                     setRecordingSessionId(null)
                                     setRecordingTranscript(null)
@@ -3625,22 +3683,6 @@ export function PerformanceReviewForm() {
                               style={{ padding: '8px 18px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: notesSaving ? 0.6 : 1 }}
                             >
                               {notesSaving ? 'Saving…' : '📝 Save Note & Start New Meeting'}
-                            </button>
-                            <button
-                              onClick={() => {
-                                setRecordingStatus('idle')
-                                setRecordingSessionId(null)
-                                setRecordingTranscript(null)
-                                setRecordingSummary(null)
-                                setRecordingActionItems([])
-                                setRecordingPaused(false)
-                                setRecordingSeconds(0)
-                                setMediaRecorder(null)
-                                setAudioChunks([])
-                              }}
-                              style={{ padding: '8px 18px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
-                            >
-                              Start New Without Saving
                             </button>
                           </div>
                         </div>
