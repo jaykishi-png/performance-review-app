@@ -145,6 +145,91 @@ const STATUS_META = {
   not_started: { label: 'Not Started', color: '#6b7280', bg: '#13151f', border: '#2a2d3a' },
 }
 
+function PipAdminPanel() {
+  const [pipPlans, setPipPlans] = useState<any[]>([])
+  const [pipLoading, setPipLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/pip-plans').then(r => r.json()).then(d => { setPipPlans(d.data || []); setPipLoading(false) }).catch(() => setPipLoading(false))
+  }, [])
+
+  const statusColor: Record<string, string> = { active: '#f59e0b', completed: '#34d399', escalated: '#f87171', withdrawn: '#6b7280' }
+  const statusBg: Record<string, string> = { active: '#1f1a0d', completed: '#0d2b1f', escalated: '#2b0d0d', withdrawn: '#13151f' }
+
+  const active = pipPlans.filter(p => p.status === 'active')
+  const escalated = pipPlans.filter(p => p.status === 'escalated')
+  const completed = pipPlans.filter(p => p.status === 'completed')
+
+  return (
+    <div style={{ padding: '28px 32px' }}>
+      <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>PIPs & Coaching Plans</h1>
+      <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Overview of all performance improvement and coaching plans across the org.</p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
+        {[
+          { label: 'Active PIPs', value: active.length, color: '#f59e0b' },
+          { label: 'Escalated', value: escalated.length, color: '#f87171' },
+          { label: 'Completed', value: completed.length, color: '#34d399' },
+        ].map(s => (
+          <div key={s.label} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px' }}>
+            <div style={{ fontSize: 28, fontWeight: 700, color: s.color, marginBottom: 4 }}>{s.value}</div>
+            <div style={{ fontSize: 13, color: '#6b7280' }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {pipLoading ? (
+        <div style={{ color: '#6b7280', fontSize: 13 }}>Loading…</div>
+      ) : pipPlans.length === 0 ? (
+        <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: 48, textAlign: 'center', color: '#6b7280', fontSize: 13 }}>
+          No PIPs or coaching plans have been created yet.
+        </div>
+      ) : (
+        <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>{['Employee', 'Manager', 'Title', 'Start', 'Target', 'Milestones', 'Acknowledged', 'Status'].map(h => (
+                <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #1e2130', whiteSpace: 'nowrap' }}>{h}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {pipPlans.map(pip => {
+                const emp = pip.employee as { name: string | null; email: string } | null
+                const mgr = pip.manager as { name: string | null; email: string } | null
+                const milestones = (pip.milestones as any[]) || []
+                const completed_m = milestones.filter((m: any) => m.completed).length
+                return (
+                  <tr key={pip.id} style={{ borderBottom: '1px solid #1e2130' }}>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: '#e5e7eb' }}>{emp?.name || emp?.email}</div>
+                      <div style={{ fontSize: 11, color: '#6b7280' }}>{emp?.email}</div>
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#9ca3af' }}>{mgr?.name || mgr?.email}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#e5e7eb', maxWidth: 200 }}>{pip.title}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>{new Date(pip.start_date).toLocaleDateString()}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>{new Date(pip.target_date).toLocaleDateString()}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 12, color: '#9ca3af' }}>{completed_m}/{milestones.length}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      {pip.employee_acknowledged
+                        ? <span style={{ fontSize: 11, color: '#34d399', fontWeight: 600 }}>✓ Yes</span>
+                        : <span style={{ fontSize: 11, color: '#6b7280' }}>Pending</span>}
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: statusBg[pip.status] || '#13151f', color: statusColor[pip.status] || '#6b7280' }}>
+                        {pip.status.charAt(0).toUpperCase() + pip.status.slice(1)}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AdminDashboard({ currentUser, users, invites, selfAssessments, reviews, cycles, employeeCycles }: Props) {
   const router = useRouter()
   const isDevAdmin = currentUser.role === 'dev_admin'
@@ -1467,89 +1552,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   }
 
   function renderPipAdmin() {
-    const [pipPlans, setPipPlans] = useState<any[]>([])
-    const [pipLoading, setPipLoading] = useState(true)
-
-    useEffect(() => {
-      fetch('/api/pip-plans').then(r => r.json()).then(d => { setPipPlans(d.data || []); setPipLoading(false) }).catch(() => setPipLoading(false))
-    }, [])
-
-    const statusColor: Record<string, string> = { active: '#f59e0b', completed: '#34d399', escalated: '#f87171', withdrawn: '#6b7280' }
-    const statusBg: Record<string, string> = { active: '#1f1a0d', completed: '#0d2b1f', escalated: '#2b0d0d', withdrawn: '#13151f' }
-
-    const active = pipPlans.filter(p => p.status === 'active')
-    const escalated = pipPlans.filter(p => p.status === 'escalated')
-    const completed = pipPlans.filter(p => p.status === 'completed')
-
-    return (
-      <div style={{ padding: '28px 32px' }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>PIPs & Coaching Plans</h1>
-        <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Overview of all performance improvement and coaching plans across the org.</p>
-
-        {/* Stat cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
-          {[
-            { label: 'Active PIPs', value: active.length, color: '#f59e0b' },
-            { label: 'Escalated', value: escalated.length, color: '#f87171' },
-            { label: 'Completed', value: completed.length, color: '#34d399' },
-          ].map(s => (
-            <div key={s.label} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px' }}>
-              <div style={{ fontSize: 28, fontWeight: 700, color: s.color, marginBottom: 4 }}>{s.value}</div>
-              <div style={{ fontSize: 13, color: '#6b7280' }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {pipLoading ? (
-          <div style={{ color: '#6b7280', fontSize: 13 }}>Loading…</div>
-        ) : pipPlans.length === 0 ? (
-          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: 48, textAlign: 'center', color: '#6b7280', fontSize: 13 }}>
-            No PIPs or coaching plans have been created yet.
-          </div>
-        ) : (
-          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>{['Employee', 'Manager', 'Title', 'Start', 'Target', 'Milestones', 'Acknowledged', 'Status'].map(h => (
-                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #1e2130', whiteSpace: 'nowrap' }}>{h}</th>
-                ))}</tr>
-              </thead>
-              <tbody>
-                {pipPlans.map(pip => {
-                  const emp = pip.employee as { name: string | null; email: string } | null
-                  const mgr = pip.manager as { name: string | null; email: string } | null
-                  const milestones = (pip.milestones as any[]) || []
-                  const completed_m = milestones.filter((m: any) => m.completed).length
-                  return (
-                    <tr key={pip.id} style={{ borderBottom: '1px solid #1e2130' }}>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: '#e5e7eb' }}>{emp?.name || emp?.email}</div>
-                        <div style={{ fontSize: 11, color: '#6b7280' }}>{emp?.email}</div>
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: '#9ca3af' }}>{mgr?.name || mgr?.email}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: '#e5e7eb', maxWidth: 200 }}>{pip.title}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>{new Date(pip.start_date).toLocaleDateString()}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>{new Date(pip.target_date).toLocaleDateString()}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 12, color: '#9ca3af' }}>{completed_m}/{milestones.length}</td>
-                      <td style={{ padding: '12px 16px' }}>
-                        {pip.employee_acknowledged
-                          ? <span style={{ fontSize: 11, color: '#34d399', fontWeight: 600 }}>✓ Yes</span>
-                          : <span style={{ fontSize: 11, color: '#6b7280' }}>Pending</span>}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: statusBg[pip.status] || '#13151f', color: statusColor[pip.status] || '#6b7280' }}>
-                          {pip.status.charAt(0).toUpperCase() + pip.status.slice(1)}
-                        </span>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    )
+    return <PipAdminPanel />
   }
 
   function renderSettings() {
