@@ -3824,6 +3824,7 @@ export function PerformanceReviewForm() {
   }
 
   const renderPip = () => {
+    const activeEmployees = dbTeam.filter(r => r.is_active)
     const sCard: React.CSSProperties = { background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 16 }
     const inp2: React.CSSProperties = { width: '100%', background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '8px 12px', color: '#e5e7eb', fontSize: 13, outline: 'none', boxSizing: 'border-box' }
     const lbl2: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'block' }

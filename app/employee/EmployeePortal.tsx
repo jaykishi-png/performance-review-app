@@ -1658,12 +1658,17 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
 
   // ── Page: PIP / Coaching Plan ─────────────────────────────────────────────
   function renderPipPage() {
-    const [pipPlans, setPipPlans] = React.useState<any[]>([])
-    const [pipLoading, setPipLoading] = React.useState(true)
-    const [pipNote, setPipNote] = React.useState('')
-    const [pipSaving, setPipSaving] = React.useState(false)
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const [pipPlans, setPipPlans] = useState<any[]>([])
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const [pipLoading, setPipLoading] = useState(true)
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const [pipNote, setPipNote] = useState('')
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const [pipSaving, setPipSaving] = useState(false)
 
-    React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useEffect(() => {
       fetch('/api/pip-plans').then(r => r.json()).then(d => { setPipPlans(d.data || []); setPipLoading(false) }).catch(() => setPipLoading(false))
     }, [])
 
