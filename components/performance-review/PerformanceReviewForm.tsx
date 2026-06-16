@@ -3061,6 +3061,10 @@ export function PerformanceReviewForm() {
   const [recordingPanelOpen, setRecordingPanelOpen] = useState(false)
   const [transcriptExpanded, setTranscriptExpanded] = useState(false)
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const waveformCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const waveformAnimRef = useRef<number | null>(null)
+  const waveformAnalyserRef = useRef<AnalyserNode | null>(null)
+  const waveformStreamRef = useRef<MediaStream | null>(null)
 
   const NOTE_TAGS = [
     { id: 'recognition', label: 'Recognition', color: '#16a34a', bg: 'rgba(22,163,74,0.15)' },
@@ -3240,19 +3244,79 @@ export function PerformanceReviewForm() {
                 } catch { /* ignore */ }
               }
 
+              function startWaveform(stream: MediaStream) {
+                const audioCtx = new AudioContext()
+                const source = audioCtx.createMediaStreamSource(stream)
+                const analyser = audioCtx.createAnalyser()
+                analyser.fftSize = 256
+                source.connect(analyser)
+                waveformAnalyserRef.current = analyser
+
+                const draw = () => {
+                  const canvas = waveformCanvasRef.current
+                  if (!canvas) return
+                  const ctx = canvas.getContext('2d')
+                  if (!ctx) return
+                  const bufferLength = analyser.frequencyBinCount
+                  const dataArray = new Uint8Array(bufferLength)
+                  analyser.getByteFrequencyData(dataArray)
+
+                  const W = canvas.width
+                  const H = canvas.height
+                  ctx.clearRect(0, 0, W, H)
+
+                  const barCount = 40
+                  const barW = 3
+                  const gap = (W - barCount * barW) / (barCount + 1)
+                  const step = Math.floor(bufferLength / barCount)
+
+                  for (let i = 0; i < barCount; i++) {
+                    const value = dataArray[i * step] / 255
+                    const barH = Math.max(3, value * H * 0.85)
+                    const x = gap + i * (barW + gap)
+                    const y = (H - barH) / 2
+                    const alpha = 0.5 + value * 0.5
+                    ctx.fillStyle = `rgba(99, 102, 241, ${alpha})`
+                    ctx.beginPath()
+                    ctx.roundRect(x, y, barW, barH, 2)
+                    ctx.fill()
+                  }
+
+                  waveformAnimRef.current = requestAnimationFrame(draw)
+                }
+                draw()
+              }
+
+              function stopWaveform() {
+                if (waveformAnimRef.current) {
+                  cancelAnimationFrame(waveformAnimRef.current)
+                  waveformAnimRef.current = null
+                }
+                waveformAnalyserRef.current = null
+                // Clear canvas
+                const canvas = waveformCanvasRef.current
+                if (canvas) {
+                  const ctx = canvas.getContext('2d')
+                  ctx?.clearRect(0, 0, canvas.width, canvas.height)
+                }
+              }
+
               async function handleStartRecording() {
                 try {
                   const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+                  waveformStreamRef.current = stream
                   const mr = new MediaRecorder(stream, { mimeType: 'audio/webm' })
                   const chunks: Blob[] = []
                   mr.ondataavailable = (e: BlobEvent) => { if (e.data.size > 0) chunks.push(e.data) }
-                  mr.onstop = () => handleRecordingStop(chunks)
+                  mr.onstop = () => { stopWaveform(); handleRecordingStop(chunks) }
                   mr.start(1000)
                   setMediaRecorder(mr)
                   setAudioChunks([])
                   setRecordingSeconds(0)
                   setRecordingStatus('recording')
                   recordingTimerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000)
+                  // Start waveform after a tick so canvas has rendered
+                  setTimeout(() => startWaveform(stream), 50)
                 } catch {
                   setRecordingError('Microphone access denied or unavailable.')
                 }
@@ -3269,6 +3333,8 @@ export function PerformanceReviewForm() {
                   mediaRecorder.pause()
                   if (recordingTimerRef.current) { clearInterval(recordingTimerRef.current); recordingTimerRef.current = null }
                   setRecordingPaused(true)
+                  // Freeze waveform on pause
+                  if (waveformAnimRef.current) { cancelAnimationFrame(waveformAnimRef.current); waveformAnimRef.current = null }
                 }
               }
 
@@ -3277,6 +3343,8 @@ export function PerformanceReviewForm() {
                   mediaRecorder.resume()
                   recordingTimerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000)
                   setRecordingPaused(false)
+                  // Resume waveform
+                  if (waveformStreamRef.current) setTimeout(() => startWaveform(waveformStreamRef.current!), 50)
                 }
               }
 
@@ -3406,7 +3474,7 @@ export function PerformanceReviewForm() {
 
                       {/* ── recording ── */}
                       {recordingStatus === 'recording' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start', width: '100%' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             {recordingPaused
                               ? <span style={{ width: 10, height: 10, borderRadius: 2, background: '#f59e0b', display: 'inline-block' }} />
@@ -3415,6 +3483,17 @@ export function PerformanceReviewForm() {
                             <span style={{ fontSize: 20, fontWeight: 700, color: '#f0f2fa', fontVariantNumeric: 'tabular-nums' }}>{formatTime(recordingSeconds)}</span>
                             {recordingPaused && <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>PAUSED</span>}
                           </div>
+
+                          {/* Waveform visualizer */}
+                          <div style={{ width: '100%', background: '#0d0f1a', borderRadius: 10, border: '1px solid #1e2235', padding: '8px 12px', boxSizing: 'border-box' }}>
+                            <canvas
+                              ref={waveformCanvasRef}
+                              width={340}
+                              height={48}
+                              style={{ width: '100%', height: 48, display: 'block', opacity: recordingPaused ? 0.3 : 1, transition: 'opacity 0.3s' }}
+                            />
+                          </div>
+
                           <div style={{ display: 'flex', gap: 8 }}>
                             {recordingPaused ? (
                               <button
