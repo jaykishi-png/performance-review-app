@@ -162,6 +162,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [inviteLink, setInviteLink] = useState('')
   const [inviteEmailSent, setInviteEmailSent] = useState(false)
   const [resendingInviteId, setResendingInviteId] = useState<string | null>(null)
+  const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null)
   const [resentInviteId, setResentInviteId] = useState<string | null>(null)
   const [editingUser, setEditingUser] = useState<string | null>(null)
   const [editingManager, setEditingManager] = useState<string | null>(null)
@@ -824,7 +825,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               <thead><tr>{['Email', 'Role', 'Invited', 'Expires', ''].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr></thead>
               <tbody>
                 {invites.map(inv => {
-                  const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://performance-review-app-three.vercel.app'}/login?invite=${inv.token}`
+                  const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://performance-review-app-three.vercel.app'
+                  const inviteLink = `${appUrl}/login?invite=${inv.token}`
                   return (
                   <tr key={inv.id}>
                     <td style={{ ...td, color: '#e5e7eb' }}>{inv.email}</td>
@@ -834,9 +836,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                     <td style={{ ...td, textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                         <button
-                          onClick={() => navigator.clipboard.writeText(inviteLink)}
-                          style={{ padding: '4px 12px', background: 'transparent', border: '1px solid #2a2d3e', borderRadius: 6, color: '#34d399', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}>
-                          📋 Copy Link
+                          onClick={() => { navigator.clipboard.writeText(inviteLink); setCopiedInviteId(inv.id); setTimeout(() => setCopiedInviteId(null), 2000) }}
+                          style={{ padding: '4px 12px', background: 'transparent', border: '1px solid #2a2d3e', borderRadius: 6, color: copiedInviteId === inv.id ? '#34d399' : '#a5b4fc', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}>
+                          {copiedInviteId === inv.id ? '✓ Copied!' : '📋 Copy Link'}
                         </button>
                         {resentInviteId === inv.id ? (
                           <span style={{ fontSize: 12, color: '#34d399', fontWeight: 600 }}>✓ Sent</span>
