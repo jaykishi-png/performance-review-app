@@ -3297,9 +3297,10 @@ export function PerformanceReviewForm() {
                     })
                     const tdata = await tres.json()
                     if (tres.ok) {
-                      setRecordingTranscript(tdata.transcript ?? null)
-                      setRecordingSummary(tdata.summary ?? null)
-                      setRecordingActionItems(tdata.action_items ?? [])
+                      const td = tdata.data ?? tdata
+                      setRecordingTranscript(td.transcript ?? null)
+                      setRecordingSummary(td.summary ?? null)
+                      setRecordingActionItems(td.action_items ?? [])
                       setRecordingStatus('complete')
                     } else {
                       setRecordingError('Transcription failed.')
