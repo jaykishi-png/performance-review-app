@@ -4,6 +4,13 @@ import { sendEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
+async function getProfiles(serviceClient: Awaited<ReturnType<typeof createServiceClient>>, ids: string[]) {
+  const { data } = await serviceClient.from('profiles').select('id, name, email').in('id', ids)
+  const map: Record<string, { name: string; email: string }> = {}
+  for (const p of data ?? []) map[p.id] = p
+  return map
+}
+
 // GET ?token=UUID — get consent request details
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -17,13 +24,7 @@ export async function GET(request: NextRequest) {
 
   const { data: recordings, error } = await serviceClient
     .from('meeting_recordings')
-    .select(`
-      id, meeting_date, year, quarter, status,
-      consent_manager, consent_employee, consent_declined,
-      consent_manager_token, consent_employee_token,
-      manager:profiles!manager_id(name),
-      employee:profiles!employee_id(name)
-    `)
+    .select('id, meeting_date, year, quarter, status, consent_manager, consent_employee, consent_declined, consent_manager_token, consent_employee_token, manager_id, employee_id')
     .or(`consent_manager_token.eq.${token},consent_employee_token.eq.${token}`)
     .order('created_at', { ascending: false })
 
@@ -38,12 +39,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
+  const profiles = await getProfiles(serviceClient, [recording.manager_id, recording.employee_id])
   const token_role = recording.consent_manager_token === token ? 'manager' : 'employee'
 
   return NextResponse.json({
     recording_id: recording.id,
-    manager_name: ((recording.manager as unknown as { name: string }[] | null)?.[0]?.name ?? (recording.manager as unknown as { name: string } | null)?.name) ?? null,
-    employee_name: ((recording.employee as unknown as { name: string }[] | null)?.[0]?.name ?? (recording.employee as unknown as { name: string } | null)?.name) ?? null,
+    manager_name: profiles[recording.manager_id]?.name ?? null,
+    employee_name: profiles[recording.employee_id]?.name ?? null,
     meeting_date: recording.meeting_date,
     year: recording.year,
     token_role,
@@ -77,14 +79,7 @@ export async function POST(request: NextRequest) {
 
   const { data: rows, error: fetchError } = await serviceClient
     .from('meeting_recordings')
-    .select(`
-      id, status, consent_manager, consent_employee, consent_declined,
-      consent_manager_token, consent_employee_token,
-      manager_id, employee_id,
-      meeting_date,
-      manager:profiles!manager_id(name, email),
-      employee:profiles!employee_id(name, email)
-    `)
+    .select('id, status, consent_manager, consent_employee, consent_declined, consent_manager_token, consent_employee_token, manager_id, employee_id, meeting_date')
     .or(`consent_manager_token.eq.${token},consent_employee_token.eq.${token}`)
     .order('created_at', { ascending: false })
 
@@ -97,11 +92,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'This consent request has already been declined' }, { status: 409 })
   }
 
+  const profiles = await getProfiles(serviceClient, [recording.manager_id, recording.employee_id])
+  const manager = profiles[recording.manager_id] ?? null
+  const employee = profiles[recording.employee_id] ?? null
+
   const tokenRole = recording.consent_manager_token === token ? 'manager' : 'employee'
-  const _mgr = recording.manager as unknown
-  const _emp = recording.employee as unknown
-  const manager = (Array.isArray(_mgr) ? _mgr[0] : _mgr) as { name: string; email: string } | null
-  const employee = (Array.isArray(_emp) ? _emp[0] : _emp) as { name: string; email: string } | null
   const formattedDate = new Date(recording.meeting_date).toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   })
@@ -151,13 +146,11 @@ export async function POST(request: NextRequest) {
         await sendEmail({
           to,
           subject: 'Both parties have consented — recording may proceed',
-          html: `
-            <div style="background:#0f0f0f;color:#e5e5e5;font-family:sans-serif;padding:40px;max-width:600px;margin:0 auto;border-radius:12px;">
-              <h2 style="color:#fff;margin-top:0;">Consent complete</h2>
-              <p>Both <strong>${manager?.name}</strong> and <strong>${employee?.name}</strong> have consented to recording their 1:1 meeting on <strong>${formattedDate}</strong>.</p>
-              <p>The meeting may now be recorded.</p>
-            </div>
-          `,
+          html: `<div style="background:#0f0f0f;color:#e5e5e5;font-family:sans-serif;padding:40px;max-width:600px;margin:0 auto;border-radius:12px;">
+            <h2 style="color:#fff;margin-top:0;">Consent complete</h2>
+            <p>Both <strong>${manager?.name}</strong> and <strong>${employee?.name}</strong> have consented to recording their 1:1 meeting on <strong>${formattedDate}</strong>.</p>
+            <p>The meeting may now be recorded.</p>
+          </div>`,
         })
       }
     } else if (action === 'consent') {
@@ -168,26 +161,22 @@ export async function POST(request: NextRequest) {
         await sendEmail({
           to: otherEmail,
           subject: `${consentorName} has consented to recording`,
-          html: `
-            <div style="background:#0f0f0f;color:#e5e5e5;font-family:sans-serif;padding:40px;max-width:600px;margin:0 auto;border-radius:12px;">
-              <h2 style="color:#fff;margin-top:0;">Waiting for your consent</h2>
-              <p><strong>${consentorName}</strong> has consented to recording the 1:1 meeting on <strong>${formattedDate}</strong>.</p>
-              <p>Please click your consent link to proceed, ${otherName}.</p>
-            </div>
-          `,
+          html: `<div style="background:#0f0f0f;color:#e5e5e5;font-family:sans-serif;padding:40px;max-width:600px;margin:0 auto;border-radius:12px;">
+            <h2 style="color:#fff;margin-top:0;">Waiting for your consent</h2>
+            <p><strong>${consentorName}</strong> has consented to recording the 1:1 meeting on <strong>${formattedDate}</strong>.</p>
+            <p>Please click your consent link to proceed, ${otherName}.</p>
+          </div>`,
         })
       }
     } else if (action === 'decline' && manager?.email) {
       await sendEmail({
         to: manager.email,
         subject: `${employee?.name} declined recording consent`,
-        html: `
-          <div style="background:#0f0f0f;color:#e5e5e5;font-family:sans-serif;padding:40px;max-width:600px;margin:0 auto;border-radius:12px;">
-            <h2 style="color:#fff;margin-top:0;">Recording declined</h2>
-            <p><strong>${employee?.name}</strong> has declined consent to record your 1:1 meeting on <strong>${formattedDate}</strong>.</p>
-            <p>The meeting will not be recorded.</p>
-          </div>
-        `,
+        html: `<div style="background:#0f0f0f;color:#e5e5e5;font-family:sans-serif;padding:40px;max-width:600px;margin:0 auto;border-radius:12px;">
+          <h2 style="color:#fff;margin-top:0;">Recording declined</h2>
+          <p><strong>${employee?.name}</strong> has declined consent to record your 1:1 meeting on <strong>${formattedDate}</strong>.</p>
+          <p>The meeting will not be recorded.</p>
+        </div>`,
       })
     }
   } catch (err) {
