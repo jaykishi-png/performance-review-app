@@ -3592,30 +3592,57 @@ export function PerformanceReviewForm() {
                             </div>
                           )}
 
-                          {/* Save as note — saves directly */}
-                          <button
-                            onClick={async () => {
-                              const aiItems = recordingActionItems.map((a: any) => `- [${a.owner ?? '?'}] ${a.item ?? a}`).join('\n')
-                              const noteText = (recordingSummary ?? '') + (aiItems ? '\n\nAction Items:\n' + aiItems : '')
-                              if (!noteText.trim()) return
-                              setNotesSaving(true)
-                              try {
-                                const res = await fetch('/api/one-on-one-notes', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ employee_id: notesEmployeeId, date: new Date().toISOString().split('T')[0], note: noteText.trim(), tags: ['from_recording', 'goal_update'] }),
-                                })
-                                if (res.ok) {
-                                  await fetchNotes(notesEmployeeId)
-                                  alert('Note saved!')
-                                }
-                              } catch { /* ignore */ } finally { setNotesSaving(false) }
-                            }}
-                            disabled={notesSaving}
-                            style={{ alignSelf: 'flex-start', padding: '8px 18px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: notesSaving ? 0.6 : 1 }}
-                          >
-                            {notesSaving ? 'Saving…' : '📝 Save as 1:1 Note'}
-                          </button>
+                          {/* Save as note + Start New Meeting */}
+                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <button
+                              onClick={async () => {
+                                const aiItems = recordingActionItems.map((a: any) => `- [${a.owner ?? '?'}] ${a.item ?? a}`).join('\n')
+                                const noteText = (recordingSummary ?? '') + (aiItems ? '\n\nAction Items:\n' + aiItems : '')
+                                if (!noteText.trim()) return
+                                setNotesSaving(true)
+                                try {
+                                  const res = await fetch('/api/one-on-one-notes', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ employee_id: notesEmployeeId, date: new Date().toISOString().split('T')[0], note: noteText.trim(), tags: ['from_recording', 'goal_update'] }),
+                                  })
+                                  if (res.ok) {
+                                    await fetchNotes(notesEmployeeId)
+                                    // Reset recording panel so a new meeting can be started
+                                    setRecordingStatus('idle')
+                                    setRecordingSessionId(null)
+                                    setRecordingTranscript(null)
+                                    setRecordingSummary(null)
+                                    setRecordingActionItems([])
+                                    setRecordingPaused(false)
+                                    setRecordingSeconds(0)
+                                    setMediaRecorder(null)
+                                    setAudioChunks([])
+                                  }
+                                } catch { /* ignore */ } finally { setNotesSaving(false) }
+                              }}
+                              disabled={notesSaving}
+                              style={{ padding: '8px 18px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: notesSaving ? 0.6 : 1 }}
+                            >
+                              {notesSaving ? 'Saving…' : '📝 Save Note & Start New Meeting'}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setRecordingStatus('idle')
+                                setRecordingSessionId(null)
+                                setRecordingTranscript(null)
+                                setRecordingSummary(null)
+                                setRecordingActionItems([])
+                                setRecordingPaused(false)
+                                setRecordingSeconds(0)
+                                setMediaRecorder(null)
+                                setAudioChunks([])
+                              }}
+                              style={{ padding: '8px 18px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+                            >
+                              Start New Without Saving
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
