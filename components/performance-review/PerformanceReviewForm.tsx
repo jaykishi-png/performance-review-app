@@ -2568,7 +2568,7 @@ export function PerformanceReviewForm() {
   const [form, setForm] = useState<FormData>(defaultForm())
   const [saves, setSaves] = useState<SavedReview[]>([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notifications' | 'cycles' | 'meeting' | 'notes' | 'checkins' | 'peer-feedback'>('reviews')
+  const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notifications' | 'cycles' | 'meeting' | 'notes' | 'checkins' | 'peer-feedback' | 'pip'>('reviews')
   const [reviewsExpanded, setReviewsExpanded] = useState(true)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [showDirectReports, setShowDirectReports] = useState(false)
@@ -3554,6 +3554,22 @@ export function PerformanceReviewForm() {
   const [pf360Data, setPf360Data] = useState<any[]>([])
   const [pf360Loading, setPf360Loading] = useState(false)
 
+  // PIP state
+  const [pipPlans, setPipPlans] = useState<any[]>([])
+  const [pipLoading, setPipLoading] = useState(false)
+  const [pipSelectedEmployee, setPipSelectedEmployee] = useState('')
+  const [pipShowCreate, setPipShowCreate] = useState(false)
+  const [pipCreateTitle, setPipCreateTitle] = useState('')
+  const [pipCreateReason, setPipCreateReason] = useState('')
+  const [pipCreateStartDate, setPipCreateStartDate] = useState('')
+  const [pipCreateTargetDate, setPipCreateTargetDate] = useState('')
+  const [pipCreateMilestones, setPipCreateMilestones] = useState<{text: string; due_date: string; completed: boolean}[]>([{ text: '', due_date: '', completed: false }])
+  const [pipCreating, setPipCreating] = useState(false)
+  const [pipError, setPipError] = useState('')
+  const [pipSelectedId, setPipSelectedId] = useState<string | null>(null)
+  const [pipCheckInNote, setPipCheckInNote] = useState('')
+  const [pipSaving, setPipSaving] = useState(false)
+
   const fetchCheckin = async (empId: string, quarter: number) => {
     if (!empId) return
     setCheckinsLoading(true)
@@ -3741,6 +3757,280 @@ export function PerformanceReviewForm() {
             )}
           </>
         )}
+      </div>
+    )
+  }
+
+  const fetchPipPlans = async (empId?: string) => {
+    setPipLoading(true)
+    try {
+      const url = empId ? `/api/pip-plans?employee_id=${empId}` : '/api/pip-plans'
+      const res = await fetch(url)
+      const data = await res.json()
+      setPipPlans(data.data || [])
+    } catch { /* ignore */ } finally {
+      setPipLoading(false)
+    }
+  }
+
+  const createPip = async () => {
+    if (!pipSelectedEmployee || !pipCreateTitle || !pipCreateStartDate || !pipCreateTargetDate) {
+      setPipError('Please fill in all required fields.')
+      return
+    }
+    setPipCreating(true)
+    setPipError('')
+    try {
+      const res = await fetch('/api/pip-plans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employee_id: pipSelectedEmployee,
+          title: pipCreateTitle,
+          reason: pipCreateReason,
+          start_date: pipCreateStartDate,
+          target_date: pipCreateTargetDate,
+          milestones: pipCreateMilestones.filter(m => m.text),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setPipPlans(prev => [data.data, ...prev])
+      setPipShowCreate(false)
+      setPipCreateTitle(''); setPipCreateReason(''); setPipCreateStartDate(''); setPipCreateTargetDate('')
+      setPipCreateMilestones([{ text: '', due_date: '', completed: false }])
+      setPipSelectedId(data.data.id)
+    } catch (e: any) {
+      setPipError(e.message || 'Failed to create PIP')
+    } finally {
+      setPipCreating(false)
+    }
+  }
+
+  const updatePip = async (id: string, updates: any) => {
+    setPipSaving(true)
+    try {
+      const res = await fetch('/api/pip-plans', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...updates }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setPipPlans(prev => prev.map(p => p.id === id ? data.data : p))
+    } catch { /* ignore */ } finally {
+      setPipSaving(false)
+    }
+  }
+
+  const renderPip = () => {
+    const sCard: React.CSSProperties = { background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 16 }
+    const inp2: React.CSSProperties = { width: '100%', background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '8px 12px', color: '#e5e7eb', fontSize: 13, outline: 'none', boxSizing: 'border-box' }
+    const lbl2: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'block' }
+    const selectedPip = pipPlans.find(p => p.id === pipSelectedId)
+
+    const statusColor: Record<string, string> = { active: '#f59e0b', completed: '#34d399', escalated: '#f87171', withdrawn: '#6b7280' }
+    const statusBg: Record<string, string> = { active: '#1f1a0d', completed: '#0d2b1f', escalated: '#2b0d0d', withdrawn: '#13151f' }
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 860, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div>
+            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>PIP / Coaching Plans</h1>
+            <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Create and manage performance improvement plans for your direct reports.</p>
+          </div>
+          <button onClick={() => { setPipShowCreate(true); setPipSelectedId(null); fetchPipPlans() }}
+            style={{ padding: '8px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            + New PIP
+          </button>
+        </div>
+
+        {/* Create form */}
+        {pipShowCreate && (
+          <div style={{ ...sCard, border: '1px solid rgba(79,70,229,0.4)' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#f0f2fa', marginBottom: 16 }}>Create New PIP</div>
+            {pipError && <div style={{ background: '#2b0d0d', border: '1px solid #f87171', borderRadius: 8, padding: '8px 12px', color: '#f87171', fontSize: 12, marginBottom: 12 }}>{pipError}</div>}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div>
+                <label style={lbl2}>Employee *</label>
+                <select value={pipSelectedEmployee} onChange={e => setPipSelectedEmployee(e.target.value)} style={{ ...inp2 }}>
+                  <option value="">Select employee…</option>
+                  {activeEmployees.map(e => <option key={e.id} value={e.id}>{e.name || e.email}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl2}>Plan Title *</label>
+                <input value={pipCreateTitle} onChange={e => setPipCreateTitle(e.target.value)} placeholder="e.g. Performance Improvement Plan Q3" style={inp2} />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={lbl2}>Reason / Background</label>
+              <textarea value={pipCreateReason} onChange={e => setPipCreateReason(e.target.value)} placeholder="Describe the performance concerns and context…" rows={3}
+                style={{ ...inp2, resize: 'vertical' }} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={lbl2}>Start Date *</label>
+                <input type="date" value={pipCreateStartDate} onChange={e => setPipCreateStartDate(e.target.value)} style={inp2} />
+              </div>
+              <div>
+                <label style={lbl2}>Target Completion Date *</label>
+                <input type="date" value={pipCreateTargetDate} onChange={e => setPipCreateTargetDate(e.target.value)} style={inp2} />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <label style={lbl2}>Milestones</label>
+                <button onClick={() => setPipCreateMilestones(prev => [...prev, { text: '', due_date: '', completed: false }])}
+                  style={{ fontSize: 11, color: '#818cf8', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>+ Add Milestone</button>
+              </div>
+              {pipCreateMilestones.map((m, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                  <input value={m.text} onChange={e => setPipCreateMilestones(prev => prev.map((x, j) => j === i ? { ...x, text: e.target.value } : x))}
+                    placeholder={`Milestone ${i + 1}`} style={{ ...inp2, flex: 2 }} />
+                  <input type="date" value={m.due_date} onChange={e => setPipCreateMilestones(prev => prev.map((x, j) => j === i ? { ...x, due_date: e.target.value } : x))}
+                    style={{ ...inp2, flex: 1 }} />
+                  {pipCreateMilestones.length > 1 && (
+                    <button onClick={() => setPipCreateMilestones(prev => prev.filter((_, j) => j !== i))}
+                      style={{ color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>×</button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={createPip} disabled={pipCreating}
+                style={{ padding: '8px 20px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: pipCreating ? 0.6 : 1 }}>
+                {pipCreating ? 'Creating…' : 'Create PIP'}
+              </button>
+              <button onClick={() => { setPipShowCreate(false); setPipError('') }}
+                style={{ padding: '8px 16px', background: 'transparent', color: '#6b7280', border: '1px solid #1e2130', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 20, alignItems: 'flex-start' }}>
+          {/* PIP list */}
+          <div>
+            {pipLoading ? (
+              <div style={{ color: '#6b7280', fontSize: 13, padding: 16 }}>Loading…</div>
+            ) : pipPlans.length === 0 ? (
+              <div style={{ ...sCard, textAlign: 'center', color: '#6b7280', fontSize: 13, padding: 32 }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
+                No PIPs yet.<br />Click <strong>+ New PIP</strong> to create one.
+              </div>
+            ) : (
+              pipPlans.map(pip => {
+                const emp = pip.employee as { name: string | null; email: string } | null
+                const isSelected = pip.id === pipSelectedId
+                return (
+                  <div key={pip.id} onClick={() => setPipSelectedId(pip.id)}
+                    style={{ ...sCard, cursor: 'pointer', border: isSelected ? '1px solid rgba(79,70,229,0.5)' : '1px solid #1e2130', background: isSelected ? '#1a1c2e' : '#13151f', marginBottom: 8 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#f0f2fa', marginBottom: 4 }}>{pip.title}</div>
+                    <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>{emp?.name || emp?.email}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: statusBg[pip.status] || '#13151f', color: statusColor[pip.status] || '#6b7280' }}>
+                        {pip.status.charAt(0).toUpperCase() + pip.status.slice(1)}
+                      </span>
+                      <span style={{ fontSize: 11, color: '#4b5563' }}>Due {new Date(pip.target_date).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          {/* PIP detail */}
+          {selectedPip ? (
+            <div>
+              <div style={sCard}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#f0f2fa', marginBottom: 4 }}>{selectedPip.title}</div>
+                    <div style={{ fontSize: 13, color: '#6b7280' }}>
+                      {(selectedPip.employee as any)?.name || (selectedPip.employee as any)?.email} · Started {new Date(selectedPip.start_date).toLocaleDateString()} · Due {new Date(selectedPip.target_date).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {selectedPip.status === 'active' && (
+                      <>
+                        <button onClick={() => updatePip(selectedPip.id, { status: 'completed', outcome: 'Goals met' })}
+                          style={{ padding: '5px 12px', background: '#0d2b1f', color: '#34d399', border: '1px solid #1a4a35', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                          ✓ Complete
+                        </button>
+                        <button onClick={() => updatePip(selectedPip.id, { status: 'escalated' })}
+                          style={{ padding: '5px 12px', background: '#2b0d0d', color: '#f87171', border: '1px solid #5c2020', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                          ↑ Escalate
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {selectedPip.reason && (
+                  <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 14px', marginBottom: 16, fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>
+                    {selectedPip.reason}
+                  </div>
+                )}
+
+                {/* Milestones */}
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Milestones</div>
+                  {(selectedPip.milestones as any[]).length === 0 ? (
+                    <div style={{ fontSize: 13, color: '#4b5563' }}>No milestones set.</div>
+                  ) : (
+                    (selectedPip.milestones as any[]).map((m, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #1e2130' }}>
+                        <input type="checkbox" checked={m.completed} onChange={() => {
+                          const updated = (selectedPip.milestones as any[]).map((x, j) => j === i ? { ...x, completed: !x.completed } : x)
+                          updatePip(selectedPip.id, { milestones: updated })
+                        }} style={{ accentColor: '#4f46e5', width: 14, height: 14, flexShrink: 0 }} />
+                        <span style={{ flex: 1, fontSize: 13, color: m.completed ? '#4b5563' : '#e5e7eb', textDecoration: m.completed ? 'line-through' : 'none' }}>{m.text}</span>
+                        {m.due_date && <span style={{ fontSize: 11, color: '#4b5563' }}>{new Date(m.due_date).toLocaleDateString()}</span>}
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Check-in notes */}
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Check-in Log</div>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <input value={pipCheckInNote} onChange={e => setPipCheckInNote(e.target.value)}
+                      placeholder="Add a check-in note…" style={{ ...inp2, flex: 1 }} />
+                    <button disabled={!pipCheckInNote || pipSaving} onClick={() => {
+                      const notes = [...((selectedPip.check_in_notes as any[]) || []), { text: pipCheckInNote, date: new Date().toISOString() }]
+                      updatePip(selectedPip.id, { check_in_notes: notes })
+                      setPipCheckInNote('')
+                    }} style={{ padding: '8px 16px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: !pipCheckInNote || pipSaving ? 0.5 : 1 }}>
+                      Add
+                    </button>
+                  </div>
+                  {((selectedPip.check_in_notes as any[]) || []).length === 0 ? (
+                    <div style={{ fontSize: 13, color: '#4b5563' }}>No check-in notes yet.</div>
+                  ) : (
+                    [...((selectedPip.check_in_notes as any[]) || [])].reverse().map((n, i) => (
+                      <div key={i} style={{ background: '#0d0f1a', borderRadius: 8, padding: '10px 12px', marginBottom: 8 }}>
+                        <div style={{ fontSize: 13, color: '#e5e7eb', lineHeight: 1.6 }}>{n.text}</div>
+                        <div style={{ fontSize: 11, color: '#4b5563', marginTop: 4 }}>{new Date(n.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : !pipShowCreate && (
+            <div style={{ ...sCard, textAlign: 'center', color: '#6b7280', fontSize: 13, padding: 48 }}>
+              Select a PIP from the list to view details.
+            </div>
+          )}
+        </div>
       </div>
     )
   }
@@ -4378,6 +4668,22 @@ export function PerformanceReviewForm() {
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                 <span style={{ fontSize: 14 }}>⭐</span>
                 {!sidebarCollapsed && 'Peer Reviews'}
+              </button>
+            )
+          })()}
+
+          {/* PIPs */}
+          {(() => {
+            const active = activePage === 'pip'
+            const activePips = pipPlans.filter(p => p.status === 'active').length
+            return (
+              <button onClick={() => { setActivePage('pip'); fetchPipPlans() }} title={sidebarCollapsed ? 'PIPs' : undefined}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                <span style={{ fontSize: 14 }}>📈</span>
+                {!sidebarCollapsed && 'PIPs'}
+                {activePips > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: '#f59e0b', color: '#0d0f1a', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{activePips}</span>}
               </button>
             )
           })()}
@@ -5180,6 +5486,9 @@ export function PerformanceReviewForm() {
 
         {/* ── Peer Reviews (360°) page ── */}
         {activePage === 'peer-feedback' && renderPeerFeedback()}
+
+        {/* ── PIP / Coaching Plans page ── */}
+        {activePage === 'pip' && renderPip()}
 
         {/* ── Performance Reviews (form) ── */}
         {activePage === 'reviews' && (!currentReviewId ? (

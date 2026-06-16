@@ -12,7 +12,7 @@ import { SignaturePad, SignatureDisplay, encodeSignature, decodeSignature, type 
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Page = 'self-assessment' | 'reviews' | 'timeline' | 'goals' | 'checkins' | 'feedback' | 'guide' | 'glossary'
+type Page = 'self-assessment' | 'reviews' | 'timeline' | 'goals' | 'checkins' | 'feedback' | 'guide' | 'glossary' | 'pip'
 
 type Goal = {
   id: string
@@ -123,6 +123,7 @@ const NAV_ITEMS: { id: Page; label: string; icon: React.FC<{ size: number; color
   { id: 'goals',           label: 'Goals Tracker',        icon: Target     },
   { id: 'checkins',        label: 'Quarterly Check-ins',  icon: Sparkles   },
   { id: 'feedback',        label: '360 Feedback',         icon: Users      },
+  { id: 'pip',             label: 'Coaching Plan',        icon: BarChart2  },
   { id: 'guide',           label: 'Employee Guide',       icon: BookOpen   },
   { id: 'glossary',        label: 'Competency Glossary',  icon: BookMarked },
 ]
@@ -1655,6 +1656,130 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     )
   }
 
+  // ── Page: PIP / Coaching Plan ─────────────────────────────────────────────
+  function renderPipPage() {
+    const [pipPlans, setPipPlans] = React.useState<any[]>([])
+    const [pipLoading, setPipLoading] = React.useState(true)
+    const [pipNote, setPipNote] = React.useState('')
+    const [pipSaving, setPipSaving] = React.useState(false)
+
+    React.useEffect(() => {
+      fetch('/api/pip-plans').then(r => r.json()).then(d => { setPipPlans(d.data || []); setPipLoading(false) }).catch(() => setPipLoading(false))
+    }, [])
+
+    const activePip = pipPlans.find(p => p.status === 'active') || pipPlans[0]
+    const sCard: React.CSSProperties = { background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 16 }
+    const statusColor: Record<string, string> = { active: '#f59e0b', completed: '#34d399', escalated: '#f87171', withdrawn: '#6b7280' }
+    const statusBg: Record<string, string> = { active: '#1f1a0d', completed: '#0d2b1f', escalated: '#2b0d0d', withdrawn: '#13151f' }
+
+    if (pipLoading) return <div style={{ padding: 32, color: '#6b7280', fontSize: 13 }}>Loading…</div>
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 720, margin: '0 auto' }}>
+        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Coaching Plan</h1>
+        <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Your active performance improvement or coaching plan.</p>
+
+        {pipPlans.length === 0 ? (
+          <div style={{ ...sCard, textAlign: 'center', padding: 48, color: '#6b7280' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>No active coaching plan</div>
+            <div style={{ fontSize: 13 }}>You don&apos;t have any active PIPs or coaching plans at this time.</div>
+          </div>
+        ) : (
+          <>
+            {activePip && (
+              <>
+                <div style={sCard}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: '#f0f2fa', marginBottom: 4 }}>{activePip.title}</div>
+                      <div style={{ fontSize: 13, color: '#6b7280' }}>
+                        Started {new Date(activePip.start_date).toLocaleDateString()} · Target {new Date(activePip.target_date).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: statusBg[activePip.status], color: statusColor[activePip.status] }}>
+                      {activePip.status.charAt(0).toUpperCase() + activePip.status.slice(1)}
+                    </span>
+                  </div>
+
+                  {activePip.reason && (
+                    <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 14px', marginBottom: 16, fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>
+                      {activePip.reason}
+                    </div>
+                  )}
+
+                  {!activePip.employee_acknowledged && activePip.status === 'active' && (
+                    <div style={{ background: '#1a1c10', border: '1px solid #3d4a10', borderRadius: 8, padding: '12px 14px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 13, color: '#d4d48a' }}>Please acknowledge you have received and reviewed this plan.</span>
+                      <button disabled={pipSaving} onClick={async () => {
+                        setPipSaving(true)
+                        await fetch('/api/pip-plans', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: activePip.id, employee_acknowledged: true }) })
+                        setPipPlans(prev => prev.map(p => p.id === activePip.id ? { ...p, employee_acknowledged: true } : p))
+                        setPipSaving(false)
+                      }} style={{ padding: '6px 14px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                        {pipSaving ? 'Saving…' : '✓ Acknowledge'}
+                      </button>
+                    </div>
+                  )}
+                  {activePip.employee_acknowledged && (
+                    <div style={{ fontSize: 12, color: '#34d399', marginBottom: 12 }}>
+                      ✓ Acknowledged {activePip.employee_acknowledged_at ? new Date(activePip.employee_acknowledged_at).toLocaleDateString() : ''}
+                    </div>
+                  )}
+                </div>
+
+                {/* Milestones */}
+                <div style={sCard}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Milestones</div>
+                  {(activePip.milestones as any[]).length === 0 ? (
+                    <div style={{ fontSize: 13, color: '#4b5563' }}>No milestones set.</div>
+                  ) : (
+                    (activePip.milestones as any[]).map((m: any, i: number) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #1e2130' }}>
+                        <div style={{ width: 14, height: 14, borderRadius: '50%', background: m.completed ? '#34d399' : '#1e2130', border: `2px solid ${m.completed ? '#34d399' : '#2a2d3e'}`, flexShrink: 0 }} />
+                        <span style={{ flex: 1, fontSize: 13, color: m.completed ? '#4b5563' : '#e5e7eb', textDecoration: m.completed ? 'line-through' : 'none' }}>{m.text}</span>
+                        {m.due_date && <span style={{ fontSize: 11, color: '#4b5563' }}>{new Date(m.due_date).toLocaleDateString()}</span>}
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Employee notes */}
+                <div style={sCard}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>My Notes</div>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <input value={pipNote} onChange={e => setPipNote(e.target.value)} placeholder="Add a note…"
+                      style={{ flex: 1, background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '8px 12px', color: '#e5e7eb', fontSize: 13, outline: 'none' }} />
+                    <button disabled={!pipNote || pipSaving} onClick={async () => {
+                      setPipSaving(true)
+                      const notes = [...((activePip.check_in_notes as any[]) || []), { text: pipNote, date: new Date().toISOString(), by: 'employee' }]
+                      await fetch('/api/pip-plans', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: activePip.id, check_in_notes: notes }) })
+                      setPipPlans(prev => prev.map(p => p.id === activePip.id ? { ...p, check_in_notes: notes } : p))
+                      setPipNote('')
+                      setPipSaving(false)
+                    }} style={{ padding: '8px 16px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: !pipNote || pipSaving ? 0.5 : 1 }}>
+                      Add
+                    </button>
+                  </div>
+                  {((activePip.check_in_notes as any[]) || []).filter((n: any) => n.by === 'employee').length === 0 ? (
+                    <div style={{ fontSize: 13, color: '#4b5563' }}>No notes added yet.</div>
+                  ) : (
+                    [...((activePip.check_in_notes as any[]) || [])].filter((n: any) => n.by === 'employee').reverse().map((n: any, i: number) => (
+                      <div key={i} style={{ background: '#0d0f1a', borderRadius: 8, padding: '10px 12px', marginBottom: 8 }}>
+                        <div style={{ fontSize: 13, color: '#e5e7eb' }}>{n.text}</div>
+                        <div style={{ fontSize: 11, color: '#4b5563', marginTop: 4 }}>{new Date(n.date).toLocaleDateString()}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    )
+  }
+
   // ── Page: Glossary ────────────────────────────────────────────────────────
   function renderGlossaryPage() {
     const filtered = COMPETENCY_TERMS.filter(t =>
@@ -2128,6 +2253,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           {page === 'goals'     && renderGoalsPage()}
           {page === 'checkins'  && renderCheckins()}
           {page === 'feedback'  && renderFeedback()}
+          {page === 'pip'       && renderPipPage()}
           {page === 'guide'     && renderGuidePage()}
           {page === 'glossary'  && renderGlossaryPage()}
         </div>
