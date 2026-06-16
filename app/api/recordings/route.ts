@@ -35,11 +35,7 @@ export async function GET(request: NextRequest) {
 
   let query = serviceClient
     .from('meeting_recordings')
-    .select(`
-      *,
-      manager:profiles!manager_id(id, name, email),
-      employee:profiles!employee_id(id, name, email)
-    `)
+    .select('*')
     .order('meeting_date', { ascending: false })
 
   if (isPrivileged) {
