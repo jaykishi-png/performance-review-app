@@ -3097,7 +3097,12 @@ export function PerformanceReviewForm() {
         sessions.find((s: any) => s.status !== 'complete' && s.status !== 'declined')
       if (active) {
         setRecordingSessionId(active.id)
-        if (active.status === 'consented' || (active.consent_manager && active.consent_employee)) {
+        if (active.status === 'complete') {
+          setRecordingStatus('complete')
+          setRecordingSummary(active.summary ?? null)
+          setRecordingTranscript(active.transcript ?? null)
+          setRecordingActionItems(active.action_items ?? [])
+        } else if (active.status === 'consented' || (active.consent_manager && active.consent_employee)) {
           setRecordingStatus('consented')
         } else {
           setRecordingStatus('pending_consent')
@@ -3413,13 +3418,17 @@ export function PerformanceReviewForm() {
                       {/* ── complete ── */}
                       {recordingStatus === 'complete' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                          {/* Summary */}
-                          {recordingSummary && (
-                            <div style={{ borderLeft: '3px solid #4f46e5', paddingLeft: 14 }}>
-                              <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Summary</p>
-                              <p style={{ margin: 0, fontSize: 13, color: '#c7d2fe', lineHeight: 1.6 }}>{recordingSummary}</p>
-                            </div>
-                          )}
+                          {/* Editable Summary */}
+                          <div>
+                            <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Summary <span style={{ color: '#4b5563', fontWeight: 400, textTransform: 'none' }}>(editable)</span></p>
+                            <textarea
+                              value={recordingSummary ?? ''}
+                              onChange={e => setRecordingSummary(e.target.value)}
+                              rows={4}
+                              placeholder="AI summary will appear here. You can edit it before saving."
+                              style={{ width: '100%', padding: '10px 12px', background: '#13151f', border: '1px solid #2a2d4e', borderRadius: 8, color: '#c7d2fe', fontSize: 13, lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' }}
+                            />
+                          </div>
 
                           {/* Action Items */}
                           {recordingActionItems.length > 0 && (
@@ -3459,12 +3468,29 @@ export function PerformanceReviewForm() {
                             </div>
                           )}
 
-                          {/* Save as note */}
+                          {/* Save as note — saves directly */}
                           <button
-                            onClick={handleSaveRecordingAsNote}
-                            style={{ alignSelf: 'flex-start', padding: '8px 18px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                            onClick={async () => {
+                              const aiItems = recordingActionItems.map((a: any) => `- [${a.owner ?? '?'}] ${a.item ?? a}`).join('\n')
+                              const noteText = (recordingSummary ?? '') + (aiItems ? '\n\nAction Items:\n' + aiItems : '')
+                              if (!noteText.trim()) return
+                              setNotesSaving(true)
+                              try {
+                                const res = await fetch('/api/one-on-one-notes', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ employee_id: notesEmployeeId, date: new Date().toISOString().split('T')[0], note: noteText.trim(), tags: ['from_recording', 'goal_update'] }),
+                                })
+                                if (res.ok) {
+                                  await fetchNotes(notesEmployeeId)
+                                  alert('Note saved!')
+                                }
+                              } catch { /* ignore */ } finally { setNotesSaving(false) }
+                            }}
+                            disabled={notesSaving}
+                            style={{ alignSelf: 'flex-start', padding: '8px 18px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: notesSaving ? 0.6 : 1 }}
                           >
-                            📝 Save as 1:1 Note
+                            {notesSaving ? 'Saving…' : '📝 Save as 1:1 Note'}
                           </button>
                         </div>
                       )}
