@@ -3092,8 +3092,9 @@ export function PerformanceReviewForm() {
       if (!res.ok) return
       const body = await res.json()
       const sessions: any[] = Array.isArray(body) ? body : (body.data ?? body.recordings ?? [])
-      // Find the most recent active (non-declined, non-complete) session
-      const active = sessions.filter((s: any) => s.status !== 'complete' && s.status !== 'declined').pop()
+      // Prefer consented session first, else most recent non-declined/non-complete
+      const active = sessions.find((s: any) => s.status === 'consented') ??
+        sessions.find((s: any) => s.status !== 'complete' && s.status !== 'declined')
       if (active) {
         setRecordingSessionId(active.id)
         if (active.status === 'consented' || (active.consent_manager && active.consent_employee)) {
@@ -3215,10 +3216,10 @@ export function PerformanceReviewForm() {
                     const data = await res.json()
                     const sessions: any[] = Array.isArray(data) ? data : (data.data ?? data.recordings ?? [])
                     setRecordings(sessions)
-                    // Find active session: prefer recordingSessionId match, else most recent non-complete
-                    const active = recordingSessionId
-                      ? sessions.find((s: any) => s.id === recordingSessionId)
-                      : sessions.filter((s: any) => s.status !== 'complete' && s.status !== 'declined').pop()
+                    // Find active session: prefer recordingSessionId match, else consented, else most recent active
+                    const active = (recordingSessionId ? sessions.find((s: any) => s.id === recordingSessionId) : null)
+                      ?? sessions.find((s: any) => s.status === 'consented')
+                      ?? sessions.find((s: any) => s.status !== 'complete' && s.status !== 'declined')
                     if (active) {
                       setRecordingSessionId(active.id)
                       if (active.status === 'declined') {
