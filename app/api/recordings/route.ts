@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
     .from('meeting_recordings')
     .select(`
       *,
-      manager:profiles!meeting_recordings_manager_id_fkey(id, name, email),
-      employee:profiles!meeting_recordings_employee_id_fkey(id, name, email)
+      manager:profiles!manager_id(id, name, email),
+      employee:profiles!employee_id(id, name, email)
     `)
     .order('meeting_date', { ascending: false })
 

@@ -21,8 +21,8 @@ export async function GET(request: NextRequest) {
       id, meeting_date, year, quarter, status,
       consent_manager, consent_employee, consent_declined,
       consent_manager_token, consent_employee_token,
-      manager:profiles!meeting_recordings_manager_id_fkey(name),
-      employee:profiles!meeting_recordings_employee_id_fkey(name)
+      manager:profiles!manager_id(name),
+      employee:profiles!employee_id(name)
     `)
     .or(`consent_manager_token.eq.${token},consent_employee_token.eq.${token}`)
     .order('created_at', { ascending: false })
@@ -82,8 +82,8 @@ export async function POST(request: NextRequest) {
       consent_manager_token, consent_employee_token,
       manager_id, employee_id,
       meeting_date,
-      manager:profiles!meeting_recordings_manager_id_fkey(name, email),
-      employee:profiles!meeting_recordings_employee_id_fkey(name, email)
+      manager:profiles!manager_id(name, email),
+      employee:profiles!employee_id(name, email)
     `)
     .or(`consent_manager_token.eq.${token},consent_employee_token.eq.${token}`)
     .order('created_at', { ascending: false })
