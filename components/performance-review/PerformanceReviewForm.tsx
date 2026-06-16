@@ -3060,6 +3060,9 @@ export function PerformanceReviewForm() {
   const [recordingActionItems, setRecordingActionItems] = useState<any[]>([])
   const [recordingPanelOpen, setRecordingPanelOpen] = useState(false)
   const [transcriptExpanded, setTranscriptExpanded] = useState(false)
+  const [consentManager, setConsentManager] = useState(false)
+  const [consentEmployee, setConsentEmployee] = useState(false)
+  const [refreshingConsent, setRefreshingConsent] = useState(false)
   const [savedRecordingSessions, setSavedRecordingSessions] = useState<Array<{
     id: string; date: string; summary: string | null; transcript: string | null; actionItems: any[]; expandedInPanel: boolean
   }>>([])
@@ -3211,7 +3214,10 @@ export function PerformanceReviewForm() {
                   })
                   if (res.ok) {
                     const data = await res.json()
-                    setRecordingSessionId(data.id ?? data.recording_id ?? null)
+                    const rec = data.data ?? data
+                    setRecordingSessionId(rec.id ?? rec.recording_id ?? null)
+                    setConsentManager(!!rec.consent_manager)
+                    setConsentEmployee(!!rec.consent_employee)
                     setRecordingStatus('pending_consent')
                   } else {
                     setRecordingError('Failed to send consent request.')
@@ -3223,19 +3229,23 @@ export function PerformanceReviewForm() {
 
               async function handleRefreshConsentStatus() {
                 if (!notesEmployeeId) return
+                setRefreshingConsent(true)
                 try {
                   const res = await fetch(`/api/recordings?employee_id=${notesEmployeeId}`)
                   if (res.ok) {
                     const data = await res.json()
                     const sessions: any[] = Array.isArray(data) ? data : (data.data ?? data.recordings ?? [])
                     setRecordings(sessions)
-                    // Find active session: prefer recordingSessionId match, else consented, else most recent active
+                    // Prefer the session we already have open, then most recent consented, then any active
                     const active = (recordingSessionId ? sessions.find((s: any) => s.id === recordingSessionId) : null)
                       ?? sessions.find((s: any) => s.status === 'consented')
+                      ?? sessions.find((s: any) => s.status === 'pending_consent')
                       ?? sessions.find((s: any) => s.status !== 'complete' && s.status !== 'declined')
                     if (active) {
                       setRecordingSessionId(active.id)
-                      if (active.status === 'declined') {
+                      setConsentManager(!!active.consent_manager)
+                      setConsentEmployee(!!active.consent_employee)
+                      if (active.status === 'declined' || active.consent_declined) {
                         setRecordingStatus('idle')
                       } else if (active.status === 'consented' || (active.consent_manager && active.consent_employee)) {
                         setRecordingStatus('consented')
@@ -3244,7 +3254,9 @@ export function PerformanceReviewForm() {
                       }
                     }
                   }
-                } catch { /* ignore */ }
+                } catch { /* ignore */ } finally {
+                  setRefreshingConsent(false)
+                }
               }
 
               function startWaveform(stream: MediaStream) {
@@ -3540,13 +3552,30 @@ export function PerformanceReviewForm() {
                       {recordingStatus === 'pending_consent' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                           <p style={{ margin: 0, fontSize: 13, color: '#e0e7ff' }}>⏳ Awaiting consent from both parties</p>
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(22,163,74,0.15)', border: '1px solid rgba(22,163,74,0.4)', color: '#34d399', fontSize: 11, fontWeight: 600 }}>You: ✓ Consented</span>
-                            <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(217,119,6,0.15)', border: '1px solid rgba(217,119,6,0.4)', color: '#fbbf24', fontSize: 11, fontWeight: 600 }}>Employee: ⏳ Pending</span>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                              background: consentManager ? 'rgba(22,163,74,0.15)' : 'rgba(217,119,6,0.15)',
+                              border: `1px solid ${consentManager ? 'rgba(22,163,74,0.4)' : 'rgba(217,119,6,0.4)'}`,
+                              color: consentManager ? '#34d399' : '#fbbf24' }}>
+                              You: {consentManager ? '✓ Consented' : '⏳ Pending'}
+                            </span>
+                            <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                              background: consentEmployee ? 'rgba(22,163,74,0.15)' : 'rgba(217,119,6,0.15)',
+                              border: `1px solid ${consentEmployee ? 'rgba(22,163,74,0.4)' : 'rgba(217,119,6,0.4)'}`,
+                              color: consentEmployee ? '#34d399' : '#fbbf24' }}>
+                              Employee: {consentEmployee ? '✓ Consented' : '⏳ Pending'}
+                            </span>
                           </div>
-                          <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>Check your email to confirm your own consent.</p>
-                          <button onClick={handleRefreshConsentStatus} style={{ alignSelf: 'flex-start', padding: '6px 14px', background: 'transparent', border: '1px solid #1e2130', borderRadius: 6, color: '#9ca3af', fontSize: 12, cursor: 'pointer' }}>
-                            ↻ Refresh Status
+                          {(!consentManager || !consentEmployee) && (
+                            <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>Check your email to give consent. The employee will receive their link automatically.</p>
+                          )}
+                          <button
+                            onClick={handleRefreshConsentStatus}
+                            disabled={refreshingConsent}
+                            style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: 'transparent', border: '1px solid #1e2130', borderRadius: 6, color: '#9ca3af', fontSize: 12, cursor: refreshingConsent ? 'not-allowed' : 'pointer', opacity: refreshingConsent ? 0.6 : 1 }}
+                          >
+                            <span style={{ display: 'inline-block', animation: refreshingConsent ? 'spin 0.8s linear infinite' : 'none' }}>↻</span>
+                            {refreshingConsent ? 'Checking…' : 'Refresh Status'}
                           </button>
                         </div>
                       )}
