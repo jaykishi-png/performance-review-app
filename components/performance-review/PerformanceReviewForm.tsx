@@ -3054,6 +3054,7 @@ export function PerformanceReviewForm() {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [audioChunks, setAudioChunks] = useState<Blob[]>([])
   const [recordingSeconds, setRecordingSeconds] = useState(0)
+  const [recordingPaused, setRecordingPaused] = useState(false)
   const [recordingTranscript, setRecordingTranscript] = useState<string | null>(null)
   const [recordingSummary, setRecordingSummary] = useState<string | null>(null)
   const [recordingActionItems, setRecordingActionItems] = useState<any[]>([])
@@ -3259,7 +3260,24 @@ export function PerformanceReviewForm() {
 
               function handleStopRecording() {
                 if (recordingTimerRef.current) { clearInterval(recordingTimerRef.current); recordingTimerRef.current = null }
+                setRecordingPaused(false)
                 mediaRecorder?.stop()
+              }
+
+              function handlePauseRecording() {
+                if (mediaRecorder?.state === 'recording') {
+                  mediaRecorder.pause()
+                  if (recordingTimerRef.current) { clearInterval(recordingTimerRef.current); recordingTimerRef.current = null }
+                  setRecordingPaused(true)
+                }
+              }
+
+              function handleResumeRecording() {
+                if (mediaRecorder?.state === 'paused') {
+                  mediaRecorder.resume()
+                  recordingTimerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000)
+                  setRecordingPaused(false)
+                }
               }
 
               async function handleRecordingStop(chunks: Blob[]) {
@@ -3320,10 +3338,15 @@ export function PerformanceReviewForm() {
                   >
                     <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600 }}>
                       🎙️ Meeting Recording
-                      {recordingStatus === 'recording' && (
+                      {recordingStatus === 'recording' && !recordingPaused && (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 10px', borderRadius: 20, background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.4)', color: '#f87171', fontSize: 11, fontWeight: 700 }}>
                           <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block', animation: 'pulse 1s infinite' }} />
                           REC {formatTime(recordingSeconds)}
+                        </span>
+                      )}
+                      {recordingStatus === 'recording' && recordingPaused && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 10px', borderRadius: 20, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b', fontSize: 11, fontWeight: 700 }}>
+                          ⏸ PAUSED {formatTime(recordingSeconds)}
                         </span>
                       )}
                       {recordingStatus === 'complete' && <span style={{ fontSize: 11, color: '#34d399', fontWeight: 600 }}>● Complete</span>}
@@ -3384,15 +3407,36 @@ export function PerformanceReviewForm() {
                       {recordingStatus === 'recording' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
+                            {recordingPaused
+                              ? <span style={{ width: 10, height: 10, borderRadius: 2, background: '#f59e0b', display: 'inline-block' }} />
+                              : <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444', display: 'inline-block', animation: 'pulse 1s infinite' }} />
+                            }
                             <span style={{ fontSize: 20, fontWeight: 700, color: '#f0f2fa', fontVariantNumeric: 'tabular-nums' }}>{formatTime(recordingSeconds)}</span>
+                            {recordingPaused && <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>PAUSED</span>}
                           </div>
-                          <button
-                            onClick={handleStopRecording}
-                            style={{ padding: '9px 20px', background: '#1e2130', color: '#e0e7ff', border: '1px solid #374151', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-                          >
-                            ⏹ Stop Recording
-                          </button>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            {recordingPaused ? (
+                              <button
+                                onClick={handleResumeRecording}
+                                style={{ padding: '9px 20px', background: 'linear-gradient(135deg,#16a34a,#15803d)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                              >
+                                ▶ Resume
+                              </button>
+                            ) : (
+                              <button
+                                onClick={handlePauseRecording}
+                                style={{ padding: '9px 20px', background: '#1e2130', color: '#f59e0b', border: '1px solid #f59e0b55', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                              >
+                                ⏸ Pause
+                              </button>
+                            )}
+                            <button
+                              onClick={handleStopRecording}
+                              style={{ padding: '9px 20px', background: '#1e2130', color: '#e0e7ff', border: '1px solid #374151', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                            >
+                              ⏹ Stop & Transcribe
+                            </button>
+                          </div>
                         </div>
                       )}
 
