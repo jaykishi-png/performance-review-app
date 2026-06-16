@@ -3168,7 +3168,7 @@ export function PerformanceReviewForm() {
                   const res = await fetch('/api/recordings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ employee_id: notesEmployeeId, meeting_date: '2026-06-15', year: 2026, quarter: 2 }),
+                    body: JSON.stringify({ employee_id: notesEmployeeId, meeting_date: new Date().toISOString().split('T')[0], year: new Date().getFullYear(), quarter: Math.ceil((new Date().getMonth() + 1) / 3) }),
                   })
                   if (res.ok) {
                     const data = await res.json()

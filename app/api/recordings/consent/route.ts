@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
@@ -136,22 +136,12 @@ export async function POST(request: NextRequest) {
   const bothConsented = newStatus === 'consented'
 
   // Send notification emails
-  if (process.env.RESEND_API_KEY) {
-    const resend = new Resend(process.env.RESEND_API_KEY)
-    const fromEmail = process.env.RESEND_FROM_EMAIL ?? 'noreply@example.com'
-    const buttonStyle = 'display:inline-block;padding:12px 24px;border-radius:6px;font-weight:600;text-decoration:none;font-size:15px;background:#4f46e5;color:#fff;'
-
+  try {
     if (action === 'consent' && bothConsented) {
-      // Notify both parties that consent is complete
-      const notifyEmails = [
-        { to: manager?.email, name: manager?.name },
-        { to: employee?.email, name: employee?.name },
-      ].filter((e) => e.to)
-
-      for (const recipient of notifyEmails) {
-        await resend.emails.send({
-          from: fromEmail,
-          to: recipient.to!,
+      const recipients = [manager?.email, employee?.email].filter(Boolean) as string[]
+      for (const to of recipients) {
+        await sendEmail({
+          to,
           subject: 'Both parties have consented — recording may proceed',
           html: `
             <div style="background:#0f0f0f;color:#e5e5e5;font-family:sans-serif;padding:40px;max-width:600px;margin:0 auto;border-radius:12px;">
@@ -163,29 +153,24 @@ export async function POST(request: NextRequest) {
         })
       }
     } else if (action === 'consent') {
-      // Notify the other party that one has consented
       const otherEmail = tokenRole === 'manager' ? employee?.email : manager?.email
       const otherName = tokenRole === 'manager' ? employee?.name : manager?.name
       const consentorName = tokenRole === 'manager' ? manager?.name : employee?.name
-
       if (otherEmail) {
-        await resend.emails.send({
-          from: fromEmail,
+        await sendEmail({
           to: otherEmail,
           subject: `${consentorName} has consented to recording`,
           html: `
             <div style="background:#0f0f0f;color:#e5e5e5;font-family:sans-serif;padding:40px;max-width:600px;margin:0 auto;border-radius:12px;">
               <h2 style="color:#fff;margin-top:0;">Waiting for your consent</h2>
               <p><strong>${consentorName}</strong> has consented to recording the 1:1 meeting on <strong>${formattedDate}</strong>.</p>
-              <p>We're waiting for your response, ${otherName}.</p>
+              <p>Please click your consent link to proceed, ${otherName}.</p>
             </div>
           `,
         })
       }
     } else if (action === 'decline' && manager?.email) {
-      // Notify manager that employee declined
-      await resend.emails.send({
-        from: fromEmail,
+      await sendEmail({
         to: manager.email,
         subject: `${employee?.name} declined recording consent`,
         html: `
@@ -197,6 +182,8 @@ export async function POST(request: NextRequest) {
         `,
       })
     }
+  } catch (err) {
+    console.error('[consent] notification email failed:', err)
   }
 
   return NextResponse.json({ ok: true, status: newStatus, both_consented: bothConsented })
