@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
@@ -111,10 +111,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: insertError?.message ?? 'Insert failed' }, { status: 500 })
   }
 
-  // Send consent emails if Resend is configured
-  if (process.env.RESEND_API_KEY) {
-    const resend = new Resend(process.env.RESEND_API_KEY)
-    const appUrl = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
+  // Send consent emails
+  try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://performance-review-app-three.vercel.app'
     const managerName = managerProfile?.name ?? 'Your manager'
     const employeeName = employeeProfile.name ?? 'the employee'
     const formattedDate = new Date(meeting_date).toLocaleDateString('en-US', {
@@ -124,12 +123,9 @@ export async function POST(request: NextRequest) {
     const managerConsentUrl = `${appUrl}/consent/${recording.consent_manager_token}`
     const employeeConsentUrl = `${appUrl}/consent/${recording.consent_employee_token}`
     const employeeDeclineUrl = `${appUrl}/consent/${recording.consent_employee_token}?decline=true`
-
     const buttonStyle = 'display:inline-block;padding:12px 24px;border-radius:6px;font-weight:600;text-decoration:none;font-size:15px;'
 
-    // Email to manager
-    await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL ?? 'noreply@example.com',
+    await sendEmail({
       to: managerProfile?.email ?? user.email!,
       subject: `Recording consent needed — 1:1 with ${employeeName}`,
       html: `
@@ -142,9 +138,7 @@ export async function POST(request: NextRequest) {
       `,
     })
 
-    // Email to employee
-    await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL ?? 'noreply@example.com',
+    await sendEmail({
       to: employeeProfile.email,
       subject: `${managerName} would like to record your 1:1 meeting`,
       html: `
@@ -159,6 +153,8 @@ export async function POST(request: NextRequest) {
         </div>
       `,
     })
+  } catch (err) {
+    console.error('[recordings] consent email failed:', err)
   }
 
   return NextResponse.json({ data: recording }, { status: 201 })
