@@ -1734,9 +1734,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   } catch { setSmtpTestResult('✗ Network error') } finally { setSmtpTestSending(false) }
                 }}
                 disabled={smtpTestSending}
-                style={{ padding: '6px 16px', background: 'transparent', color: '#9ca3af', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: smtpTestSending ? 0.6 : 1 }}
+                style={{ padding: '6px 16px', background: '#1e293b', color: '#e2e8f0', border: '1px solid #4f46e5', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: smtpTestSending ? 0.6 : 1 }}
               >
-                {smtpTestSending ? 'Sending…' : 'Send Test'}
+                {smtpTestSending ? 'Sending…' : '📧 Send Test Email'}
               </button>
               <button
                 onClick={saveSmtpSettings}
