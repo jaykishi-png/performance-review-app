@@ -264,6 +264,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [smtpSaved, setSmtpSaved] = useState(false)
   const [smtpSaving, setSmtpSaving] = useState(false)
   const [smtpError, setSmtpError] = useState('')
+  const [smtpTestSending, setSmtpTestSending] = useState(false)
+  const [smtpTestResult, setSmtpTestResult] = useState<string | null>(null)
 
   useEffect(() => {
     try {
@@ -1720,6 +1722,22 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {smtpSaved && <span style={{ fontSize: 12, color: '#34d399', fontWeight: 600 }}>✓ Saved</span>}
               {smtpError && <span style={{ fontSize: 12, color: '#f87171' }}>{smtpError}</span>}
+              {smtpTestResult && <span style={{ fontSize: 12, color: smtpTestResult.startsWith('✓') ? '#34d399' : '#f87171', fontWeight: 600 }}>{smtpTestResult}</span>}
+              <button
+                onClick={async () => {
+                  setSmtpTestSending(true)
+                  setSmtpTestResult(null)
+                  try {
+                    const res = await fetch('/api/test-email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: currentUser.email }) })
+                    const data = await res.json()
+                    setSmtpTestResult(data.success ? `✓ Test sent to ${currentUser.email}` : `✗ ${data.error}`)
+                  } catch { setSmtpTestResult('✗ Network error') } finally { setSmtpTestSending(false) }
+                }}
+                disabled={smtpTestSending}
+                style={{ padding: '6px 16px', background: 'transparent', color: '#9ca3af', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: smtpTestSending ? 0.6 : 1 }}
+              >
+                {smtpTestSending ? 'Sending…' : 'Send Test'}
+              </button>
               <button
                 onClick={saveSmtpSettings}
                 disabled={smtpSaving}
