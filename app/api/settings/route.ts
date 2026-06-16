@@ -6,7 +6,9 @@ export async function GET() {
   const { data, error } = await supabase
     .from('app_settings')
     .select('smtp_email, smtp_display_name')
-    .single()
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
   if (error) return NextResponse.json({ smtp_email: null, smtp_display_name: 'Performance Review' })
   return NextResponse.json(data)
@@ -18,7 +20,7 @@ export async function POST(req: NextRequest) {
   const { smtp_email, smtp_password, smtp_display_name } = body
 
   // Get existing row id
-  const { data: existing } = await supabase.from('app_settings').select('id').single()
+  const { data: existing } = await supabase.from('app_settings').select('id').order('updated_at', { ascending: false }).limit(1).maybeSingle()
 
   const payload: Record<string, string> = {
     smtp_display_name: smtp_display_name || 'Performance Review',

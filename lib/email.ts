@@ -12,7 +12,9 @@ export async function sendEmail({ to, subject, html }: SendEmailOptions) {
   const { data: settings, error: settingsError } = await supabase
     .from('app_settings')
     .select('smtp_email, smtp_password, smtp_display_name')
-    .single()
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
   console.log('[email] settings loaded:', { smtp_email: settings?.smtp_email, has_password: !!settings?.smtp_password, settingsError })
 
