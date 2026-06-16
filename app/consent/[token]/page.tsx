@@ -176,6 +176,9 @@ export default function ConsentPage() {
 
   // ── Post-action success states ────────────────────────────────────────────
   if (actionResult) {
+    const portalUrl = data?.token_role === 'manager' ? '/manager' : '/employee'
+    const portalLabel = data?.token_role === 'manager' ? 'Go to Manager Portal' : 'Go to Employee Portal'
+
     if (actionResult.type === 'consented') {
       return (
         <div style={styles.card}>
@@ -190,6 +193,12 @@ export default function ConsentPage() {
                 Both parties have consented. Recording is now enabled.
               </div>
             )}
+            <a
+              href={portalUrl}
+              style={{ marginTop: 20, display: 'inline-block', padding: '12px 28px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', borderRadius: 10, fontWeight: 600, fontSize: 14, textDecoration: 'none' }}
+            >
+              {portalLabel} →
+            </a>
           </div>
         </div>
       )
@@ -205,6 +214,12 @@ export default function ConsentPage() {
               You have declined the recording request. Your manager has been
               notified.
             </p>
+            <a
+              href={portalUrl}
+              style={{ marginTop: 20, display: 'inline-block', padding: '12px 28px', background: '#1e293b', color: '#e2e8f0', border: '1px solid #374151', borderRadius: 10, fontWeight: 600, fontSize: 14, textDecoration: 'none' }}
+            >
+              {portalLabel} →
+            </a>
           </div>
         </div>
       )

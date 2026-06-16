@@ -3084,6 +3084,31 @@ export function PerformanceReviewForm() {
     }
   }
 
+  // Auto-restore recording session state when employee is selected
+  const fetchRecordingState = async (empId: string) => {
+    if (!empId) return
+    try {
+      const res = await fetch(`/api/recordings?employee_id=${empId}`)
+      if (!res.ok) return
+      const data = await res.json()
+      const sessions: any[] = Array.isArray(data) ? data : (data.recordings ?? [])
+      // Find the most recent active (non-declined, non-complete) session
+      const active = sessions.filter((s: any) => s.status !== 'complete' && s.status !== 'declined').pop()
+      if (active) {
+        setRecordingSessionId(active.id)
+        if (active.manager_consented && active.employee_consented) {
+          setRecordingStatus('consented')
+        } else if (active.status === 'pending') {
+          setRecordingStatus('pending_consent')
+        }
+        setRecordingPanelOpen(true)
+      } else {
+        setRecordingSessionId(null)
+        setRecordingStatus('idle')
+      }
+    } catch { /* ignore */ }
+  }
+
   const handleSaveNote = async () => {
     if (!notesEmployeeId || !newNoteText.trim()) return
     setNotesSaving(true)
@@ -3145,7 +3170,7 @@ export function PerformanceReviewForm() {
           <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Select Employee</label>
           <select
             value={notesEmployeeId}
-            onChange={e => { setNotesEmployeeId(e.target.value); fetchNotes(e.target.value) }}
+            onChange={e => { setNotesEmployeeId(e.target.value); fetchNotes(e.target.value); fetchRecordingState(e.target.value) }}
             style={{ padding: '8px 12px', background: '#0d1117', border: '1px solid #1e2130', borderRadius: 8, color: '#e0e7ff', fontSize: 13, minWidth: 240, cursor: 'pointer' }}
           >
             <option value=''>— Choose an employee —</option>
@@ -3190,9 +3215,19 @@ export function PerformanceReviewForm() {
                     const data = await res.json()
                     const sessions: any[] = Array.isArray(data) ? data : (data.recordings ?? [])
                     setRecordings(sessions)
-                    const match = recordingSessionId ? sessions.find((s: any) => s.id === recordingSessionId) : sessions[sessions.length - 1]
-                    if (match) {
-                      if (match.manager_consented && match.employee_consented) setRecordingStatus('consented')
+                    // Find active session: prefer recordingSessionId match, else most recent non-complete
+                    const active = recordingSessionId
+                      ? sessions.find((s: any) => s.id === recordingSessionId)
+                      : sessions.filter((s: any) => s.status !== 'complete' && s.status !== 'declined').pop()
+                    if (active) {
+                      setRecordingSessionId(active.id)
+                      if (active.status === 'declined') {
+                        setRecordingStatus('idle')
+                      } else if (active.manager_consented && active.employee_consented) {
+                        setRecordingStatus('consented')
+                      } else if (active.status === 'pending') {
+                        setRecordingStatus('pending_consent')
+                      }
                     }
                   }
                 } catch { /* ignore */ }
