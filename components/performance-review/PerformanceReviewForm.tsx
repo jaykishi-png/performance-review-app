@@ -3096,9 +3096,9 @@ export function PerformanceReviewForm() {
       const active = sessions.filter((s: any) => s.status !== 'complete' && s.status !== 'declined').pop()
       if (active) {
         setRecordingSessionId(active.id)
-        if (active.consent_manager && active.consent_employee) {
+        if (active.status === 'consented' || (active.consent_manager && active.consent_employee)) {
           setRecordingStatus('consented')
-        } else if (active.status === 'pending_consent') {
+        } else {
           setRecordingStatus('pending_consent')
         }
         setRecordingPanelOpen(true)
@@ -3223,9 +3223,9 @@ export function PerformanceReviewForm() {
                       setRecordingSessionId(active.id)
                       if (active.status === 'declined') {
                         setRecordingStatus('idle')
-                      } else if (active.consent_manager && active.consent_employee) {
+                      } else if (active.status === 'consented' || (active.consent_manager && active.consent_employee)) {
                         setRecordingStatus('consented')
-                      } else if (active.status === 'pending_consent') {
+                      } else {
                         setRecordingStatus('pending_consent')
                       }
                     }
