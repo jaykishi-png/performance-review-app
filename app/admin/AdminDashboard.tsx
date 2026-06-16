@@ -1717,35 +1717,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
         {/* Section 5 — Email / SMTP */}
         <div style={sectionCard}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <div style={{ marginBottom: 4 }}>
             <div style={sectionTitle}>Email Configuration</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {smtpSaved && <span style={{ fontSize: 12, color: '#34d399', fontWeight: 600 }}>✓ Saved</span>}
-              {smtpError && <span style={{ fontSize: 12, color: '#f87171' }}>{smtpError}</span>}
-              {smtpTestResult && <span style={{ fontSize: 12, color: smtpTestResult.startsWith('✓') ? '#34d399' : '#f87171', fontWeight: 600 }}>{smtpTestResult}</span>}
-              <button
-                onClick={async () => {
-                  setSmtpTestSending(true)
-                  setSmtpTestResult(null)
-                  try {
-                    const res = await fetch('/api/test-email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: currentUser.email }) })
-                    const data = await res.json()
-                    setSmtpTestResult(data.success ? `✓ Test sent to ${currentUser.email}` : `✗ ${data.error}`)
-                  } catch { setSmtpTestResult('✗ Network error') } finally { setSmtpTestSending(false) }
-                }}
-                disabled={smtpTestSending}
-                style={{ padding: '6px 16px', background: '#1e293b', color: '#e2e8f0', border: '1px solid #4f46e5', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: smtpTestSending ? 0.6 : 1 }}
-              >
-                {smtpTestSending ? 'Sending…' : '📧 Send Test Email'}
-              </button>
-              <button
-                onClick={saveSmtpSettings}
-                disabled={smtpSaving}
-                style={{ padding: '6px 16px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: smtpSaving ? 0.6 : 1 }}
-              >
-                {smtpSaving ? 'Saving…' : 'Save Email Settings'}
-              </button>
-            </div>
+            {smtpError && <span style={{ fontSize: 12, color: '#f87171' }}>{smtpError}</span>}
           </div>
           <div style={sectionDesc}>Connect a Gmail account to send invite and notification emails without domain verification.</div>
 
@@ -1790,6 +1764,41 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               type="password"
             />
           </div>
+
+          <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+            <button
+              onClick={saveSmtpSettings}
+              disabled={smtpSaving}
+              style={{ flex: 1, padding: '10px 20px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: smtpSaving ? 0.6 : 1 }}
+            >
+              {smtpSaving ? 'Saving…' : 'Save Email Settings'}
+            </button>
+            <button
+              onClick={async () => {
+                setSmtpTestSending(true)
+                setSmtpTestResult(null)
+                try {
+                  const res = await fetch('/api/test-email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: currentUser.email }) })
+                  const data = await res.json()
+                  setSmtpTestResult(data.success ? `✓ Test sent to ${currentUser.email}` : `✗ ${data.error}`)
+                } catch { setSmtpTestResult('✗ Network error') } finally { setSmtpTestSending(false) }
+              }}
+              disabled={smtpTestSending}
+              style={{ flex: 1, padding: '10px 20px', background: '#1e293b', color: '#e2e8f0', border: '1px solid #4f46e5', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: smtpTestSending ? 0.6 : 1 }}
+            >
+              {smtpTestSending ? 'Sending…' : '📧 Send Test Email'}
+            </button>
+          </div>
+          {smtpTestResult && (
+            <div style={{ marginTop: 10, padding: '8px 14px', background: smtpTestResult.startsWith('✓') ? '#052e16' : '#2d0a0a', border: `1px solid ${smtpTestResult.startsWith('✓') ? '#16a34a' : '#dc2626'}`, borderRadius: 8, fontSize: 13, color: smtpTestResult.startsWith('✓') ? '#4ade80' : '#f87171', fontWeight: 600 }}>
+              {smtpTestResult}
+            </div>
+          )}
+          {smtpSaved && (
+            <div style={{ marginTop: 10, padding: '8px 14px', background: '#052e16', border: '1px solid #16a34a', borderRadius: 8, fontSize: 13, color: '#4ade80', fontWeight: 600 }}>
+              ✓ Settings saved successfully
+            </div>
+          )}
         </div>
       </div>
     )
