@@ -3032,7 +3032,7 @@ export function PerformanceReviewForm() {
 
   const ROLE_COLORS: Record<string, string> = { admin: '#818cf8', manager: '#34d399', employee: '#60a5fa' }
 
-  // ── 1:1 Notes page ─────────────────────────────────────────────────────────
+  // ── 1:1 Meetings page ─────────────────────────────────────────────────────────
   const [notesEmployeeId, setNotesEmployeeId] = useState<string>('')
   const [notesList, setNotesList] = useState<Array<{ id: string; date: string; note: string; tags: string[] }>>([])
   const [notesLoading, setNotesLoading] = useState(false)
@@ -3176,7 +3176,7 @@ export function PerformanceReviewForm() {
     const activeEmployees = dbTeam.filter(r => r.is_active)
     return (
       <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>1:1 Notes</h1>
+        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>1:1 Meetings</h1>
         <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Track notes and observations from your 1:1 conversations.</p>
 
         {/* Employee selector */}
@@ -3404,10 +3404,11 @@ export function PerformanceReviewForm() {
               return (
                 <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, marginBottom: 24, overflow: 'hidden' }}>
                   {/* Header toggle */}
-                  <button
-                    onClick={() => setRecordingPanelOpen(o => !o)}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#e0e7ff' }}
-                  >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px 10px 20px' }}>
+                    <button
+                      onClick={() => setRecordingPanelOpen(o => !o)}
+                      style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', cursor: 'pointer', color: '#e0e7ff', padding: 0, textAlign: 'left' }}
+                    >
                     <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600 }}>
                       🎙️ Meeting Recording
                       {recordingStatus === 'recording' && !recordingPaused && (
@@ -3424,7 +3425,28 @@ export function PerformanceReviewForm() {
                       {recordingStatus === 'complete' && <span style={{ fontSize: 11, color: '#34d399', fontWeight: 600 }}>● Complete</span>}
                     </span>
                     <span style={{ fontSize: 16, color: '#6b7280', transform: recordingPanelOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▾</span>
-                  </button>
+                    </button>
+                    {/* + New Meeting button — hide while actively recording/uploading/transcribing */}
+                    {!['recording', 'uploading', 'transcribing'].includes(recordingStatus) && (
+                      <button
+                        onClick={() => {
+                          setRecordingStatus('idle')
+                          setRecordingSessionId(null)
+                          setRecordingTranscript(null)
+                          setRecordingSummary(null)
+                          setRecordingActionItems([])
+                          setRecordingPaused(false)
+                          setRecordingSeconds(0)
+                          setMediaRecorder(null)
+                          setAudioChunks([])
+                          setRecordingPanelOpen(true)
+                        }}
+                        style={{ flexShrink: 0, padding: '5px 12px', background: 'rgba(79,70,229,0.15)', border: '1px solid rgba(79,70,229,0.4)', borderRadius: 6, color: '#818cf8', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        + New Meeting
+                      </button>
+                    )}
+                  </div>
 
                   {recordingPanelOpen && (
                     <div style={{ padding: '0 20px 20px' }}>
@@ -3434,50 +3456,70 @@ export function PerformanceReviewForm() {
                         </div>
                       )}
 
-                      {/* ── saved past sessions ── */}
+                      {/* ── saved past sessions table ── */}
                       {savedRecordingSessions.length > 0 && (
-                        <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          {savedRecordingSessions.map((session, idx) => (
-                            <div key={session.id} style={{ background: '#0a0c14', border: '1px solid #1e2235', borderRadius: 8, overflow: 'hidden' }}>
-                              <button
-                                onClick={() => setSavedRecordingSessions(prev => prev.map((s, i) => i === idx ? { ...s, expandedInPanel: !s.expandedInPanel } : s))}
-                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', background: 'transparent', border: 'none', cursor: 'pointer' }}
-                              >
-                                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <span style={{ fontSize: 11, color: '#34d399', fontWeight: 700 }}>✓ Saved</span>
-                                  <span style={{ fontSize: 12, color: '#6b7280' }}>{session.date}</span>
-                                </span>
-                                <span style={{ fontSize: 13, color: '#4b5563', transform: session.expandedInPanel ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▾</span>
-                              </button>
-                              {session.expandedInPanel && (
-                                <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                  {session.summary && (
-                                    <div>
-                                      <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Summary</p>
-                                      <p style={{ margin: 0, fontSize: 12, color: '#c7d2fe', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{session.summary}</p>
-                                    </div>
-                                  )}
-                                  {session.actionItems.length > 0 && (
-                                    <div>
-                                      <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Action Items</p>
-                                      {session.actionItems.map((a: any, i: number) => (
-                                        <div key={i} style={{ fontSize: 12, color: '#e0e7ff', marginBottom: 3 }}>
-                                          <span style={{ color: '#818cf8', fontWeight: 600 }}>[{a.owner ?? '?'}]</span> {a.item ?? String(a)}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                  {session.transcript && (
-                                    <details style={{ fontSize: 12, color: '#6b7280' }}>
-                                      <summary style={{ cursor: 'pointer', marginBottom: 6 }}>View transcript</summary>
-                                      <pre style={{ margin: 0, padding: 10, background: '#13151f', borderRadius: 6, color: '#9ca3af', fontSize: 11, whiteSpace: 'pre-wrap', maxHeight: 180, overflowY: 'auto' }}>{session.transcript}</pre>
-                                    </details>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                          <div style={{ height: 1, background: '#1e2235', margin: '4px 0' }} />
+                        <div style={{ marginBottom: 16 }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                            <thead>
+                              <tr style={{ borderBottom: '1px solid #1e2235' }}>
+                                <th style={{ padding: '6px 10px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.05em', width: 110 }}>Date</th>
+                                <th style={{ padding: '6px 10px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Summary</th>
+                                <th style={{ width: 28 }} />
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {[...savedRecordingSessions].reverse().map((session, idx) => {
+                                const realIdx = savedRecordingSessions.length - 1 - idx
+                                const truncated = (session.summary ?? '').replace(/\n/g, ' ').slice(0, 80)
+                                const needsEllipsis = (session.summary ?? '').length > 80
+                                return (
+                                  <>
+                                    <tr
+                                      key={session.id}
+                                      style={{ borderBottom: session.expandedInPanel ? 'none' : '1px solid #1a1c28', cursor: 'pointer' }}
+                                      onClick={() => setSavedRecordingSessions(prev => prev.map((s, i) => i === realIdx ? { ...s, expandedInPanel: !s.expandedInPanel } : s))}
+                                    >
+                                      <td style={{ padding: '10px 10px', color: '#6b7280', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{session.date}</td>
+                                      <td style={{ padding: '10px 10px', color: '#c7d2fe', lineHeight: 1.5 }}>
+                                        {truncated}{needsEllipsis && !session.expandedInPanel ? '…' : ''}
+                                      </td>
+                                      <td style={{ padding: '10px 6px', color: '#4b5563', textAlign: 'center', verticalAlign: 'top' }}>
+                                        <span style={{ fontSize: 13, display: 'inline-block', transform: session.expandedInPanel ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▾</span>
+                                      </td>
+                                    </tr>
+                                    {session.expandedInPanel && (
+                                      <tr key={session.id + '-expanded'} style={{ borderBottom: '1px solid #1a1c28' }}>
+                                        <td colSpan={3} style={{ padding: '0 10px 14px 10px' }}>
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 8 }}>
+                                            {session.summary && (
+                                              <p style={{ margin: 0, fontSize: 12, color: '#c7d2fe', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{session.summary}</p>
+                                            )}
+                                            {session.actionItems.length > 0 && (
+                                              <div>
+                                                <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Action Items</p>
+                                                {session.actionItems.map((a: any, i: number) => (
+                                                  <div key={i} style={{ fontSize: 12, color: '#e0e7ff', marginBottom: 3 }}>
+                                                    <span style={{ color: '#818cf8', fontWeight: 600 }}>[{a.owner ?? '?'}]</span> {a.item ?? String(a)}
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
+                                            {session.transcript && (
+                                              <details style={{ fontSize: 12, color: '#6b7280' }}>
+                                                <summary style={{ cursor: 'pointer', marginBottom: 6 }}>View transcript</summary>
+                                                <pre style={{ margin: 0, padding: 10, background: '#0a0c14', borderRadius: 6, color: '#9ca3af', fontSize: 11, whiteSpace: 'pre-wrap', maxHeight: 180, overflowY: 'auto' }}>{session.transcript}</pre>
+                                              </details>
+                                            )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                          <div style={{ height: 1, background: '#1e2235', margin: '8px 0 16px' }} />
                         </div>
                       )}
 
@@ -3682,7 +3724,7 @@ export function PerformanceReviewForm() {
                               disabled={notesSaving}
                               style={{ padding: '8px 18px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: notesSaving ? 0.6 : 1 }}
                             >
-                              {notesSaving ? 'Saving…' : '📝 Save Note & Start New Meeting'}
+                              {notesSaving ? 'Saving…' : '📝 Save Note'}
                             </button>
                           </div>
                         </div>
@@ -4886,16 +4928,16 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* 1:1 Notes */}
+          {/* 1:1 Meetings */}
           {(() => {
             const active = activePage === 'notes'
             return (
-              <button onClick={() => setActivePage('notes')} title={sidebarCollapsed ? '1:1 Notes' : undefined}
+              <button onClick={() => setActivePage('notes')} title={sidebarCollapsed ? '1:1 Meetings' : undefined}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                 <span style={{ fontSize: 14 }}>📝</span>
-                {!sidebarCollapsed && '1:1 Notes'}
+                {!sidebarCollapsed && '1:1 Meetings'}
               </button>
             )
           })()}
@@ -5734,7 +5776,7 @@ export function PerformanceReviewForm() {
           )
         })()}
 
-        {/* ── 1:1 Notes page ── */}
+        {/* ── 1:1 Meetings page ── */}
         {activePage === 'notes' && renderNotes()}
 
         {/* ── Check-ins page ── */}
