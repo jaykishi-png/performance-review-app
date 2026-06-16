@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
   const serviceClient = await createServiceClient()
 
-  const { data: recording, error } = await serviceClient
+  const { data: recordings, error } = await serviceClient
     .from('meeting_recordings')
     .select(`
       id, meeting_date, year, quarter, status,
@@ -25,9 +25,16 @@ export async function GET(request: NextRequest) {
       employee:profiles!meeting_recordings_employee_id_fkey(name)
     `)
     .or(`consent_manager_token.eq.${token},consent_employee_token.eq.${token}`)
-    .single()
+    .order('created_at', { ascending: false })
 
-  if (error || !recording) {
+  if (error) {
+    console.error('[consent GET] db error:', error)
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  const recording = recordings?.[0] ?? null
+  if (!recording) {
+    console.error('[consent GET] no recording found for token:', token)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
@@ -68,7 +75,7 @@ export async function POST(request: NextRequest) {
 
   const serviceClient = await createServiceClient()
 
-  const { data: recording, error: fetchError } = await serviceClient
+  const { data: rows, error: fetchError } = await serviceClient
     .from('meeting_recordings')
     .select(`
       id, status, consent_manager, consent_employee, consent_declined,
@@ -79,9 +86,10 @@ export async function POST(request: NextRequest) {
       employee:profiles!meeting_recordings_employee_id_fkey(name, email)
     `)
     .or(`consent_manager_token.eq.${token},consent_employee_token.eq.${token}`)
-    .single()
+    .order('created_at', { ascending: false })
 
-  if (fetchError || !recording) {
+  const recording = fetchError ? null : (rows?.[0] ?? null)
+  if (!recording) {
     return NextResponse.json({ error: 'Invalid token' }, { status: 404 })
   }
 

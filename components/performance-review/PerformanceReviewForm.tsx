@@ -3098,7 +3098,7 @@ export function PerformanceReviewForm() {
         setRecordingSessionId(active.id)
         if (active.manager_consented && active.employee_consented) {
           setRecordingStatus('consented')
-        } else if (active.status === 'pending') {
+        } else if (active.status === 'pending_consent') {
           setRecordingStatus('pending_consent')
         }
         setRecordingPanelOpen(true)
@@ -3225,7 +3225,7 @@ export function PerformanceReviewForm() {
                         setRecordingStatus('idle')
                       } else if (active.manager_consented && active.employee_consented) {
                         setRecordingStatus('consented')
-                      } else if (active.status === 'pending') {
+                      } else if (active.status === 'pending_consent') {
                         setRecordingStatus('pending_consent')
                       }
                     }
