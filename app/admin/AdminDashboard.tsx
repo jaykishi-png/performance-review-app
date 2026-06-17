@@ -846,16 +846,16 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   </td>
                   <td style={td}>
                     {editingManager === u.id ? (
-                      <select defaultValue={u.manager_id ?? ''} onChange={e => updateField(u.id, { manager_id: e.target.value || null })} onBlur={() => setEditingManager(null)} autoFocus
+                      <select defaultValue={u.manager_id ?? ''} onChange={e => { updateField(u.id, { manager_id: e.target.value || null }); setEditingManager(null) }} onBlur={() => setEditingManager(null)} autoFocus
                         style={{ background: '#0d0f1a', color: '#f0f2fa', border: '1px solid #2a2d3e', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}>
                         <option value="">— None —</option>
-                        {managers.filter(m => m.id !== u.id).map(m => <option key={m.id} value={m.id}>{m.name || m.email}</option>)}
+                        {users.filter(m => m.id !== u.id).map(m => <option key={m.id} value={m.id}>{m.name || m.email}</option>)}
                       </select>
                     ) : (
-                      <span onClick={() => u.role === 'employee' && setEditingManager(u.id)}
-                        style={{ fontSize: 12, color: u.manager_id ? '#9ca3af' : '#374151', cursor: u.role === 'employee' ? 'pointer' : 'default' }}
-                        title={u.role === 'employee' ? 'Click to assign manager' : ''}>
-                        {u.manager_id ? (users.find(m => m.id === u.manager_id)?.name || users.find(m => m.id === u.manager_id)?.email || '—') : (u.role === 'employee' ? <span style={{ color: '#f59e0b', fontSize: 11 }}>Unassigned ✏️</span> : '—')}
+                      <span onClick={() => u.id !== currentUser.id && setEditingManager(u.id)}
+                        style={{ fontSize: 12, color: u.manager_id ? '#9ca3af' : '#4b5563', cursor: u.id !== currentUser.id ? 'pointer' : 'default' }}
+                        title={u.id !== currentUser.id ? 'Click to change manager' : ''}>
+                        {u.manager_id ? (users.find(m => m.id === u.manager_id)?.name || users.find(m => m.id === u.manager_id)?.email || '—') : <span style={{ color: '#4b5563', fontSize: 11 }}>— ✏️</span>}
                       </span>
                     )}
                   </td>
