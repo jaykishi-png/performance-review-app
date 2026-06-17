@@ -1,34 +1,26 @@
-import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import { getRoleHomeRoute } from '@/lib/permissions'
+'use client'
 
-export const dynamic = 'force-dynamic'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
-export default async function PendingPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+export default function PendingPage() {
+  const router = useRouter()
 
-  // Re-check role with service client — if it changed since login, redirect immediately
-  const serviceClient = createServiceClient()
-  const { data: profile } = await serviceClient
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  const role = profile?.role ?? 'pending'
-  if (role !== 'pending') redirect(getRoleHomeRoute(role))
-
-  async function signOut() {
-    'use server'
-    const { cookies } = await import('next/headers')
-    const cookieStore = await cookies()
-    cookieStore.delete('user_role')
-    const supabase = await createClient()
-    await supabase.auth.signOut()
-    redirect('/login')
-  }
+  // Poll every 5s — if admin assigns a role or invite auto-applies, redirect immediately
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const res = await fetch('/api/auth/check-role', { cache: 'no-store' })
+        const { role, redirect } = await res.json()
+        if (role && role !== 'pending' && redirect) {
+          router.replace(redirect)
+        }
+      } catch { /* ignore */ }
+    }
+    check()
+    const id = setInterval(check, 5000)
+    return () => clearInterval(id)
+  }, [router])
 
   return (
     <div style={{
@@ -53,28 +45,20 @@ export default async function PendingPage() {
           Access Pending
         </h1>
         <p style={{ margin: '0 0 8px', fontSize: 15, color: '#9ca3af', lineHeight: 1.6 }}>
-          You&apos;re signed in as <strong style={{ color: '#c4c9d4' }}>{user?.email}</strong>.
+          Your account is being set up.
         </p>
         <p style={{ margin: '0 0 32px', fontSize: 14, color: '#6b7280', lineHeight: 1.6 }}>
-          Your account is waiting for an administrator to assign your role.
-          Once approved, you&apos;ll automatically get access.
+          If you received an invite link, please click it to activate your account instantly.
+          Otherwise an administrator will assign your role shortly.
         </p>
-        <form action={signOut}>
-          <button
-            type="submit"
-            style={{
-              padding: '10px 24px',
-              background: 'transparent',
-              color: '#6b7280',
-              border: '1px solid #2a2d3e',
-              borderRadius: 8,
-              fontSize: 14,
-              cursor: 'pointer',
-            }}
-          >
-            Sign out
-          </button>
-        </form>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 28, color: '#4b5563', fontSize: 13 }}>
+          <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid #1e2130', borderTop: '2px solid #4f46e5', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          Checking for access…
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+        <a href="/api/auth/signout" style={{ padding: '10px 24px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 14, cursor: 'pointer', textDecoration: 'none' }}>
+          Sign out
+        </a>
       </div>
     </div>
   )
