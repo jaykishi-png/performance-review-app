@@ -264,6 +264,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   type SAData = { competencies: {type:string;term:string;examples:string[]}[]; goals_objectives: {description:string;outcome:string;reasoning:string}[]; next_year_goals: {goal:string;objective:string}[]; overall_rating: number|null; submitted_at: string|null; drive_url: string|null }
   const [viewingSA, setViewingSA] = useState<{employeeId:string;employeeName:string;position:string|null}|null>(null)
   const [saData, setSAData] = useState<SAData|null>(null)
+  const [viewingReview, setViewingReview] = useState<ReviewRecord|null>(null)
+  const [viewingComparison, setViewingComparison] = useState<ReviewRecord|null>(null)
   const [saLoading, setSALoading] = useState(false)
 
   async function openSA(employeeId: string, employeeName: string, position: string|null) {
@@ -760,7 +762,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         {/* Users table */}
         <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflowX: 'auto', marginBottom: 24 }}>
           <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
-            <thead><tr>{['Name / Email', 'Role', 'Position', 'Division', 'Pronouns', 'Manager', 'Start Date', 'Self-Assessment', 'Status', 'Actions'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+            <thead><tr>{['Name / Email', 'Role', 'Position', 'Division', 'Pronouns', 'Manager', 'Start Date', 'Status', 'Actions'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {filteredUsers.map((u, i) => (
                 <tr key={u.id} style={{ opacity: u.is_active ? 1 : 0.5, background: i % 2 === 0 ? 'transparent' : 'rgba(13,15,26,0.4)' }}>
@@ -870,26 +872,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                     )}
                   </td>
                   <td style={td}>
-                    {u.role === 'employee' ? (
-                      saMap[u.id] ? (
-                        <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: saMap[u.id].status === 'submitted' ? '#0d2b1f' : '#1e1f3a', color: saMap[u.id].status === 'submitted' ? '#34d399' : '#818cf8' }}>
-                          {saMap[u.id].status === 'submitted' ? '✓ Submitted' : 'Draft'}
-                        </span>
-                      ) : <span style={{ fontSize: 11, color: '#374151' }}>Not started</span>
-                    ) : <span style={{ color: '#2a2d3e' }}>—</span>}
-                  </td>
-                  <td style={td}>
                     <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500, background: u.is_active ? '#0d2b1f' : '#1f1c0d', color: u.is_active ? '#34d399' : '#f59e0b' }}>
                       {u.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td style={td}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {saMap[u.id]?.status === 'submitted' && (
-                        <button onClick={() => openSA(u.id, u.name || u.email, u.position)} style={{ padding: '4px 10px', fontSize: 11, background: '#13151f', color: '#818cf8', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 6, cursor: 'pointer' }}>
-                          📋 View SA
-                        </button>
-                      )}
                       {u.id !== currentUser.id && (
                         <button onClick={() => toggleActive(u.id, u.is_active)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: u.is_active ? '#f87171' : '#34d399', border: `1px solid ${u.is_active ? '#5c2020' : '#0d2b1f'}`, borderRadius: 6, cursor: 'pointer' }}>
                           {u.is_active ? 'Deactivate' : 'Reactivate'}
@@ -1121,7 +1109,26 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                             </button>
                           </div>
                         ) : (
-                          <div style={{ display: 'flex', gap: 6 }}>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            {(() => {
+                              const emp = users.find(u => u.name === r.employee_name)
+                              return emp ? (
+                                <button onClick={() => openSA(emp.id, r.employee_name || '', r.employee_position || null)}
+                                  style={{ padding: '4px 9px', fontSize: 11, background: '#13151f', color: '#818cf8', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 5, cursor: 'pointer' }}>
+                                  📋 Self-Assessment
+                                </button>
+                              ) : null
+                            })()}
+                            <button onClick={() => setViewingReview(r)}
+                              style={{ padding: '4px 9px', fontSize: 11, background: '#13151f', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.3)', borderRadius: 5, cursor: 'pointer' }}>
+                              📄 Review
+                            </button>
+                            {r.comparison_report && !isDevAdmin && (
+                              <button onClick={() => setViewingComparison(r)}
+                                style={{ padding: '4px 9px', fontSize: 11, background: '#13151f', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 5, cursor: 'pointer' }}>
+                                🔀 Comparison
+                              </button>
+                            )}
                             {!isDevAdmin && (
                               <button onClick={() => setDeleteConfirm(r.id)}
                                 style={{ padding: '4px 9px', fontSize: 11, background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 5, cursor: 'pointer' }}>
@@ -2770,6 +2777,73 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           </div>
         </div>
       )}
+
+      {/* ── Review viewer modal ── */}
+      {viewingReview && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setViewingReview(null)}>
+          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 16, padding: 32, maxWidth: 700, width: '100%', maxHeight: '85vh', overflowY: 'auto', position: 'relative' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <div>
+                <span style={{ fontSize: 16, fontWeight: 700, color: '#f0f2fa' }}>{viewingReview.employee_name}</span>
+                {viewingReview.employee_position && <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 8 }}>· {viewingReview.employee_position}</span>}
+              </div>
+              <button onClick={() => setViewingReview(null)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
+            </div>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+              {(() => { const status = reviewStatus(viewingReview); const sm = STATUS_META[status]; return <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>{sm.label}</span> })()}
+              <span style={{ fontSize: 12, color: '#6b7280' }}>Step {Math.min(viewingReview.max_step, TOTAL_CONTENT_STEPS)}/{TOTAL_CONTENT_STEPS}</span>
+              {viewingReview.drive_url && (
+                <a href={viewingReview.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}>
+                  Open in Drive ↗
+                </a>
+              )}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Manager</div>
+                <div style={{ fontSize: 13, color: '#c4c9d4' }}>{users.find(u => u.id === viewingReview.user_id)?.name || '—'}</div>
+              </div>
+              <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Last Updated</div>
+                <div style={{ fontSize: 13, color: '#c4c9d4' }}>{new Date(viewingReview.updated_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+              </div>
+              <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Manager Signed</div>
+                <div style={{ fontSize: 13, color: viewingReview.manager_signed_at ? '#34d399' : '#4b5563' }}>{viewingReview.manager_signed_at ? new Date(viewingReview.manager_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not signed'}</div>
+              </div>
+              <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Employee Signed</div>
+                <div style={{ fontSize: 13, color: viewingReview.employee_signed_at ? '#34d399' : '#4b5563' }}>{viewingReview.employee_signed_at ? new Date(viewingReview.employee_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not signed'}</div>
+              </div>
+            </div>
+            {viewingReview.drive_url && (
+              <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px', marginTop: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Full Review Document</div>
+                <a href={viewingReview.drive_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#34d399', textDecoration: 'none' }}>Open in Google Drive ↗</a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Comparison viewer modal ── */}
+      {viewingComparison && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setViewingComparison(null)}>
+          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 16, padding: 32, maxWidth: 700, width: '100%', maxHeight: '85vh', overflowY: 'auto', position: 'relative' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <div>
+                <span style={{ fontSize: 16, fontWeight: 700, color: '#f0f2fa' }}>Comparison Report</span>
+                <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 8 }}>· {viewingComparison.employee_name}</span>
+              </div>
+              <button onClick={() => setViewingComparison(null)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
+            </div>
+            <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '16px 20px' }}>
+              <pre style={{ margin: 0, fontSize: 13, color: '#c7d2fe', whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{viewingComparison.comparison_report}</pre>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
