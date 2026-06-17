@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { CheckCircle2, Clock, Loader2, Send, Check, ChevronLeft } from 'lucide-react'
 
 type DirectReport = {
   id: string; name: string | null; email: string; role: string; is_active: boolean; start_date: string | null
@@ -18,11 +19,110 @@ type Props = {
   selfAssessments: SelfAssessmentStatus[]
 }
 
+type Goal = { id: string; title: string; description: string; status: string; target_date: string }
+
+type GoalProgress = { id: string; title: string; checkin_status: 'on_track' | 'at_risk' | 'completed' | 'blocked' | ''; notes: string }
+
+type CheckinData = {
+  employee_pulse: number | null
+  employee_update: string | null
+  employee_goal_progress: GoalProgress[]
+  employee_submitted_at: string | null
+  manager_pulse: number | null
+  manager_update: string | null
+  manager_goal_progress: GoalProgress[]
+  manager_submitted_at: string | null
+}
+
+const CI_YEAR = 2026
+const QUARTERS = [{ label: 'Q1', n: 1 }, { label: 'Q2', n: 2 }, { label: 'Q3', n: 3 }, { label: 'Q4', n: 4 }]
+const PULSE_EMOJIS: Record<number, string> = { 1: '😔', 2: '😕', 3: '😐', 4: '🙂', 5: '😄' }
+const PULSE_LABELS = ['', 'Struggling', 'Below Expectations', 'On Track', 'Going Well', 'Thriving']
+const PULSE_COLORS = ['', '#f87171', '#fb923c', '#fbbf24', '#34d399', '#34d399']
+const GOAL_STATUSES: { value: GoalProgress['checkin_status']; label: string; color: string; bg: string }[] = [
+  { value: 'on_track',  label: 'On Track',  color: '#34d399', bg: 'rgba(52,211,153,0.12)' },
+  { value: 'completed', label: 'Completed', color: '#818cf8', bg: 'rgba(129,140,248,0.12)' },
+  { value: 'at_risk',   label: 'At Risk',   color: '#fbbf24', bg: 'rgba(251,191,36,0.12)' },
+  { value: 'blocked',   label: 'Blocked',   color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+]
+
 export default function ManagerDashboard({ currentUser, directReports, reviews, selfAssessments }: Props) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'team' | 'reviews'>('team')
+  const [activeTab, setActiveTab] = useState<'team' | 'reviews' | 'checkins'>('team')
+
+  // Check-ins state
+  const [ciEmployee, setCiEmployee] = useState<DirectReport | null>(null)
+  const [ciActiveQ, setCiActiveQ] = useState(1)
+  const [ciLoading, setCiLoading] = useState(false)
+  const [ciSaving, setCiSaving] = useState(false)
+  const [ciSavedFlash, setCiSavedFlash] = useState(false)
+  const [ciData, setCiData] = useState<CheckinData | null>(null)
+  const [employeeGoals, setEmployeeGoals] = useState<Goal[]>([])
+  // Manager's response fields
+  const [mgrPulse, setMgrPulse] = useState(0)
+  const [mgrUpdate, setMgrUpdate] = useState('')
+  const [mgrGoalProgress, setMgrGoalProgress] = useState<GoalProgress[]>([])
+  const [mgrSubmittedAt, setMgrSubmittedAt] = useState<string | null>(null)
 
   const saMap = Object.fromEntries(selfAssessments.map(s => [s.employee_id, s]))
+
+  // Load check-in + goals when employee/quarter changes
+  useEffect(() => {
+    if (!ciEmployee) return
+    let cancelled = false
+    setCiLoading(true)
+    setCiData(null)
+
+    Promise.all([
+      fetch(`/api/quarterly-checkins?employee_id=${ciEmployee.id}&year=${CI_YEAR}&quarter=${ciActiveQ}`).then(r => r.ok ? r.json() : null),
+      fetch(`/api/goals?employee_id=${ciEmployee.id}`).then(r => r.ok ? r.json() : null),
+    ]).then(([ciJson, goalsJson]: [
+      { data?: CheckinData | null } | null,
+      { goals?: Goal[] } | null
+    ]) => {
+      if (cancelled) return
+      const ci = ciJson?.data ?? null
+      const goals = goalsJson?.goals ?? []
+      setEmployeeGoals(goals)
+      setCiData(ci)
+
+      // Pre-populate manager fields from saved data or reset
+      setMgrPulse(ci?.manager_pulse ?? 0)
+      setMgrUpdate(ci?.manager_update ?? '')
+      setMgrSubmittedAt(ci?.manager_submitted_at ?? null)
+
+      const savedMgrProgress = ci?.manager_goal_progress ?? []
+      setMgrGoalProgress(goals.map(g => {
+        const saved = savedMgrProgress.find(s => s.id === g.id)
+        return { id: g.id, title: g.title, checkin_status: (saved?.checkin_status ?? '') as GoalProgress['checkin_status'], notes: saved?.notes ?? '' }
+      }))
+      setCiLoading(false)
+    }).catch(() => { if (!cancelled) setCiLoading(false) })
+
+    return () => { cancelled = true }
+  }, [ciEmployee, ciActiveQ])
+
+  async function saveMgrDraft() {
+    if (!ciEmployee) return
+    setCiSaving(true)
+    await fetch('/api/quarterly-checkins', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employee_id: ciEmployee.id, manager_id: currentUser.id, year: CI_YEAR, quarter: ciActiveQ, type: 'manager', pulse_rating: mgrPulse, written_update: mgrUpdate, goal_progress: mgrGoalProgress, status: 'draft' })
+    })
+    setCiSaving(false); setCiSavedFlash(true); setTimeout(() => setCiSavedFlash(false), 2000)
+  }
+
+  async function submitMgrCheckin() {
+    if (!ciEmployee) return
+    setCiSaving(true)
+    const res = await fetch('/api/quarterly-checkins', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employee_id: ciEmployee.id, manager_id: currentUser.id, year: CI_YEAR, quarter: ciActiveQ, type: 'manager', pulse_rating: mgrPulse, written_update: mgrUpdate, goal_progress: mgrGoalProgress, status: 'submitted' })
+    })
+    const json = await res.json()
+    setCiSaving(false)
+    setMgrSubmittedAt(json.data?.manager_submitted_at ?? new Date().toISOString())
+  }
 
   const card: React.CSSProperties = {
     background: '#1e293b', borderRadius: 12, padding: '20px 24px', border: '1px solid #1e3a5f',
@@ -31,6 +131,9 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
     padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
     background: active ? '#6366f1' : 'transparent', color: active ? '#fff' : '#94a3b8', fontWeight: 600, fontSize: 14,
   })
+  const sectionLabel = (text: string) => (
+    <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>{text}</div>
+  )
 
   return (
     <div style={{ minHeight: '100vh', background: '#0f172a', color: '#e2e8f0', fontFamily: 'system-ui, sans-serif' }}>
@@ -55,8 +158,10 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
         <div style={{ display: 'flex', gap: 4, marginBottom: 24 }}>
           <button style={tab(activeTab === 'team')} onClick={() => setActiveTab('team')}>My Team ({directReports.length})</button>
           <button style={tab(activeTab === 'reviews')} onClick={() => setActiveTab('reviews')}>Reviews ({reviews.length})</button>
+          <button style={tab(activeTab === 'checkins')} onClick={() => { setActiveTab('checkins'); setCiEmployee(null) }}>Quarterly Check-ins</button>
         </div>
 
+        {/* ── MY TEAM ── */}
         {activeTab === 'team' && (
           directReports.length === 0 ? (
             <div style={{ ...card, color: '#475569', textAlign: 'center' }}>
@@ -91,6 +196,7 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
           )
         )}
 
+        {/* ── REVIEWS ── */}
         {activeTab === 'reviews' && (
           <div style={card}>
             {reviews.length === 0 ? (
@@ -119,7 +225,216 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
             ))}
           </div>
         )}
+
+        {/* ── QUARTERLY CHECK-INS ── */}
+        {activeTab === 'checkins' && (
+          <div>
+            {!ciEmployee ? (
+              /* Employee picker */
+              <div>
+                <div style={{ fontSize: 14, color: '#94a3b8', marginBottom: 16 }}>Select a team member to view or fill in their quarterly check-in.</div>
+                {directReports.length === 0 ? (
+                  <div style={{ ...card, color: '#475569', textAlign: 'center' }}>No direct reports assigned yet.</div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+                    {directReports.map(r => (
+                      <button key={r.id} onClick={() => setCiEmployee(r)}
+                        style={{ ...card, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #1e3a5f', transition: 'border-color 0.15s' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, color: '#f1f5f9', fontSize: 14 }}>{r.name || r.email}</div>
+                          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{r.email}</div>
+                        </div>
+                        <div style={{ fontSize: 20, color: '#475569' }}>→</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Check-in form for selected employee */
+              <div>
+                {/* Back + header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                  <button onClick={() => setCiEmployee(null)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'transparent', border: '1px solid #1e3a5f', color: '#94a3b8', padding: '6px 12px', borderRadius: 7, cursor: 'pointer', fontSize: 13 }}>
+                    <ChevronLeft size={14} /> Back
+                  </button>
+                  <div>
+                    <div style={{ fontWeight: 700, color: '#f1f5f9', fontSize: 16 }}>{ciEmployee.name || ciEmployee.email}</div>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>Quarterly Check-in · {CI_YEAR}</div>
+                  </div>
+                </div>
+
+                {/* Quarter tabs */}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+                  {QUARTERS.map(q => (
+                    <button key={q.n} onClick={() => setCiActiveQ(q.n)}
+                      style={{ padding: '7px 18px', borderRadius: 8, border: `1px solid ${ciActiveQ === q.n ? '#6366f1' : '#1e3a5f'}`, background: ciActiveQ === q.n ? '#6366f1' : 'transparent', color: ciActiveQ === q.n ? '#fff' : '#94a3b8', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                      {q.label}
+                    </button>
+                  ))}
+                </div>
+
+                {ciLoading ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#64748b', fontSize: 13 }}>
+                    <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Loading…
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
+                    {/* ── LEFT: Employee's check-in (read-only) ── */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      <div style={{ ...card, background: '#13151f', border: '1px solid #1e2130' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>
+                            {ciEmployee.name?.split(' ')[0] || 'Employee'}&apos;s Check-in
+                          </h3>
+                          {ciData?.employee_submitted_at ? (
+                            <span style={{ fontSize: 11, color: '#34d399', display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <CheckCircle2 size={12} /> {new Date(ciData.employee_submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: 11, color: '#475569', display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <Clock size={12} /> Not submitted
+                            </span>
+                          )}
+                        </div>
+
+                        {ciData?.employee_submitted_at ? (
+                          <>
+                            {ciData.employee_pulse !== null && (
+                              <div style={{ marginBottom: 16 }}>
+                                {sectionLabel('Performance pulse')}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <span style={{ fontSize: 22 }}>{PULSE_EMOJIS[ciData.employee_pulse]}</span>
+                                  <span style={{ fontSize: 13, fontWeight: 600, color: PULSE_COLORS[ciData.employee_pulse] }}>{PULSE_LABELS[ciData.employee_pulse]}</span>
+                                </div>
+                              </div>
+                            )}
+                            {ciData.employee_update && (
+                              <div>
+                                {sectionLabel('Update')}
+                                <p style={{ margin: 0, fontSize: 13, color: '#94a3b8', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{ciData.employee_update}</p>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div style={{ color: '#475569', fontSize: 13 }}>Employee hasn&apos;t submitted their check-in yet.</div>
+                        )}
+                      </div>
+
+                      {/* Employee goal progress */}
+                      <div style={{ ...card, background: '#13151f', border: '1px solid #1e2130' }}>
+                        <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>
+                          {ciEmployee.name?.split(' ')[0] || 'Employee'}&apos;s Goal Progress
+                        </h3>
+                        {employeeGoals.length === 0 ? (
+                          <div style={{ fontSize: 13, color: '#475569', fontStyle: 'italic' }}>No goals set.</div>
+                        ) : employeeGoals.map((g, gi) => {
+                          const savedProgress = (ciData?.employee_goal_progress ?? []).find(p => p.id === g.id)
+                          const statusMeta = GOAL_STATUSES.find(s => s.value === savedProgress?.checkin_status)
+                          return (
+                            <div key={g.id} style={{ marginBottom: gi < employeeGoals.length - 1 ? 14 : 0, paddingBottom: gi < employeeGoals.length - 1 ? 14 : 0, borderBottom: gi < employeeGoals.length - 1 ? '1px solid #1e2130' : 'none' }}>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                                <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600, lineHeight: 1.4 }}>{g.title}</div>
+                                {statusMeta ? (
+                                  <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 12, flexShrink: 0, background: statusMeta.bg, color: statusMeta.color }}>{statusMeta.label}</span>
+                                ) : (
+                                  <span style={{ fontSize: 11, color: '#475569' }}>—</span>
+                                )}
+                              </div>
+                              {savedProgress?.notes && (
+                                <p style={{ margin: 0, fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>{savedProgress.notes}</p>
+                              )}
+                              {/* Goal base status */}
+                              <div style={{ marginTop: 4, fontSize: 11, color: '#475569' }}>
+                                {g.target_date && `Target: ${g.target_date}`}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* ── RIGHT: Manager's response ── */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      <div style={{ ...card, background: '#13151f', border: '1px solid #1e2130' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>My Response</h3>
+                          {mgrSubmittedAt && (
+                            <span style={{ fontSize: 11, color: '#818cf8', display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <CheckCircle2 size={12} /> Submitted {new Date(mgrSubmittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Pulse */}
+                        {sectionLabel('My performance assessment')}
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                          {[1,2,3,4,5].map(n => (
+                            <button key={n} onClick={() => { if (!mgrSubmittedAt) setMgrPulse(n) }}
+                              style={{ width: 44, height: 44, borderRadius: 9, border: `2px solid ${mgrPulse === n ? '#6366f1' : '#1e3a5f'}`, background: mgrPulse === n ? 'rgba(99,102,241,0.18)' : 'transparent', fontSize: 20, cursor: mgrSubmittedAt ? 'default' : 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              title={`${n} — ${PULSE_LABELS[n]}`}>
+                              {PULSE_EMOJIS[n]}
+                            </button>
+                          ))}
+                        </div>
+                        {mgrPulse > 0 && <div style={{ fontSize: 12, color: PULSE_COLORS[mgrPulse], fontWeight: 600, marginBottom: 16 }}>{PULSE_LABELS[mgrPulse]}</div>}
+                        {mgrPulse === 0 && <div style={{ marginBottom: 16 }} />}
+
+                        {/* Written update */}
+                        {sectionLabel('Notes to employee')}
+                        <textarea value={mgrUpdate} onChange={e => { if (!mgrSubmittedAt) setMgrUpdate(e.target.value) }}
+                          disabled={!!mgrSubmittedAt} placeholder="Share your observations, feedback, and any priorities for next quarter…"
+                          rows={4} style={{ width: '100%', background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', color: '#e2e8f0', fontSize: 13, resize: 'vertical', boxSizing: 'border-box', outline: 'none', opacity: mgrSubmittedAt ? 0.6 : 1 }} />
+
+                        {!mgrSubmittedAt && (
+                          <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                            <button onClick={saveMgrDraft} disabled={ciSaving}
+                              style={{ padding: '8px 18px', background: 'transparent', color: ciSavedFlash ? '#34d399' : '#94a3b8', border: `1px solid ${ciSavedFlash ? '#34d399' : '#1e3a5f'}`, borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {ciSavedFlash ? <><Check size={12} /> Saved</> : ciSaving ? <><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Saving…</> : 'Save Draft'}
+                            </button>
+                            <button onClick={submitMgrCheckin} disabled={ciSaving || mgrPulse === 0}
+                              style={{ padding: '8px 20px', background: mgrPulse === 0 ? '#1e3a5f' : '#6366f1', color: mgrPulse === 0 ? '#475569' : '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: mgrPulse === 0 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Send size={12} /> Submit Response
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Manager goal assessment */}
+                      {employeeGoals.length > 0 && (
+                        <div style={{ ...card, background: '#13151f', border: '1px solid #1e2130' }}>
+                          <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>My Goal Assessment</h3>
+                          {mgrGoalProgress.map((g, gi) => (
+                            <div key={g.id} style={{ marginBottom: gi < mgrGoalProgress.length - 1 ? 16 : 0, paddingBottom: gi < mgrGoalProgress.length - 1 ? 16 : 0, borderBottom: gi < mgrGoalProgress.length - 1 ? '1px solid #1e2130' : 'none' }}>
+                              <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600, marginBottom: 8, lineHeight: 1.4 }}>{g.title}</div>
+                              {/* Status pills */}
+                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                                {GOAL_STATUSES.map(s => (
+                                  <button key={s.value} onClick={() => { if (!mgrSubmittedAt) setMgrGoalProgress(prev => prev.map((p, i) => i === gi ? { ...p, checkin_status: s.value } : p)) }}
+                                    style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: mgrSubmittedAt ? 'default' : 'pointer', border: `1px solid ${g.checkin_status === s.value ? s.color : 'transparent'}`, background: g.checkin_status === s.value ? s.bg : '#0d0f1a', color: g.checkin_status === s.value ? s.color : '#475569', transition: 'all 0.15s' }}>
+                                    {s.label}
+                                  </button>
+                                ))}
+                              </div>
+                              <textarea value={g.notes} onChange={e => { if (!mgrSubmittedAt) setMgrGoalProgress(prev => prev.map((p, i) => i === gi ? { ...p, notes: e.target.value } : p)) }}
+                                disabled={!!mgrSubmittedAt} placeholder="Notes on this goal…" rows={2}
+                                style={{ width: '100%', background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 7, padding: '8px 10px', color: mgrSubmittedAt ? '#475569' : '#e2e8f0', fontSize: 12, resize: 'vertical', boxSizing: 'border-box', outline: 'none' }} />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )
 }

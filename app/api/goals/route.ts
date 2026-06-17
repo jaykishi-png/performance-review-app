@@ -1,14 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 
-// GET — all goals for the logged-in employee
-export async function GET() {
+// GET — goals for logged-in employee, or ?employee_id=UUID for manager/admin
+export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const serviceClient = createServiceClient()
+
+    // Role check
+    const { data: profile } = await serviceClient.from('profiles').select('role, manager_id').eq('id', user.id).single()
+    const role = profile?.role ?? 'employee'
+
+    const targetId = new URL(req.url).searchParams.get('employee_id')
+
+    // Managers and admins can fetch any employee's goals
+    if (targetId && targetId !== user.id) {
+      if (role !== 'admin' && role !== 'dev_admin' && role !== 'manager') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      const { data, error } = await serviceClient
+        .from('employee_goals')
+        .select('*')
+        .eq('employee_id', targetId)
+        .order('created_at', { ascending: true })
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ goals: data ?? [] })
+    }
+
     const { data, error } = await serviceClient
       .from('employee_goals')
       .select('*')
