@@ -266,6 +266,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [saData, setSAData] = useState<SAData|null>(null)
   const [viewingReview, setViewingReview] = useState<ReviewRecord|null>(null)
   const [viewingComparison, setViewingComparison] = useState<ReviewRecord|null>(null)
+  const [reviewFormData, setReviewFormData] = useState<Record<string,unknown>|null>(null)
+  const [reviewFormLoading, setReviewFormLoading] = useState(false)
   const [saLoading, setSALoading] = useState(false)
 
   async function openSA(employeeId: string, employeeName: string, position: string|null) {
@@ -279,6 +281,18 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     } catch { setSAData(null) }
     finally { setSALoading(false) }
   }
+
+  // Fetch full form_data when a review is opened
+  useEffect(() => {
+    if (!viewingReview) { setReviewFormData(null); return }
+    setReviewFormLoading(true)
+    setReviewFormData(null)
+    fetch(`/api/reviews?id=${viewingReview.id}`)
+      .then(r => r.json())
+      .then((d: { review?: { form_data?: Record<string,unknown> } }) => setReviewFormData(d.review?.form_data ?? null))
+      .catch(() => setReviewFormData(null))
+      .finally(() => setReviewFormLoading(false))
+  }, [viewingReview])
 
   // Cycles state
   const [showCycleModal, setShowCycleModal] = useState(false)
@@ -1070,43 +1084,33 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       </td>
 
                       {/* Self Assessment column */}
-                      <td style={td}>
-                        {emp ? (
-                          <button onClick={() => openSA(emp.id, r.employee_name || '', r.employee_position || null)}
-                            style={{ padding: '4px 10px', fontSize: 11, fontWeight: 600, background: '#1a1b2e', color: '#818cf8', border: '1px solid rgba(129,140,248,0.35)', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                            📋 View
-                          </button>
-                        ) : <span style={{ fontSize: 11, color: '#374151' }}>—</span>}
+                      <td style={{ ...td, padding: 0, cursor: emp ? 'pointer' : 'default' }}
+                        onClick={() => emp && openSA(emp.id, r.employee_name || '', r.employee_position || null)}
+                        onMouseEnter={e => { if (emp) e.currentTarget.style.background = 'rgba(129,140,248,0.08)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                        <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, color: emp ? '#818cf8' : '#374151', fontSize: 12, fontWeight: 600 }}>
+                          {emp ? <><span>📋</span><span>View</span></> : <span>—</span>}
+                        </div>
                       </td>
 
                       {/* Performance Review column */}
-                      <td style={td}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <button onClick={() => setViewingReview(r)}
-                            style={{ padding: '4px 10px', fontSize: 11, fontWeight: 600, background: '#0f1a2e', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.35)', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                            📄 View
-                          </button>
-                          {r.drive_url && (
-                            <a href={r.drive_url} target="_blank" rel="noopener noreferrer"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35', whiteSpace: 'nowrap' }}>
-                              <ExternalLink size={10} /> Drive
-                            </a>
-                          )}
+                      <td style={{ ...td, padding: 0, cursor: 'pointer' }}
+                        onClick={() => setViewingReview(r)}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(96,165,250,0.08)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                        <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, color: '#60a5fa', fontSize: 12, fontWeight: 600 }}>
+                          <span>📄</span><span>View</span>
                         </div>
                       </td>
 
                       {/* Comparison column */}
-                      <td style={td}>
-                        {isDevAdmin ? (
-                          <span style={{ fontSize: 11, color: '#374151', fontStyle: 'italic' }}>Hidden</span>
-                        ) : r.comparison_report ? (
-                          <button onClick={() => setViewingComparison(r)}
-                            style={{ padding: '4px 10px', fontSize: 11, fontWeight: 600, background: '#0d2b1f', color: '#34d399', border: '1px solid rgba(52,211,153,0.35)', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                            🔀 View
-                          </button>
-                        ) : (
-                          <span style={{ fontSize: 11, color: '#374151' }}>—</span>
-                        )}
+                      <td style={{ ...td, padding: 0, cursor: (!isDevAdmin && r.comparison_report) ? 'pointer' : 'default' }}
+                        onClick={() => { if (!isDevAdmin && r.comparison_report) setViewingComparison(r) }}
+                        onMouseEnter={e => { if (!isDevAdmin && r.comparison_report) e.currentTarget.style.background = 'rgba(52,211,153,0.08)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                        <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, color: isDevAdmin ? '#374151' : r.comparison_report ? '#34d399' : '#374151', fontSize: 12, fontWeight: 600 }}>
+                          {isDevAdmin ? <span style={{ fontStyle: 'italic' }}>Hidden</span> : r.comparison_report ? <><span>🔀</span><span>View</span></> : <span>—</span>}
+                        </div>
                       </td>
 
                       {/* Last updated */}
@@ -2778,15 +2782,17 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
       {/* ── Review viewer modal ── */}
       {viewingReview && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setViewingReview(null)}>
-          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 16, padding: 32, maxWidth: 700, width: '100%', maxHeight: '85vh', overflowY: 'auto', position: 'relative' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 16, padding: 32, maxWidth: 760, width: '100%', maxHeight: '88vh', overflowY: 'auto', position: 'relative' }} onClick={e => e.stopPropagation()}>
+            {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <div>
-                <span style={{ fontSize: 16, fontWeight: 700, color: '#f0f2fa' }}>{viewingReview.employee_name}</span>
+                <span style={{ fontSize: 17, fontWeight: 700, color: '#f0f2fa' }}>{viewingReview.employee_name}</span>
                 {viewingReview.employee_position && <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 8 }}>· {viewingReview.employee_position}</span>}
               </div>
               <button onClick={() => setViewingReview(null)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
             </div>
-            <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+            {/* Status pills */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
               {(() => { const status = reviewStatus(viewingReview); const sm = STATUS_META[status]; return <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>{sm.label}</span> })()}
               <span style={{ fontSize: 12, color: '#6b7280' }}>Step {Math.min(viewingReview.max_step, TOTAL_CONTENT_STEPS)}/{TOTAL_CONTENT_STEPS}</span>
               {viewingReview.drive_url && (
@@ -2795,27 +2801,127 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 </a>
               )}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-              <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Manager</div>
+            {/* Meta grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+              <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '10px 14px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Manager</div>
                 <div style={{ fontSize: 13, color: '#c4c9d4' }}>{users.find(u => u.id === viewingReview.user_id)?.name || '—'}</div>
               </div>
-              <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Last Updated</div>
+              <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '10px 14px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Last Updated</div>
                 <div style={{ fontSize: 13, color: '#c4c9d4' }}>{new Date(viewingReview.updated_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
               </div>
-              <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Manager Signed</div>
+              <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '10px 14px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Manager Signed</div>
                 <div style={{ fontSize: 13, color: viewingReview.manager_signed_at ? '#34d399' : '#4b5563' }}>{viewingReview.manager_signed_at ? new Date(viewingReview.manager_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not signed'}</div>
               </div>
-              <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Employee Signed</div>
+              <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '10px 14px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Employee Signed</div>
                 <div style={{ fontSize: 13, color: viewingReview.employee_signed_at ? '#34d399' : '#4b5563' }}>{viewingReview.employee_signed_at ? new Date(viewingReview.employee_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not signed'}</div>
               </div>
             </div>
-            {viewingReview.drive_url && (
-              <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px', marginTop: 12 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Full Review Document</div>
+            {/* Review content */}
+            {reviewFormLoading && (
+              <div style={{ textAlign: 'center', padding: '24px 0', color: '#4b5563', fontSize: 13 }}>Loading review content…</div>
+            )}
+            {!reviewFormLoading && reviewFormData && (() => {
+              const fd = reviewFormData as {
+                supervisorName?: string; appraisalPeriod?: string; reviewDate?: string; employeeDivision?: string
+                competencyOne?: {competency:string;examples:string[]}; competencyTwo?: {competency:string;examples:string[]}
+                competencyThree?: {competency:string;examples:string[]}; competencyFour?: {competency:string;examples:string[]}
+                competencyFive?: {competency:string;examples:string[]}; competencyFiveType?: string
+                goals?: {text:string;status:string;explanation:string}[]; overallScore?: number; overallSummary?: string
+                nextGoals?: {text:string;targetDate:string}[]
+              }
+              const competencies = [
+                { label: 'Competency 1 — Positive', data: fd.competencyOne },
+                { label: 'Competency 2 — Positive', data: fd.competencyTwo },
+                { label: 'Competency 3 — Constructive', data: fd.competencyThree },
+                { label: 'Competency 4 — Constructive', data: fd.competencyFour },
+                { label: `Competency 5 — ${fd.competencyFiveType === 'constructive' ? 'Constructive' : 'Positive'}`, data: fd.competencyFive },
+              ].filter(c => c.data?.competency)
+              const sectionHead = (label: string) => (
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12, paddingBottom: 6, borderBottom: '1px solid rgba(99,102,241,0.2)' }}>{label}</div>
+              )
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                  {/* Header info */}
+                  {(fd.supervisorName || fd.appraisalPeriod || fd.reviewDate) && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                      {fd.supervisorName && <div style={{ background: '#0d0f1a', borderRadius: 7, padding: '9px 13px' }}><div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Supervisor</div><div style={{ fontSize: 12, color: '#c4c9d4' }}>{fd.supervisorName}</div></div>}
+                      {fd.appraisalPeriod && <div style={{ background: '#0d0f1a', borderRadius: 7, padding: '9px 13px' }}><div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Period</div><div style={{ fontSize: 12, color: '#c4c9d4' }}>{fd.appraisalPeriod}</div></div>}
+                      {fd.reviewDate && <div style={{ background: '#0d0f1a', borderRadius: 7, padding: '9px 13px' }}><div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Review Date</div><div style={{ fontSize: 12, color: '#c4c9d4' }}>{fd.reviewDate}</div></div>}
+                    </div>
+                  )}
+                  {/* Competencies */}
+                  {competencies.length > 0 && (
+                    <div>
+                      {sectionHead('Part One — Competencies')}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {competencies.map((c, ci) => (
+                          <div key={ci} style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{c.label}</div>
+                            <div style={{ fontSize: 13, color: '#e0e4f0', fontWeight: 600, marginBottom: 8 }}>{c.data!.competency}</div>
+                            {c.data!.examples.filter(Boolean).map((ex, ei) => (
+                              <div key={ei} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                                <span style={{ color: '#6366f1', flexShrink: 0, marginTop: 1 }}>•</span>
+                                <span style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>{ex}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Goals */}
+                  {fd.goals && fd.goals.some(g => g.text) && (
+                    <div>
+                      {sectionHead('Part Two — Goals & Score')}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {fd.goals.filter(g => g.text).map((g, gi) => (
+                          <div key={gi} style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: g.explanation ? 8 : 0 }}>
+                              <div style={{ fontSize: 13, color: '#e0e4f0', fontWeight: 600, flex: 1 }}>{g.text}</div>
+                              {g.status && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12, flexShrink: 0, background: g.status === 'Met' ? 'rgba(52,211,153,0.12)' : g.status === 'Exceeded' ? 'rgba(99,102,241,0.15)' : 'rgba(251,191,36,0.12)', color: g.status === 'Met' ? '#34d399' : g.status === 'Exceeded' ? '#818cf8' : '#fbbf24' }}>{g.status}</span>}
+                            </div>
+                            {g.explanation && <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>{g.explanation}</div>}
+                          </div>
+                        ))}
+                        {fd.overallScore != null && fd.overallScore > 0 && (
+                          <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 16 }}>
+                            <div>
+                              <div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Overall Score</div>
+                              <div style={{ fontSize: 22, fontWeight: 700, color: '#818cf8' }}>{fd.overallScore}<span style={{ fontSize: 13, color: '#4b5563' }}>/5</span></div>
+                            </div>
+                            {fd.overallSummary && <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6, flex: 1 }}>{fd.overallSummary}</div>}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {/* Next year goals */}
+                  {fd.nextGoals && fd.nextGoals.some(g => g.text) && (
+                    <div>
+                      {sectionHead("Part Three — Next Year's Goals")}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {fd.nextGoals.filter(g => g.text).map((g, gi) => (
+                          <div key={gi} style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <span style={{ color: '#6366f1', flexShrink: 0, marginTop: 1 }}>•</span>
+                              <span style={{ fontSize: 13, color: '#c4c9d4', lineHeight: 1.6 }}>{g.text}</span>
+                            </div>
+                            {g.targetDate && <span style={{ fontSize: 11, color: '#6b7280', flexShrink: 0, marginTop: 2 }}>Target: {g.targetDate}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+            {!reviewFormLoading && !reviewFormData && viewingReview.drive_url && (
+              <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '14px 18px', marginTop: 4 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Full Review Document</div>
                 <a href={viewingReview.drive_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#34d399', textDecoration: 'none' }}>Open in Google Drive ↗</a>
               </div>
             )}
@@ -2826,16 +2932,75 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
       {/* ── Comparison viewer modal ── */}
       {viewingComparison && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setViewingComparison(null)}>
-          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 16, padding: 32, maxWidth: 700, width: '100%', maxHeight: '85vh', overflowY: 'auto', position: 'relative' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 16, padding: 32, maxWidth: 700, width: '100%', maxHeight: '88vh', overflowY: 'auto', position: 'relative' }} onClick={e => e.stopPropagation()}>
+            {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <div>
-                <span style={{ fontSize: 16, fontWeight: 700, color: '#f0f2fa' }}>Comparison Report</span>
+                <span style={{ fontSize: 17, fontWeight: 700, color: '#f0f2fa' }}>Comparison Report</span>
                 <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 8 }}>· {viewingComparison.employee_name}</span>
               </div>
               <button onClick={() => setViewingComparison(null)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
             </div>
-            <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '16px 20px' }}>
-              <pre style={{ margin: 0, fontSize: 13, color: '#c7d2fe', whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{viewingComparison.comparison_report}</pre>
+            {/* Styled comparison report */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {(viewingComparison.comparison_report ?? '').split(/\n(?=## )/).map((section, idx) => {
+                const lines = section.trim().split('\n')
+                const rawHeading = lines[0]
+                const isHeading = rawHeading.startsWith('## ')
+                const heading = isHeading ? rawHeading.replace(/^##\s*/, '') : ''
+                const bodyLines = isHeading ? lines.slice(1) : lines
+                const hc =
+                  heading.includes('AGREE') || heading.includes('ALIGN') ? '#34d399' :
+                  heading.includes('DIFFER')                              ? '#fbbf24' :
+                  heading.includes('TALKING')                             ? '#60a5fa' :
+                  heading.includes('ACTION') || heading.includes('PLAN')  ? '#a78bfa' :
+                  heading.includes('GOAL')                                ? '#22d3ee' : '#e5e7eb'
+                const bc =
+                  heading.includes('AGREE') || heading.includes('ALIGN') ? 'rgba(52,211,153,0.15)' :
+                  heading.includes('DIFFER')                              ? 'rgba(251,191,36,0.15)' :
+                  heading.includes('TALKING')                             ? 'rgba(96,165,250,0.15)'  :
+                  heading.includes('ACTION') || heading.includes('PLAN')  ? 'rgba(167,139,250,0.15)' :
+                  heading.includes('GOAL')                                ? 'rgba(34,211,238,0.15)'  : 'rgba(30,32,48,0.5)'
+                return (
+                  <div key={idx} style={{ padding: '16px 20px', borderTop: idx === 0 ? 'none' : '1px solid #1a1d2e', background: idx % 2 === 0 ? '#0d0f1a' : '#0b0d17', borderRadius: idx === 0 ? '10px 10px 0 0' : idx === (viewingComparison.comparison_report ?? '').split(/\n(?=## )/).length - 1 ? '0 0 10px 10px' : '0' }}>
+                    {heading && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <div style={{ width: 3, height: 16, borderRadius: 2, background: hc, flexShrink: 0 }} />
+                        <span style={{ fontSize: 10, fontWeight: 800, color: hc, textTransform: 'uppercase', letterSpacing: '0.12em' }}>{heading}</span>
+                        <div style={{ flex: 1, height: 1, background: bc }} />
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {bodyLines.map((line, li) => {
+                        const trimmed = line.trim()
+                        if (!trimmed) return <div key={li} style={{ height: 4 }} />
+                        const renderInline = (text: string) => text.split(/(\*\*[^*]+\*\*)/g).map((part, pi) =>
+                          part.startsWith('**') && part.endsWith('**')
+                            ? <strong key={pi} style={{ color: '#e0e4f0', fontWeight: 600 }}>{part.slice(2, -2)}</strong>
+                            : <span key={pi}>{part}</span>
+                        )
+                        if (/^[-*]\s/.test(trimmed)) return (
+                          <div key={li} style={{ display: 'flex', gap: 8 }}>
+                            <span style={{ color: '#a78bfa', flexShrink: 0, marginTop: 1 }}>•</span>
+                            <span style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.65 }}>{renderInline(trimmed.replace(/^[-*]\s+/, ''))}</span>
+                          </div>
+                        )
+                        if (/^\d+\.\s/.test(trimmed)) {
+                          const num = trimmed.match(/^(\d+)\./)?.[1] ?? ''
+                          const rest = trimmed.replace(/^\d+\.\s+/, '')
+                          return (
+                            <div key={li} style={{ display: 'flex', gap: 8 }}>
+                              <span style={{ color: '#a78bfa', flexShrink: 0, minWidth: 16, textAlign: 'right', fontSize: 13 }}>{num}.</span>
+                              <span style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.65 }}>{renderInline(rest)}</span>
+                            </div>
+                          )
+                        }
+                        return <p key={li} style={{ margin: 0, fontSize: 13, color: '#9ca3af', lineHeight: 1.65 }}>{renderInline(trimmed)}</p>
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
