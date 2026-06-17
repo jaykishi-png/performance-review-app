@@ -996,7 +996,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         </div>
 
         {/* Table */}
-        <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflowX: 'auto' }}>
           {filteredReviews.length === 0 ? (
             <div style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>
               <div style={{ fontSize: 32, marginBottom: 10 }}>📝</div>
@@ -1004,9 +1004,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               <div style={{ fontSize: 12 }}>{reviews.length === 0 ? 'No performance reviews have been created yet.' : 'Try adjusting your filters.'}</div>
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', minWidth: 1100, borderCollapse: 'collapse' }}>
               <thead>
-                <tr>{['Employee', 'Position', 'Manager', 'Progress', 'Status', 'Signatures', 'Drive', 'Comparison', 'Last Updated', 'Actions'].map(h => (
+                <tr>{['Employee', 'Position', 'Manager', 'Progress', 'Status', 'Signatures', 'Self Assessment', 'Performance Review', 'Comparison', 'Last Updated', 'Actions'].map(h => (
                   <th key={h} style={th}>{h}</th>
                 ))}</tr>
               </thead>
@@ -1016,20 +1016,21 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   const status = reviewStatus(r)
                   const sm = STATUS_META[status]
                   const manager = users.find(u => u.id === r.user_id)
+                  const emp = users.find(u => u.name === r.employee_name)
                   const isDeleting = deleteConfirm === r.id
                   return (
                     <tr key={r.id} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(13,15,26,0.4)' }}>
 
                       {/* Employee */}
-                      <td style={td}>
+                      <td style={{ ...td, whiteSpace: 'nowrap' }}>
                         <div style={{ fontWeight: 500, color: '#e5e7eb' }}>{r.employee_name || '—'}</div>
                       </td>
 
                       {/* Position */}
-                      <td style={{ ...td, color: '#9ca3af', fontSize: 12 }}>{r.employee_position || '—'}</td>
+                      <td style={{ ...td, color: '#9ca3af', fontSize: 12, whiteSpace: 'nowrap' }}>{r.employee_position || '—'}</td>
 
                       {/* Manager */}
-                      <td style={td}>
+                      <td style={{ ...td, whiteSpace: 'nowrap' }}>
                         {manager ? (
                           <div>
                             <div style={{ fontSize: 12, color: '#c4c9d4' }}>{manager.name || manager.email}</div>
@@ -1041,8 +1042,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       {/* Progress bar */}
                       <td style={td}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 80, height: 5, background: '#1e2130', borderRadius: 3, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#34d399' : '#4f46e5', borderRadius: 3, transition: 'width 0.3s' }} />
+                          <div style={{ width: 70, height: 5, background: '#1e2130', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#34d399' : '#4f46e5', borderRadius: 3 }} />
                           </div>
                           <span style={{ fontSize: 11, color: '#6b7280', minWidth: 28 }}>{pct}%</span>
                         </div>
@@ -1050,7 +1051,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       </td>
 
                       {/* Status badge */}
-                      <td style={td}>
+                      <td style={{ ...td, whiteSpace: 'nowrap' }}>
                         <span style={{ padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>
                           {sm.label}
                         </span>
@@ -1059,38 +1060,57 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       {/* Signatures */}
                       <td style={td}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          <span style={{ fontSize: 11, color: r.manager_signed_at ? '#34d399' : '#4b5563' }}>
+                          <span style={{ fontSize: 11, color: r.manager_signed_at ? '#34d399' : '#4b5563', whiteSpace: 'nowrap' }}>
                             {r.manager_signed_at ? `✓ Mgr ${new Date(r.manager_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : '— Manager'}
                           </span>
-                          <span style={{ fontSize: 11, color: r.employee_signed_at ? '#34d399' : '#4b5563' }}>
+                          <span style={{ fontSize: 11, color: r.employee_signed_at ? '#34d399' : '#4b5563', whiteSpace: 'nowrap' }}>
                             {r.employee_signed_at ? `✓ Emp ${new Date(r.employee_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : '— Employee'}
                           </span>
                         </div>
                       </td>
 
-                      {/* Drive link */}
+                      {/* Self Assessment column */}
                       <td style={td}>
-                        {r.drive_url ? (
-                          <a href={r.drive_url} target="_blank" rel="noopener noreferrer"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}>
-                            <ExternalLink size={10} /> Open
-                          </a>
+                        {emp ? (
+                          <button onClick={() => openSA(emp.id, r.employee_name || '', r.employee_position || null)}
+                            style={{ padding: '4px 10px', fontSize: 11, fontWeight: 600, background: '#1a1b2e', color: '#818cf8', border: '1px solid rgba(129,140,248,0.35)', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            📋 View
+                          </button>
                         ) : <span style={{ fontSize: 11, color: '#374151' }}>—</span>}
                       </td>
 
-                      {/* Comparison report */}
+                      {/* Performance Review column */}
+                      <td style={td}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <button onClick={() => setViewingReview(r)}
+                            style={{ padding: '4px 10px', fontSize: 11, fontWeight: 600, background: '#0f1a2e', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.35)', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            📄 View
+                          </button>
+                          {r.drive_url && (
+                            <a href={r.drive_url} target="_blank" rel="noopener noreferrer"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35', whiteSpace: 'nowrap' }}>
+                              <ExternalLink size={10} /> Drive
+                            </a>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Comparison column */}
                       <td style={td}>
                         {isDevAdmin ? (
                           <span style={{ fontSize: 11, color: '#374151', fontStyle: 'italic' }}>Hidden</span>
                         ) : r.comparison_report ? (
-                          <span style={{ padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: '#1e1f3a', color: '#818cf8', border: '1px solid rgba(129,140,248,0.3)' }}>✓ Generated</span>
+                          <button onClick={() => setViewingComparison(r)}
+                            style={{ padding: '4px 10px', fontSize: 11, fontWeight: 600, background: '#0d2b1f', color: '#34d399', border: '1px solid rgba(52,211,153,0.35)', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            🔀 View
+                          </button>
                         ) : (
                           <span style={{ fontSize: 11, color: '#374151' }}>—</span>
                         )}
                       </td>
 
                       {/* Last updated */}
-                      <td style={{ ...td, color: '#6b7280', fontSize: 12 }}>
+                      <td style={{ ...td, color: '#6b7280', fontSize: 12, whiteSpace: 'nowrap' }}>
                         {new Date(r.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
 
@@ -1108,35 +1128,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                               No
                             </button>
                           </div>
-                        ) : (
-                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                            {(() => {
-                              const emp = users.find(u => u.name === r.employee_name)
-                              return emp ? (
-                                <button onClick={() => openSA(emp.id, r.employee_name || '', r.employee_position || null)}
-                                  style={{ padding: '4px 9px', fontSize: 11, background: '#13151f', color: '#818cf8', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 5, cursor: 'pointer' }}>
-                                  📋 Self-Assessment
-                                </button>
-                              ) : null
-                            })()}
-                            <button onClick={() => setViewingReview(r)}
-                              style={{ padding: '4px 9px', fontSize: 11, background: '#13151f', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.3)', borderRadius: 5, cursor: 'pointer' }}>
-                              📄 Review
-                            </button>
-                            {r.comparison_report && !isDevAdmin && (
-                              <button onClick={() => setViewingComparison(r)}
-                                style={{ padding: '4px 9px', fontSize: 11, background: '#13151f', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 5, cursor: 'pointer' }}>
-                                🔀 Comparison
-                              </button>
-                            )}
-                            {!isDevAdmin && (
-                              <button onClick={() => setDeleteConfirm(r.id)}
-                                style={{ padding: '4px 9px', fontSize: 11, background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 5, cursor: 'pointer' }}>
-                                Delete
-                              </button>
-                            )}
-                          </div>
-                        )}
+                        ) : !isDevAdmin ? (
+                          <button onClick={() => setDeleteConfirm(r.id)}
+                            style={{ padding: '4px 9px', fontSize: 11, background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 5, cursor: 'pointer' }}>
+                            Delete
+                          </button>
+                        ) : null}
                       </td>
                     </tr>
                   )
