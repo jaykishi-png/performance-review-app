@@ -389,7 +389,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   const [feedbackSent, setFeedbackSent] = useState<any[]>([])
   const [feedbackReceived, setFeedbackReceived] = useState<any[]>([])
   const [feedbackLoading, setFeedbackLoading] = useState(false)
-  const [peers, setPeers] = useState<{id:string,name:string,email:string}[]>([])
+  const [peers, setPeers] = useState<{id:string,name:string,email:string,position:string}[]>([])
   const [selectedPeer, setSelectedPeer] = useState('')
   const [feedbackMessage, setFeedbackMessage] = useState('')
   const [feedbackAnon, setFeedbackAnon] = useState(false)
@@ -602,13 +602,16 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     Promise.all([
       fetch('/api/feedback-requests?role=requestor').then(r=>r.json()),
       fetch('/api/feedback-requests?role=reviewer').then(r=>r.json()),
-      fetch('/api/admin/users').then(r=>r.json()),
-    ]).then(([sent, received, allUsers]) => {
-      setFeedbackSent(Array.isArray(sent) ? sent : [])
-      setFeedbackReceived(Array.isArray(received) ? received : [])
+      fetch('/api/users').then(r=>r.json()),
+    ]).then(([sentData, receivedData, allUsers]) => {
+      // requests come back as { requests: [...] }
+      const sentList = sentData?.requests ?? (Array.isArray(sentData) ? sentData : [])
+      const receivedList = receivedData?.requests ?? (Array.isArray(receivedData) ? receivedData : [])
+      setFeedbackSent(sentList)
+      setFeedbackReceived(receivedList)
       const myId = profile.id
-      const peerList = (allUsers.users || allUsers || []).filter((u:any) => u.id !== myId && u.is_active && u.role !== 'dev_admin')
-      setPeers(peerList.map((u:any) => ({ id: u.id, name: u.name || u.email, email: u.email })))
+      const peerList = (allUsers?.users ?? []).filter((u:any) => u.id !== myId)
+      setPeers(peerList.map((u:any) => ({ id: u.id, name: u.name || u.email, email: u.email, position: u.position ?? '' })))
       setFeedbackLoading(false)
     }).catch(() => setFeedbackLoading(false))
   }, [page])
@@ -1983,7 +1986,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   // ── Page: 360 Feedback ────────────────────────────────────────────────────
   function renderFeedback() {
     const currentYear = new Date().getFullYear()
-    const alreadyRequestedIds = new Set(feedbackSent.filter((r:any) => r.year === currentYear).map((r:any) => r.reviewer_id))
+    const alreadyRequestedIds = new Set(feedbackSent.filter((r:any) => r.year === currentYear).map((r:any) => r.reviewer?.id ?? r.reviewer_id))
 
     async function sendFeedbackRequest() {
       if (!selectedPeer) return
@@ -2001,7 +2004,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           setFeedbackSendError(d.error || 'Failed to send request.')
         } else {
           const refreshed = await fetch('/api/feedback-requests?role=requestor').then(r=>r.json())
-          setFeedbackSent(Array.isArray(refreshed) ? refreshed : [])
+          setFeedbackSent(refreshed?.requests ?? [])
           setSelectedPeer('')
           setFeedbackMessage('')
           setFeedbackAnon(false)
@@ -2062,8 +2065,8 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
               {feedbackSent.map((req: any) => (
                 <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 14px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#c4c9d4' }}>{req.reviewer_name || req.reviewer_email || req.reviewer_id}</span>
-                    <span style={{ fontSize: 11, color: '#4b5563' }}>Sent {req.created_at ? new Date(req.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#c4c9d4' }}>{req.reviewer?.name || req.reviewer?.email || req.reviewer_id}</span>
+                    <span style={{ fontSize: 11, color: '#4b5563' }}>{req.reviewer?.email && <span style={{ color: '#374151' }}>{req.reviewer.email} · </span>}Sent {req.created_at ? new Date(req.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}{req.is_anonymous ? ' · Anonymous' : ''}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     {statusBadge(req.status || 'pending')}
@@ -2091,11 +2094,14 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             >
               <option value="">— Choose a colleague —</option>
               {availablePeers.map(p => (
-                <option key={p.id} value={p.id}>{p.name} ({p.email})</option>
+                <option key={p.id} value={p.id}>{p.name}{p.position ? ` · ${p.position}` : ''} ({p.email})</option>
               ))}
             </select>
-            {availablePeers.length === 0 && !feedbackLoading && (
+            {peers.length > 0 && availablePeers.length === 0 && !feedbackLoading && (
               <p style={{ margin: '6px 0 0', fontSize: 12, color: '#4b5563' }}>You&apos;ve already sent requests to all available colleagues this year.</p>
+            )}
+            {peers.length === 0 && !feedbackLoading && (
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: '#4b5563' }}>No colleagues found. Make sure other users are active in the system.</p>
             )}
           </div>
           <div style={{ marginBottom: 14 }}>
@@ -2137,7 +2143,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {feedbackReceived.map((req: any) => (
                 <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 14px' }}>
-                  <span style={{ fontSize: 13, color: '#c4c9d4' }}>Feedback requested by <strong>{req.requestor_name || req.requestor_email || 'a colleague'}</strong></span>
+                  <span style={{ fontSize: 13, color: '#c4c9d4' }}>Feedback requested by <strong>{req.requestor?.name || req.requestor?.email || 'a colleague'}</strong></span>
                   {req.status === 'submitted' ? (
                     <span style={{ fontSize: 12, color: '#34d399', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={13} /> Submitted</span>
                   ) : req.token ? (
