@@ -5312,34 +5312,6 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* Manager Guide */}
-          {(() => {
-            const active = activePage === 'guide'
-            return (
-              <button onClick={() => setActivePage('guide')} title={sidebarCollapsed ? 'Manager Guide' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
-                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
-                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
-                <BookOpen size={15} color={active ? '#818cf8' : '#6b7280'} />
-                {!sidebarCollapsed && 'Manager Guide'}
-              </button>
-            )
-          })()}
-
-          {/* Competency Glossary */}
-          {(() => {
-            const active = activePage === 'glossary'
-            return (
-              <button onClick={() => setActivePage('glossary')} title={sidebarCollapsed ? 'Competency Glossary' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
-                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
-                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
-                <BookMarked size={15} color={active ? '#818cf8' : '#6b7280'} />
-                {!sidebarCollapsed && 'Competency Glossary'}
-              </button>
-            )
-          })()}
-
           {/* Notifications */}
           {(() => {
             const active = activePage === 'notifications'
@@ -5454,6 +5426,34 @@ export function PerformanceReviewForm() {
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                 <span style={{ fontSize: 14 }}>⊞</span>
                 {!sidebarCollapsed && 'Nine-Box Grid'}
+              </button>
+            )
+          })()}
+
+          {/* Manager Guide */}
+          {(() => {
+            const active = activePage === 'guide'
+            return (
+              <button onClick={() => setActivePage('guide')} title={sidebarCollapsed ? 'Manager Guide' : undefined}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                <BookOpen size={15} color={active ? '#818cf8' : '#6b7280'} />
+                {!sidebarCollapsed && 'Manager Guide'}
+              </button>
+            )
+          })()}
+
+          {/* Competency Glossary */}
+          {(() => {
+            const active = activePage === 'glossary'
+            return (
+              <button onClick={() => setActivePage('glossary')} title={sidebarCollapsed ? 'Competency Glossary' : undefined}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                <BookMarked size={15} color={active ? '#818cf8' : '#6b7280'} />
+                {!sidebarCollapsed && 'Competency Glossary'}
               </button>
             )
           })()}
