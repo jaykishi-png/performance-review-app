@@ -2871,6 +2871,14 @@ export function PerformanceReviewForm() {
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reload team data when nine-box opens and dbTeam is empty (e.g. navigated before initial load)
+  useEffect(() => {
+    if (activePage !== 'nine-box' || dbTeam.length > 0) return
+    fetch('/api/team').then(r => r.ok ? r.json() : null).then(d => {
+      if (d?.reports) setDbTeam(d.reports)
+    }).catch(() => null)
+  }, [activePage, dbTeam.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Load goals for all team members when Team page opens
   useEffect(() => {
     if (activePage !== 'team' || teamGoalsLoaded || dbTeam.length === 0) return
