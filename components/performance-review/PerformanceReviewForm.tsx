@@ -164,10 +164,10 @@ interface AppSettings {
 }
 
 function getSettings(): AppSettings {
-  try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') } catch { return { driveFolderUrl: '' } }
+  return { driveFolderUrl: '' }
 }
-function saveSettings(s: AppSettings): void {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s))
+function saveSettings(_s: AppSettings): void {
+  // Drive folder URL is now managed globally via admin settings
 }
 
 /** Extract a Google Drive folder ID from a URL or return the raw string if it looks like an ID already. */
@@ -479,22 +479,14 @@ function DirectReportsPanel({
 
 function SettingsPanel({
   settings,
-  onSave,
+  onSave: _onSave,
   onClose,
 }: {
   settings: AppSettings
   onSave: (s: AppSettings) => void
   onClose: () => void
 }) {
-  const [folderUrl, setFolderUrl] = useState(settings.driveFolderUrl)
-
-  const folderId  = parseFolderId(folderUrl)
-  const isValid   = folderUrl.trim() === '' || folderId !== ''
-
-  function handleSave() {
-    onSave({ driveFolderUrl: folderUrl.trim() })
-    onClose()
-  }
+  const folderId = parseFolderId(settings.driveFolderUrl)
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -507,7 +499,7 @@ function SettingsPanel({
             <h2 className="text-sm font-semibold text-gray-100 flex items-center gap-2">
               <Settings size={14} className="text-purple-400" /> Settings
             </h2>
-            <p className="text-[11px] text-gray-600 mt-0.5">Saved to this browser</p>
+            <p className="text-[11px] text-gray-600 mt-0.5">Managed by your admin</p>
           </div>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-600 hover:text-gray-300 hover:bg-[#1e2030] transition-all">
             <X size={15} />
@@ -522,46 +514,41 @@ function SettingsPanel({
             <div>
               <p className="text-[11px] font-semibold text-gray-300">Google Drive Save Location</p>
               <p className="text-[11px] text-gray-600 mt-0.5 leading-relaxed">
-                Paste the URL of the Drive folder where generated docs should be saved.
-                Leave blank to use the default folder.
+                The Drive folder is configured by your admin and applies across the entire platform.
               </p>
             </div>
-            <input
-              value={folderUrl}
-              onChange={e => setFolderUrl(e.target.value)}
-              placeholder="https://drive.google.com/drive/folders/…"
-              className={`w-full bg-[#0d0f1a] border rounded-xl px-4 py-2.5 text-[12px] text-gray-200 placeholder-gray-600 focus:outline-none transition-colors ${
-                !isValid ? 'border-red-700/60 focus:border-red-600' : 'border-[#2a2d3a] focus:border-purple-600'
-              }`}
-            />
-            {!isValid && (
-              <p className="text-[10px] text-red-400">Couldn&apos;t find a folder ID in that URL — check the link and try again.</p>
-            )}
-            {folderId && isValid && (
-              <p className="text-[10px] text-emerald-500 flex items-center gap-1">
-                <CheckCircle2 size={10} /> Folder ID: <span className="font-mono">{folderId}</span>
-              </p>
-            )}
-            {!folderUrl.trim() && (
-              <p className="text-[10px] text-gray-600">Using the default folder configured on the server.</p>
+            {settings.driveFolderUrl ? (
+              <div className="bg-[#0d1117] border border-[#1e2a1a] rounded-xl px-4 py-3 space-y-1">
+                <p className="text-[10px] text-emerald-500 flex items-center gap-1">
+                  <CheckCircle2 size={10} /> Folder configured
+                </p>
+                {folderId && (
+                  <p className="text-[10px] text-gray-500 font-mono">ID: {folderId}</p>
+                )}
+                <a
+                  href={settings.driveFolderUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-purple-400 hover:text-purple-300 underline"
+                >
+                  Open folder ↗
+                </a>
+              </div>
+            ) : (
+              <div className="bg-[#0d0f1a] border border-[#2a2d3a] rounded-xl px-4 py-3">
+                <p className="text-[11px] text-gray-500">No folder configured yet. Ask your admin to set a Drive folder in the Admin Settings.</p>
+              </div>
             )}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 px-5 py-4 border-t border-[#1e2030] flex gap-2">
-          <button
-            onClick={handleSave}
-            disabled={!isValid}
-            className="flex-1 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 disabled:opacity-40 text-white text-[12px] font-medium transition-colors"
-          >
-            Save Settings
-          </button>
+        <div className="flex-shrink-0 px-5 py-4 border-t border-[#1e2030]">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-[#2a2d3a] text-[12px] text-gray-500 hover:text-gray-300 transition-colors"
+            className="w-full py-2 rounded-xl border border-[#2a2d3a] text-[12px] text-gray-400 hover:text-gray-200 transition-colors"
           >
-            Cancel
+            Close
           </button>
         </div>
       </div>
@@ -2722,7 +2709,10 @@ export function PerformanceReviewForm() {
   // Init: load reviews from API (falling back to localStorage) + profile
   useEffect(() => {
     setDirectReports(getReports())
-    setSettings(s => ({ ...s, ...getSettings() }))
+    // Load Drive folder URL from global admin settings
+    fetch('/api/settings').then(r => r.json()).then(data => {
+      if (data.drive_folder_url) setSettings(s => ({ ...s, driveFolderUrl: data.drive_folder_url }))
+    }).catch(() => {})
     ;(async () => {
       // Load profile
       try {

@@ -358,6 +358,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [settingsEmailOnSASubmit, setSettingsEmailOnSASubmit] = useState(false)
   const [settingsEmailOnLowScore, setSettingsEmailOnLowScore] = useState(false)
   const [settingsSaved, setSettingsSaved] = useState(false)
+  const [driveSaving, setDriveSaving] = useState(false)
+  const [driveSaved, setDriveSaved] = useState(false)
+  const [driveError, setDriveError] = useState('')
   // Email SMTP settings
   const [smtpEmail, setSmtpEmail] = useState('')
   const [smtpPassword, setSmtpPassword] = useState('')
@@ -369,12 +372,11 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [smtpTestResult, setSmtpTestResult] = useState<string | null>(null)
 
   useEffect(() => {
+    // Load non-drive settings from localStorage (org-level preferences stay local)
     try {
       const stored = localStorage.getItem('admin_settings')
       if (stored) {
         const parsed = JSON.parse(stored)
-        if (parsed.driveFolderUrl !== undefined) setSettingsDriveFolderUrl(parsed.driveFolderUrl)
-        if (parsed.saDriveFolderUrl !== undefined) setSettingsSaDriveFolderUrl(parsed.saDriveFolderUrl)
         if (parsed.orgName !== undefined) setSettingsOrgName(parsed.orgName)
         if (parsed.aiDraftsEnabled !== undefined) setSettingsAiDraftsEnabled(parsed.aiDraftsEnabled)
         if (parsed.saLocked !== undefined) setSettingsSaLocked(parsed.saLocked)
@@ -385,9 +387,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   }, [])
 
   useEffect(() => {
+    // Load Drive URLs + SMTP from the database (shared across all admins)
     fetch('/api/settings').then(r => r.json()).then(data => {
       if (data.smtp_email) setSmtpEmail(data.smtp_email)
       if (data.smtp_display_name) setSmtpDisplayName(data.smtp_display_name)
+      if (data.drive_folder_url) setSettingsDriveFolderUrl(data.drive_folder_url)
+      if (data.sa_drive_folder_url) setSettingsSaDriveFolderUrl(data.sa_drive_folder_url)
     }).catch(() => {})
   }, [])
 
@@ -411,11 +416,31 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     }
   }
 
+  async function saveDriveSettings() {
+    setDriveSaving(true)
+    setDriveError('')
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          drive_folder_url: settingsDriveFolderUrl || null,
+          sa_drive_folder_url: settingsSaDriveFolderUrl || null,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to save')
+      setDriveSaved(true)
+      setTimeout(() => setDriveSaved(false), 2500)
+    } catch {
+      setDriveError('Failed to save. Please try again.')
+    } finally {
+      setDriveSaving(false)
+    }
+  }
+
   function saveSettings() {
     try {
       localStorage.setItem('admin_settings', JSON.stringify({
-        driveFolderUrl: settingsDriveFolderUrl,
-        saDriveFolderUrl: settingsSaDriveFolderUrl,
         orgName: settingsOrgName,
         aiDraftsEnabled: settingsAiDraftsEnabled,
         saLocked: settingsSaLocked,
@@ -1614,16 +1639,32 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           </div>
         </div>
 
-        {/* localStorage note */}
-        <div style={{ background: '#1a1c2e', border: '1px solid #2a2d4e', borderRadius: 8, padding: '10px 16px', marginBottom: 20, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-          <span style={{ color: '#818cf8', fontSize: 14, flexShrink: 0 }}>ℹ</span>
-          <span style={{ fontSize: 12, color: '#818cf8', lineHeight: 1.5 }}>Settings are stored in your browser&apos;s local storage and apply to this admin session. They persist across page refreshes on this device.</span>
-        </div>
-
         {/* Section 1 — Google Drive Integration */}
         <div style={sectionCard}>
-          <div style={sectionTitle}>Google Drive Integration</div>
-          <div style={sectionDesc}>Set the destination folders where exported reviews and self-assessments are saved.</div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div>
+              <div style={sectionTitle}>Google Drive Integration</div>
+              <div style={{ ...sectionDesc, marginBottom: 0 }}>Set the destination folders where exported reviews and self-assessments are saved. These URLs apply to the entire platform for all users.</div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 16 }}>
+              {driveSaved && <span style={{ fontSize: 12, color: '#34d399', fontWeight: 600 }}>✓ Saved</span>}
+              {driveError && <span style={{ fontSize: 12, color: '#f87171' }}>{driveError}</span>}
+              <button
+                onClick={saveDriveSettings}
+                disabled={driveSaving}
+                style={{ padding: '7px 16px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: driveSaving ? 'not-allowed' : 'pointer', opacity: driveSaving ? 0.7 : 1, whiteSpace: 'nowrap' }}
+              >
+                {driveSaving ? 'Saving…' : 'Save Drive Settings'}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ background: '#0d1117', border: '1px solid #1e2a1a', borderRadius: 8, padding: '8px 14px', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+            <span style={{ color: '#34d399', fontSize: 13, flexShrink: 0 }}>ℹ</span>
+            <span style={{ fontSize: 11, color: '#4ade80', lineHeight: 1.5 }}>
+              Paste any Google Drive folder URL from your Google account. Changes saved here apply immediately across the entire platform — all managers will export to this folder.
+            </span>
+          </div>
 
           <div style={{ marginBottom: 16 }}>
             <label style={lbl}>Performance Reviews Folder URL</label>
@@ -1641,7 +1682,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 </a>
               )}
             </div>
-            {settingsDriveFolderUrl && <div style={{ fontSize: 11, color: '#4b5563', marginTop: 5 }}>Saved: <span style={{ color: '#6b7280' }}>{settingsDriveFolderUrl}</span></div>}
+            {settingsDriveFolderUrl && <div style={{ fontSize: 11, color: '#4b5563', marginTop: 5 }}>Current: <span style={{ color: '#6b7280' }}>{settingsDriveFolderUrl}</span></div>}
           </div>
 
           <div>
@@ -1660,7 +1701,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 </a>
               )}
             </div>
-            {settingsSaDriveFolderUrl && <div style={{ fontSize: 11, color: '#4b5563', marginTop: 5 }}>Saved: <span style={{ color: '#6b7280' }}>{settingsSaDriveFolderUrl}</span></div>}
+            {settingsSaDriveFolderUrl && <div style={{ fontSize: 11, color: '#4b5563', marginTop: 5 }}>Current: <span style={{ color: '#6b7280' }}>{settingsSaDriveFolderUrl}</span></div>}
           </div>
         </div>
 
