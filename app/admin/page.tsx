@@ -20,10 +20,19 @@ export default async function AdminPage() {
   const role = (profile as { role: string } | null)?.role
   if (role !== 'admin' && role !== 'dev_admin') redirect('/forbidden')
 
-  const { data: users } = await serviceClient
+  // potential_rating column added by migration — fall back gracefully if not yet run
+  let { data: users, error: usersError } = await serviceClient
     .from('profiles')
     .select('id, name, email, role, is_active, manager_id, start_date, created_at, position, division, pronouns, potential_rating')
     .order('created_at', { ascending: false })
+
+  if (usersError) {
+    const { data: usersFallback } = await serviceClient
+      .from('profiles')
+      .select('id, name, email, role, is_active, manager_id, start_date, created_at, position, division, pronouns')
+      .order('created_at', { ascending: false })
+    users = (usersFallback ?? []).map(u => ({ ...u, potential_rating: null }))
+  }
 
   const { data: invites } = await serviceClient
     .from('invites')
