@@ -12,13 +12,23 @@ export async function GET() {
 
     const serviceClient = createServiceClient()
 
-    // Fetch direct reports from profiles
-    const { data: reports } = await serviceClient
+    // Fetch direct reports from profiles (potential_rating may not exist yet pre-migration)
+    let { data: reports, error: reportsError } = await serviceClient
       .from('profiles')
       .select('id, name, email, role, is_active, start_date, position, division, pronouns, potential_rating')
       .eq('manager_id', user.id)
       .eq('is_active', true)
       .order('name', { ascending: true })
+
+    if (reportsError) {
+      const { data: fallback } = await serviceClient
+        .from('profiles')
+        .select('id, name, email, role, is_active, start_date, position, division, pronouns')
+        .eq('manager_id', user.id)
+        .eq('is_active', true)
+        .order('name', { ascending: true })
+      reports = (fallback ?? []).map(r => ({ ...r, potential_rating: null }))
+    }
 
     const reportIds = (reports ?? []).map((r: { id: string }) => r.id)
 
