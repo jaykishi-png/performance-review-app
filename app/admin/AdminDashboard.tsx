@@ -12,7 +12,7 @@ import {
 
 type UserRecord = {
   id: string; name: string | null; email: string; role: string
-  is_active: boolean; manager_id: string | null; start_date: string | null; created_at: string; position: string | null; division: string | null; pronouns: string | null
+  is_active: boolean; manager_id: string | null; start_date: string | null; created_at: string; position: string | null; division: string | null; pronouns: string | null; potential_rating?: number | null
 }
 type InviteRecord = {
   id: string; email: string; role: string; created_at: string; expires_at: string; accepted_at: string | null; token: string
@@ -24,6 +24,7 @@ type ReviewRecord = {
   comparison_report: string | null; saved_at: string; updated_at: string;
   manager_signed_at: string | null; employee_signed_at: string | null;
   manager_signature: string | null; employee_signature: string | null;
+  admin_approved_at: string | null;
 }
 type CycleRecord = {
   id: string; name: string; description: string | null; status: 'draft' | 'active' | 'closed'
@@ -263,6 +264,11 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   // SA viewer
   type SAData = { competencies: {type:string;term:string;examples:string[]}[]; goals_objectives: {description:string;outcome:string;reasoning:string}[]; next_year_goals: {goal:string;objective:string}[]; overall_rating: number|null; submitted_at: string|null; drive_url: string|null }
   const [viewingSA, setViewingSA] = useState<{employeeId:string;employeeName:string;position:string|null}|null>(null)
+  const [profileUser, setProfileUser] = useState<UserRecord | null>(null)
+  const [profileTab, setProfileTab] = useState<'profile' | 'reviews' | 'goals' | 'notes'>('profile')
+  const [profileGoals, setProfileGoals] = useState<Array<{id:string;title:string;status:string;target_date:string|null;description:string|null}>>([])
+  const [profileNotes, setProfileNotes] = useState<Array<{id:string;meeting_date:string;note:string;tags:string[];is_shared:boolean}>>([])
+  const [profileDataLoading, setProfileDataLoading] = useState(false)
   const [saData, setSAData] = useState<SAData|null>(null)
   const [viewingReview, setViewingReview] = useState<ReviewRecord|null>(null)
   const [viewingComparison, setViewingComparison] = useState<ReviewRecord|null>(null)
@@ -603,6 +609,19 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     } finally { setDeleting(false) }
   }
 
+  const [approvingId, setApprovingId] = useState<string | null>(null)
+  async function approveReview(id: string) {
+    setApprovingId(id)
+    try {
+      await fetch('/api/reviews', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, admin_approved_at: new Date().toISOString() }),
+      })
+      router.refresh()
+    } finally { setApprovingId(null) }
+  }
+
   // Notifications count for bell
   const notifCount = urgentCount + invites.length
 
@@ -669,6 +688,23 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
   async function toggleActive(userId: string, isActive: boolean) {
     await updateField(userId, { is_active: !isActive })
+  }
+
+  async function openProfile(u: UserRecord) {
+    setProfileUser(u)
+    setProfileTab('profile')
+    setProfileGoals([])
+    setProfileNotes([])
+    setProfileDataLoading(true)
+    try {
+      const [goalsRes, notesRes] = await Promise.all([
+        fetch(`/api/goals?employee_id=${u.id}`),
+        fetch(`/api/one-on-one-notes?employee_id=${u.id}`),
+      ])
+      if (goalsRes.ok) { const j = await goalsRes.json(); setProfileGoals(j.goals ?? []) }
+      if (notesRes.ok) { const j = await notesRes.json(); setProfileNotes(j.data ?? []) }
+    } catch { /* best-effort */ }
+    setProfileDataLoading(false)
   }
 
   function copyReminder(u: UserRecord & { daysUntil: number; annDate: string; years: number }) {
@@ -917,6 +953,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   </td>
                   <td style={td}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button onClick={() => openProfile(u)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: '#818cf8', border: '1px solid #2a2d3e', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>
+                        👤 Profile
+                      </button>
                       {u.id !== currentUser.id && (
                         <button onClick={() => toggleActive(u.id, u.is_active)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: u.is_active ? '#f87171' : '#34d399', border: `1px solid ${u.is_active ? '#5c2020' : '#0d2b1f'}`, borderRadius: 6, cursor: 'pointer' }}>
                           {u.is_active ? 'Deactivate' : 'Reactivate'}
@@ -1013,6 +1052,65 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             </div>
           ))}
         </div>
+
+        {/* ── Pending Admin Approval ── */}
+        {(() => {
+          const pendingApproval = reviews.filter(r => r.drive_url && r.manager_signed_at && !r.admin_approved_at)
+          if (pendingApproval.length === 0) return null
+          return (
+            <div style={{ marginBottom: 28 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ height: 2, flex: 1, background: '#5c2a05' }} />
+                <div style={{ padding: '4px 14px', background: '#1f1200', border: '1px solid #b45309', borderRadius: 20, fontSize: 12, fontWeight: 700, color: '#f59e0b' }}>
+                  ⚠️ Pending Your Approval ({pendingApproval.length})
+                </div>
+                <div style={{ height: 2, flex: 1, background: '#5c2a05' }} />
+              </div>
+              <div style={{ background: '#13151f', border: '1px solid #b45309', borderRadius: 12, overflow: 'hidden', marginBottom: 8 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>{['Employee', 'Position', 'Manager', 'Manager Signed', 'Drive Doc', 'Action'].map(h => (
+                      <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #5c2a05' }}>{h}</th>
+                    ))}</tr>
+                  </thead>
+                  <tbody>
+                    {pendingApproval.map((r, i) => {
+                      const manager = users.find(u => u.id === r.user_id)
+                      const isApproving = approvingId === r.id
+                      return (
+                        <tr key={r.id} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(30,18,0,0.4)' }}>
+                          <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500, color: '#e5e7eb' }}>{r.employee_name || '—'}</td>
+                          <td style={{ padding: '10px 14px', fontSize: 12, color: '#9ca3af' }}>{r.employee_position || '—'}</td>
+                          <td style={{ padding: '10px 14px', fontSize: 12, color: '#c4c9d4' }}>{manager ? (manager.name || manager.email) : '—'}</td>
+                          <td style={{ padding: '10px 14px', fontSize: 12, color: '#34d399' }}>
+                            {r.manager_signed_at ? `✓ ${new Date(r.manager_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : '—'}
+                          </td>
+                          <td style={{ padding: '10px 14px' }}>
+                            {r.drive_url ? (
+                              <a href={r.drive_url} target="_blank" rel="noopener noreferrer"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', background: '#0d1320', color: '#818cf8', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none', border: '1px solid #1e2a4a' }}>
+                                Open Doc
+                              </a>
+                            ) : '—'}
+                          </td>
+                          <td style={{ padding: '10px 14px' }}>
+                            <button onClick={() => approveReview(r.id)} disabled={isApproving}
+                              style={{ padding: '5px 14px', fontSize: 12, fontWeight: 600, background: isApproving ? '#1f1200' : 'linear-gradient(135deg,#b45309,#92400e)', color: '#fff', border: 'none', borderRadius: 7, cursor: isApproving ? 'default' : 'pointer', opacity: isApproving ? 0.7 : 1 }}>
+                              {isApproving ? 'Approving…' : '✓ Approve & Release'}
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>
+                Approving a review makes it visible to the employee. Review the Google Doc before approving.
+              </p>
+            </div>
+          )
+        })()}
 
         {/* Filters */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
@@ -3042,6 +3140,144 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   </div>
                 )
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Employee Profile Slide-over ── */}
+      {profileUser && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', justifyContent: 'flex-end' }} onClick={e => { if (e.target === e.currentTarget) setProfileUser(null) }}>
+          <div style={{ width: 640, maxWidth: '95vw', background: '#0d0f1a', borderLeft: '1px solid #1e2130', height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            {/* Header */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #1e2130', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+                {(profileUser.name || profileUser.email).charAt(0).toUpperCase()}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#f0f2fa' }}>{profileUser.name || profileUser.email}</div>
+                <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{profileUser.position || 'No position'}{profileUser.division ? ` · ${profileUser.division}` : ''}</div>
+              </div>
+              <button onClick={() => setProfileUser(null)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
+            </div>
+
+            {/* Tabs */}
+            <div style={{ display: 'flex', borderBottom: '1px solid #1e2130', padding: '0 24px', flexShrink: 0 }}>
+              {(['profile', 'reviews', 'goals', 'notes'] as const).map(t => (
+                <button key={t} onClick={() => setProfileTab(t)}
+                  style={{ padding: '10px 14px', fontSize: 12, fontWeight: profileTab === t ? 700 : 400, color: profileTab === t ? '#a5b4fc' : '#6b7280', border: 'none', borderBottom: profileTab === t ? '2px solid #818cf8' : '2px solid transparent', background: 'none', cursor: 'pointer' }}>
+                  {t === 'profile' ? '👤 Profile' : t === 'reviews' ? '📋 Reviews' : t === 'goals' ? '🎯 Goals' : '📝 Notes'}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab content */}
+            <div style={{ flex: 1, padding: 24, overflowY: 'auto' }}>
+              {profileTab === 'profile' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {[
+                    { label: 'Email',        value: profileUser.email },
+                    { label: 'Role',         value: profileUser.role },
+                    { label: 'Position',     value: profileUser.position ?? '—' },
+                    { label: 'Division',     value: profileUser.division ?? '—' },
+                    { label: 'Pronouns',     value: profileUser.pronouns ?? '—' },
+                    { label: 'Manager',      value: users.find(u => u.id === profileUser.manager_id)?.name ?? '—' },
+                    { label: 'Start Date',   value: profileUser.start_date ? new Date(profileUser.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—' },
+                    { label: 'Status',       value: profileUser.is_active ? 'Active' : 'Inactive' },
+                    { label: 'Member Since', value: new Date(profileUser.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) },
+                  ].map(({ label, value }) => (
+                    <div key={label} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      <div style={{ width: 110, fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: 1, flexShrink: 0 }}>{label}</div>
+                      <div style={{ fontSize: 13, color: '#e5e7eb' }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {profileTab === 'reviews' && (() => {
+                const empReviews = reviews.filter(r => r.employee_name === profileUser.name || (profileUser.name && r.employee_name?.toLowerCase() === profileUser.name?.toLowerCase()))
+                if (empReviews.length === 0) return <div style={{ textAlign: 'center', padding: 40, color: '#6b7280', fontSize: 13 }}>No reviews on file for this employee.</div>
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {empReviews.map(r => {
+                      const status = reviewStatus(r)
+                      const sm = STATUS_META[status]
+                      return (
+                        <div key={r.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 10, padding: '14px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                            <span style={{ fontSize: 12, color: '#9ca3af' }}>{r.employee_position || 'No position'}</span>
+                            <span style={{ marginLeft: 'auto', padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>{sm.label}</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 14, fontSize: 11, color: '#6b7280', flexWrap: 'wrap' }}>
+                            {r.drive_url && <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8' }}>📄 View Doc</a>}
+                            {r.manager_signed_at && <span>✍️ Signed {new Date(r.manager_signed_at).toLocaleDateString()}</span>}
+                            {r.admin_approved_at && <span>✅ Approved</span>}
+                            <span>Updated {new Date(r.updated_at).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+
+              {profileTab === 'goals' && (
+                profileDataLoading
+                  ? <div style={{ textAlign: 'center', padding: 40, color: '#6b7280', fontSize: 13 }}>Loading…</div>
+                  : profileGoals.length === 0
+                    ? <div style={{ textAlign: 'center', padding: 40, color: '#6b7280', fontSize: 13 }}>No goals on file.</div>
+                    : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {profileGoals.map(g => (
+                          <div key={g.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 10, padding: '14px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{g.title}</div>
+                                {g.description && <div style={{ fontSize: 12, color: '#9ca3af' }}>{g.description}</div>}
+                              </div>
+                              <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 600, flexShrink: 0,
+                                background: g.status === 'complete' ? '#0d2b1f' : g.status === 'in_progress' ? '#1a1f3a' : '#13151f',
+                                color: g.status === 'complete' ? '#34d399' : g.status === 'in_progress' ? '#818cf8' : '#6b7280',
+                                border: `1px solid ${g.status === 'complete' ? '#1a4a2e' : g.status === 'in_progress' ? '#2a3060' : '#1e2130'}` }}>
+                                {g.status === 'complete' ? '✓ Complete' : g.status === 'in_progress' ? 'In Progress' : 'Not Started'}
+                              </span>
+                            </div>
+                            {g.target_date && <div style={{ marginTop: 6, fontSize: 11, color: '#4b5563' }}>Target: {new Date(g.target_date + 'T00:00:00').toLocaleDateString()}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )
+              )}
+
+              {profileTab === 'notes' && (
+                profileDataLoading
+                  ? <div style={{ textAlign: 'center', padding: 40, color: '#6b7280', fontSize: 13 }}>Loading…</div>
+                  : profileNotes.length === 0
+                    ? <div style={{ textAlign: 'center', padding: 40, color: '#6b7280', fontSize: 13 }}>No 1:1 notes on file.</div>
+                    : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {profileNotes.map(n => (
+                          <div key={n.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 10, padding: '14px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: '#6b7280' }}>{new Date(n.meeting_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                              <span style={{ marginLeft: 'auto', fontSize: 10, padding: '1px 6px', borderRadius: 10,
+                                background: n.is_shared ? 'rgba(52,211,153,0.1)' : 'rgba(107,114,128,0.1)',
+                                color: n.is_shared ? '#34d399' : '#6b7280',
+                                border: `1px solid ${n.is_shared ? 'rgba(52,211,153,0.3)' : '#1e2130'}` }}>
+                                {n.is_shared ? '👁 Shared' : '🔒 Private'}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 13, color: '#d1d5db', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{n.note}</div>
+                            {n.tags?.length > 0 && (
+                              <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                                {n.tags.map(tag => <span key={tag} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 10, background: '#1a1f3a', color: '#818cf8' }}>{tag}</span>)}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )
+              )}
             </div>
           </div>
         </div>

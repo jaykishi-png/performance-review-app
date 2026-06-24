@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -15,7 +15,7 @@ export async function GET() {
     // Fetch direct reports from profiles
     const { data: reports } = await serviceClient
       .from('profiles')
-      .select('id, name, email, role, is_active, start_date, position, division, pronouns')
+      .select('id, name, email, role, is_active, start_date, position, division, pronouns, potential_rating')
       .eq('manager_id', user.id)
       .eq('is_active', true)
       .order('name', { ascending: true })
@@ -33,6 +33,48 @@ export async function GET() {
     }
 
     return NextResponse.json({ reports: reports ?? [], selfAssessments })
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 })
+  }
+}
+
+// PATCH — manager updates potential_rating for a direct report
+export async function PATCH(req: NextRequest) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const body = await req.json() as { employee_id: string; potential_rating: number | null }
+    const { employee_id, potential_rating } = body
+    if (!employee_id) return NextResponse.json({ error: 'employee_id required' }, { status: 400 })
+
+    const serviceClient = createServiceClient()
+
+    // Verify employee is a direct report of this manager
+    const { data: emp } = await serviceClient
+      .from('profiles')
+      .select('manager_id')
+      .eq('id', employee_id)
+      .single()
+
+    const e = emp as { manager_id: string | null } | null
+    const isManager = e?.manager_id === user.id
+
+    // Allow admin/dev_admin too
+    const { data: callerProfile } = await serviceClient.from('profiles').select('role').eq('id', user.id).single()
+    const callerRole = (callerProfile as { role: string } | null)?.role
+    const isAdmin = callerRole === 'admin' || callerRole === 'dev_admin'
+
+    if (!isManager && !isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+    const { error } = await serviceClient
+      .from('profiles')
+      .update({ potential_rating: potential_rating ?? null })
+      .eq('id', employee_id)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ ok: true })
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }

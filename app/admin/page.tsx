@@ -22,7 +22,7 @@ export default async function AdminPage() {
 
   const { data: users } = await serviceClient
     .from('profiles')
-    .select('id, name, email, role, is_active, manager_id, start_date, created_at, position, division, pronouns')
+    .select('id, name, email, role, is_active, manager_id, start_date, created_at, position, division, pronouns, potential_rating')
     .order('created_at', { ascending: false })
 
   const { data: invites } = await serviceClient
@@ -39,7 +39,7 @@ export default async function AdminPage() {
   // Fetch all reviews — redact comparison_report for dev_admin
   const { data: reviewsRaw } = await serviceClient
     .from('reviews')
-    .select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature')
+    .select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, admin_approved_at')
     .order('updated_at', { ascending: false })
 
   const reviews = (reviewsRaw ?? []).map(r => ({
@@ -76,6 +76,7 @@ export default async function AdminPage() {
         comparison_report: string | null; saved_at: string; updated_at: string;
         manager_signed_at: string | null; employee_signed_at: string | null;
         manager_signature: string | null; employee_signature: string | null;
+        admin_approved_at: string | null;
       }[]}
       employeeCycles={(employeeCycles ?? []) as {
         id: string; employee_id: string; anniversary_year: number; phase: string

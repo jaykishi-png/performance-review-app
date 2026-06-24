@@ -14,6 +14,15 @@ import { SignaturePad, SignatureDisplay, encodeSignature, decodeSignature, type 
 
 type Page = 'self-assessment' | 'reviews' | 'timeline' | 'goals' | 'checkins' | 'feedback' | 'guide' | 'glossary' | 'pip'
 
+type KeyResult = {
+  id: string
+  title: string
+  type: 'percent' | 'number' | 'currency' | 'boolean'
+  current: number
+  target: number
+  unit?: string
+}
+
 type Goal = {
   id: string
   title: string
@@ -22,6 +31,7 @@ type Goal = {
   target_date: string
   notes: string
   created_at: string
+  key_results: KeyResult[]
 }
 type CompetencyType = 'positive' | 'constructive' | 'choice'
 type Competency = { type: CompetencyType; term: string; examples: [string, string, string] }
@@ -370,6 +380,10 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
   const [goalForm, setGoalForm] = useState({ title: '', description: '', status: 'not_started' as Goal['status'], target_date: '', notes: '' })
   const [goalSaving, setGoalSaving] = useState(false)
+  const [krAddingId, setKrAddingId] = useState<string | null>(null)
+  const [krForm, setKrForm] = useState({ title: '', type: 'percent' as KeyResult['type'], current: '', target: '', unit: '' })
+  const [krSaving, setKrSaving] = useState(false)
+  const [krExpandedIds, setKrExpandedIds] = useState<Set<string>>(new Set())
   // Notifications
   const [showNotifications, setShowNotifications] = useState(false)
   const [managerReviews, setManagerReviews] = useState<Array<{
@@ -510,6 +524,10 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   // All quarters check-ins for timeline display
   const [allCheckins, setAllCheckins] = useState<Array<{ quarter: number; employee_submitted_at: string | null; manager_submitted_at: string | null }>>([])
 
+  // Shared 1:1 notes from manager
+  const [sharedNotes, setSharedNotes] = useState<Array<{ id: string; meeting_date: string; note: string; tags: string[] }>>([])
+  const [sharedNotesLoading, setSharedNotesLoading] = useState(false)
+
   // ── 360 Feedback state ────────────────────────────────────────────────────
   const [feedbackSent, setFeedbackSent] = useState<any[]>([])
   const [feedbackReceived, setFeedbackReceived] = useState<any[]>([])
@@ -531,6 +549,17 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         setAllCheckins(json?.data ?? [])
       })
       .catch(() => {})
+  }, [page])
+
+  useEffect(() => {
+    if (page !== 'checkins') return
+    // Fetch shared notes from manager
+    setSharedNotesLoading(true)
+    fetch(`/api/one-on-one-notes?employee_id=${profile.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.data) setSharedNotes(d.data) })
+      .catch(() => {})
+      .finally(() => setSharedNotesLoading(false))
   }, [page])
 
   useEffect(() => {
@@ -791,6 +820,53 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
       await updateGoalRecord(editingGoal.id, goalForm)
       setEditingGoal(null)
     } finally { setGoalSaving(false) }
+  }
+
+  function krProgress(kr: KeyResult): number {
+    if (kr.type === 'boolean') return kr.current >= 1 ? 100 : 0
+    if (!kr.target || kr.target === 0) return 0
+    return Math.min(100, Math.round((kr.current / kr.target) * 100))
+  }
+
+  function goalKrProgress(g: Goal): number {
+    const krs = g.key_results ?? []
+    if (!krs.length) return -1
+    return Math.round(krs.reduce((sum, kr) => sum + krProgress(kr), 0) / krs.length)
+  }
+
+  async function addKeyResult(goalId: string) {
+    if (!krForm.title.trim()) return
+    setKrSaving(true)
+    try {
+      const goal = goals.find(g => g.id === goalId)
+      if (!goal) return
+      const newKr: KeyResult = {
+        id: crypto.randomUUID(),
+        title: krForm.title.trim(),
+        type: krForm.type,
+        current: parseFloat(krForm.current) || 0,
+        target: krForm.type === 'boolean' ? 1 : parseFloat(krForm.target) || 100,
+        unit: krForm.unit.trim() || undefined,
+      }
+      const updated = [...(goal.key_results ?? []), newKr]
+      await updateGoalRecord(goalId, { key_results: updated } as unknown as Partial<Goal>)
+      setKrAddingId(null)
+      setKrForm({ title: '', type: 'percent', current: '', target: '', unit: '' })
+    } finally { setKrSaving(false) }
+  }
+
+  async function updateKeyResultValue(goalId: string, krId: string, current: number) {
+    const goal = goals.find(g => g.id === goalId)
+    if (!goal) return
+    const updated = (goal.key_results ?? []).map(kr => kr.id === krId ? { ...kr, current } : kr)
+    await updateGoalRecord(goalId, { key_results: updated } as unknown as Partial<Goal>)
+  }
+
+  async function deleteKeyResult(goalId: string, krId: string) {
+    const goal = goals.find(g => g.id === goalId)
+    if (!goal) return
+    const updated = (goal.key_results ?? []).filter(kr => kr.id !== krId)
+    await updateGoalRecord(goalId, { key_results: updated } as unknown as Partial<Goal>)
   }
 
   // Computed notifications
@@ -1532,7 +1608,6 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                         {g.description && <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 3, lineHeight: 1.5 }}>{g.description}</div>}
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                        {/* Quick status toggle */}
                         {g.status !== 'complete' && (
                           <button onClick={() => updateGoalRecord(g.id, { status: g.status === 'not_started' ? 'in_progress' : 'complete' })}
                             title={g.status === 'not_started' ? 'Mark In Progress' : 'Mark Complete'}
@@ -1545,6 +1620,25 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                         <button onClick={() => deleteGoal(g.id)} style={{ padding: '4px 8px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>✕</button>
                       </div>
                     </div>
+
+                    {/* Overall KR progress bar */}
+                    {(() => {
+                      const pct = goalKrProgress(g)
+                      if (pct < 0) return null
+                      const barColor = pct >= 100 ? '#34d399' : pct >= 50 ? '#818cf8' : '#f59e0b'
+                      return (
+                        <div style={{ marginBottom: 10 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Key Results Progress</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: barColor }}>{pct}%</span>
+                          </div>
+                          <div style={{ height: 6, background: '#1e2130', borderRadius: 4, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 4, transition: 'width 0.3s ease' }} />
+                          </div>
+                        </div>
+                      )
+                    })()}
+
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: sc.bg, color: sc.color, border: `1px solid ${sc.color}40` }}>{sc.label}</span>
                       {g.target_date && (
@@ -1552,8 +1646,108 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                           {isOverdue ? '⚠ Overdue · ' : '📅 '}{new Date(g.target_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                       )}
+                      <button onClick={() => setKrExpandedIds(s => { const n = new Set(s); n.has(g.id) ? n.delete(g.id) : n.add(g.id); return n })}
+                        style={{ marginLeft: 'auto', padding: '2px 8px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>
+                        🎯 Key Results {(g.key_results ?? []).length > 0 ? `(${g.key_results.length})` : ''} {krExpandedIds.has(g.id) ? '▲' : '▼'}
+                      </button>
                     </div>
+
                     {g.notes && <div style={{ marginTop: 10, padding: '8px 12px', background: '#0d1117', borderRadius: 8, fontSize: 12, color: '#9ca3af', lineHeight: 1.5 }}>{g.notes}</div>}
+
+                    {/* Key Results expanded section */}
+                    {krExpandedIds.has(g.id) && (
+                      <div style={{ marginTop: 12, borderTop: '1px solid #1e2130', paddingTop: 12 }}>
+                        {(g.key_results ?? []).length === 0 && krAddingId !== g.id && (
+                          <div style={{ fontSize: 12, color: '#4b5563', marginBottom: 10 }}>No key results yet. Add measurable targets to track progress.</div>
+                        )}
+
+                        {/* KR rows */}
+                        {(g.key_results ?? []).map(kr => {
+                          const pct = krProgress(kr)
+                          const barColor = pct >= 100 ? '#34d399' : pct >= 50 ? '#818cf8' : '#f59e0b'
+                          const displayValue = kr.type === 'boolean'
+                            ? (kr.current >= 1 ? 'Complete' : 'Incomplete')
+                            : kr.type === 'currency'
+                              ? `$${kr.current.toLocaleString()} / $${kr.target.toLocaleString()}${kr.unit ? ' ' + kr.unit : ''}`
+                              : kr.type === 'percent'
+                                ? `${kr.current}% / ${kr.target}%`
+                                : `${kr.current}${kr.unit ? ' ' + kr.unit : ''} / ${kr.target}${kr.unit ? ' ' + kr.unit : ''}`
+                          return (
+                            <div key={kr.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, padding: '8px 10px', background: '#0d1117', borderRadius: 8 }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                  <span style={{ fontSize: 12, color: '#c4c9d4', fontWeight: 500 }}>{kr.title}</span>
+                                  <span style={{ fontSize: 11, color: barColor, fontWeight: 700, whiteSpace: 'nowrap', marginLeft: 8 }}>{displayValue}</span>
+                                </div>
+                                <div style={{ height: 4, background: '#1e2130', borderRadius: 3, overflow: 'hidden' }}>
+                                  <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 3, transition: 'width 0.3s ease' }} />
+                                </div>
+                              </div>
+                              {/* Inline current value editor */}
+                              {kr.type !== 'boolean' ? (
+                                <input
+                                  type="number"
+                                  defaultValue={kr.current}
+                                  onBlur={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v !== kr.current) updateKeyResultValue(g.id, kr.id, v) }}
+                                  style={{ width: 64, padding: '3px 6px', background: '#13151f', border: '1px solid #2a2d3a', borderRadius: 6, fontSize: 11, color: '#e5e7eb', textAlign: 'right' }}
+                                />
+                              ) : (
+                                <button onClick={() => updateKeyResultValue(g.id, kr.id, kr.current >= 1 ? 0 : 1)}
+                                  style={{ padding: '3px 8px', background: kr.current >= 1 ? '#0d2b1f' : '#1e2130', color: kr.current >= 1 ? '#34d399' : '#6b7280', border: `1px solid ${kr.current >= 1 ? '#34d399' : '#2a2d3a'}`, borderRadius: 6, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                  {kr.current >= 1 ? '✓ Done' : 'Mark Done'}
+                                </button>
+                              )}
+                              <button onClick={() => deleteKeyResult(g.id, kr.id)}
+                                style={{ padding: '3px 6px', background: 'transparent', color: '#4b5563', border: '1px solid #2a2d3a', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>✕</button>
+                            </div>
+                          )
+                        })}
+
+                        {/* Add KR form */}
+                        {krAddingId === g.id ? (
+                          <div style={{ padding: '12px', background: '#0d1117', borderRadius: 8, marginTop: 4 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              <input value={krForm.title} onChange={e => setKrForm(f => ({ ...f, title: e.target.value }))}
+                                placeholder="Key result title, e.g. Increase quarterly revenue" autoFocus
+                                style={{ padding: '7px 10px', background: '#13151f', border: '1px solid #2a2d3a', borderRadius: 7, fontSize: 12, color: '#e5e7eb' }} />
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                                <select value={krForm.type} onChange={e => setKrForm(f => ({ ...f, type: e.target.value as KeyResult['type'] }))}
+                                  style={{ padding: '7px 8px', background: '#13151f', border: '1px solid #2a2d3a', borderRadius: 7, fontSize: 12, color: '#e5e7eb', appearance: 'none' }}>
+                                  <option value="percent">% Percent</option>
+                                  <option value="number">🔢 Number</option>
+                                  <option value="currency">$ Currency</option>
+                                  <option value="boolean">✓ Complete/Incomplete</option>
+                                </select>
+                                {krForm.type !== 'boolean' && <>
+                                  <input type="number" value={krForm.current} onChange={e => setKrForm(f => ({ ...f, current: e.target.value }))}
+                                    placeholder="Current" style={{ padding: '7px 8px', background: '#13151f', border: '1px solid #2a2d3a', borderRadius: 7, fontSize: 12, color: '#e5e7eb' }} />
+                                  <input type="number" value={krForm.target} onChange={e => setKrForm(f => ({ ...f, target: e.target.value }))}
+                                    placeholder="Target" style={{ padding: '7px 8px', background: '#13151f', border: '1px solid #2a2d3a', borderRadius: 7, fontSize: 12, color: '#e5e7eb' }} />
+                                </>}
+                              </div>
+                              {(krForm.type === 'number') && (
+                                <input value={krForm.unit} onChange={e => setKrForm(f => ({ ...f, unit: e.target.value }))}
+                                  placeholder="Unit label (optional), e.g. clients, calls, posts"
+                                  style={{ padding: '7px 10px', background: '#13151f', border: '1px solid #2a2d3a', borderRadius: 7, fontSize: 12, color: '#e5e7eb' }} />
+                              )}
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <button onClick={() => { setKrAddingId(null); setKrForm({ title: '', type: 'percent', current: '', target: '', unit: '' }) }}
+                                  style={{ flex: 1, padding: '7px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 7, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                                <button onClick={() => addKeyResult(g.id)} disabled={krSaving || !krForm.title.trim()}
+                                  style={{ flex: 2, padding: '7px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: (!krForm.title.trim() || krSaving) ? 0.6 : 1 }}>
+                                  {krSaving ? 'Saving…' : 'Add Key Result'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <button onClick={() => { setKrAddingId(g.id); setKrForm({ title: '', type: 'percent', current: '', target: '', unit: '' }) }}
+                            style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', background: 'transparent', color: '#818cf8', border: '1px dashed #3730a3', borderRadius: 7, fontSize: 12, cursor: 'pointer' }}>
+                            <Plus size={12} /> Add Key Result
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1806,6 +2000,39 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Shared 1:1 Notes from Manager */}
+        {(sharedNotesLoading || sharedNotes.length > 0) && (
+          <div style={{ marginTop: 32 }}>
+            <h2 style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 700, color: '#f0f2fa' }}>Notes from Your Manager</h2>
+            {sharedNotesLoading ? (
+              <div style={{ fontSize: 13, color: '#6b7280', padding: 20 }}>Loading notes…</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {sharedNotes.map(n => {
+                  const NOTE_TAG_META: Record<string, { label: string; color: string; bg: string }> = {
+                    recognition: { label: 'Recognition', color: '#16a34a', bg: 'rgba(22,163,74,0.15)' },
+                    concern:     { label: 'Concern',     color: '#dc2626', bg: 'rgba(220,38,38,0.15)' },
+                    goal_update: { label: 'Goal Update', color: '#2563eb', bg: 'rgba(37,99,235,0.15)' },
+                    general:     { label: 'General',     color: '#6b7280', bg: 'rgba(107,114,128,0.15)' },
+                  }
+                  return (
+                    <div key={n.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 10, padding: '14px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>{new Date(n.meeting_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        {(n.tags ?? []).map(tagId => {
+                          const t = NOTE_TAG_META[tagId]
+                          return t ? <span key={tagId} style={{ padding: '2px 8px', borderRadius: 20, background: t.bg, color: t.color, fontSize: 10, fontWeight: 700, border: `1px solid ${t.color}` }}>{t.label}</span> : null
+                        })}
+                      </div>
+                      <p style={{ margin: 0, fontSize: 13, color: '#d1d5db', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{n.note}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>

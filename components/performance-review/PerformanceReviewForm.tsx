@@ -102,6 +102,15 @@ const emptyCompetency = (): CompetencyEntry => ({ competency: '', examples: ['',
 const emptyGoal = (): GoalEntry => ({ text: '', status: '', explanation: '' })
 const emptyNextGoal = (): NextGoal => ({ text: '', targetDate: '' })
 
+const NOTE_TEMPLATES = [
+  { label: 'General Check-in',       text: 'Wins this week:\n- \n\nChallenges:\n- \n\nPriorities for next week:\n- \n\nAnything I can support with?' },
+  { label: 'Goal Progress',          text: 'Goal update:\n\nProgress toward target:\n\nBlockers:\n\nNext steps:' },
+  { label: 'Recognition',            text: 'Recognition:\n\nSpecific behavior observed:\n\nImpact on the team:' },
+  { label: 'Feedback Conversation',  text: 'Feedback given:\n\nEmployee response:\n\nAgreed next steps:\n\nFollow-up date:' },
+  { label: 'Career Development',     text: 'Career interests discussed:\n\nStrengths to leverage:\n\nAreas to develop:\n\nOpportunities to pursue:' },
+  { label: 'Performance Concern',    text: 'Concern raised:\n\nSpecific examples:\n\nExpected behavior going forward:\n\nFollow-up date:' },
+]
+
 const defaultForm = (): FormData => ({
   employeeName: '',
   employeePosition: '',
@@ -1156,14 +1165,18 @@ function StepGoals({
   update,
   saves,
   currentReviewId,
+  employeeId,
 }: {
   form: FormData
   update: (p: Partial<FormData>) => void
   saves: SavedReview[]
   currentReviewId: string
+  employeeId?: string
 }) {
   const [showImport, setShowImport] = useState(false)
   const [importConfirm, setImportConfirm] = useState<SavedReview | null>(null)
+  const [trackerLoading, setTrackerLoading] = useState(false)
+  const [trackerImported, setTrackerImported] = useState(false)
 
   // Previous reviews that have at least one goal with text
   const importable = saves.filter(
@@ -1190,6 +1203,34 @@ function StepGoals({
     update({ goals: imported.length ? imported : [emptyGoal()] })
     setImportConfirm(null)
     setShowImport(false)
+  }
+
+  async function importFromTracker() {
+    if (!employeeId) return
+    setTrackerLoading(true)
+    try {
+      const res = await fetch(`/api/goals?employee_id=${employeeId}`)
+      if (!res.ok) throw new Error('Failed to fetch goals')
+      const { goals } = await res.json()
+      const active = (goals as Array<{ title: string; status: string }>).filter(
+        g => g.status === 'in_progress' || g.status === 'not_started'
+      )
+      if (active.length === 0) {
+        alert('No active goals found in the Goals Tracker for this employee.')
+        return
+      }
+      const imported: GoalEntry[] = active.map(g => ({
+        text: g.title,
+        status: '' as const,
+        explanation: '',
+      }))
+      update({ goals: imported })
+      setTrackerImported(true)
+    } catch {
+      alert('Could not load goals from the Goals Tracker.')
+    } finally {
+      setTrackerLoading(false)
+    }
   }
 
   const hasCurrentGoals = form.goals.some(g => g.text.trim())
@@ -1269,6 +1310,40 @@ function StepGoals({
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Import from Goals Tracker ── */}
+      {employeeId && (
+        <div className="rounded-xl border border-emerald-800/30 bg-emerald-900/10 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-2">
+              <span className="text-base">🎯</span>
+              <div>
+                <p className="text-[12px] font-medium text-emerald-300">Import from Goals Tracker</p>
+                <p className="text-[10px] text-gray-600 mt-0.5">
+                  {trackerImported
+                    ? 'Goals imported — you can edit them below'
+                    : "Pull this employee's active goals directly into the review"}
+                </p>
+              </div>
+            </div>
+            {trackerImported ? (
+              <span className="text-[10px] text-emerald-400 font-medium">✓ Imported</span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => hasCurrentGoals
+                  ? (window.confirm('Replace current goals with Goals Tracker entries?') && importFromTracker())
+                  : importFromTracker()
+                }
+                disabled={trackerLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-800/40 hover:bg-emerald-700/50 text-emerald-300 text-[11px] font-medium transition-colors disabled:opacity-50"
+              >
+                {trackerLoading ? 'Loading…' : 'Import Goals →'}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -2555,7 +2630,7 @@ export function PerformanceReviewForm() {
   const [form, setForm] = useState<FormData>(defaultForm())
   const [saves, setSaves] = useState<SavedReview[]>([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notifications' | 'cycles' | 'meeting' | 'notes' | 'checkins' | 'peer-feedback' | 'pip'>('reviews')
+  const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notifications' | 'cycles' | 'meeting' | 'notes' | 'checkins' | 'peer-feedback' | 'pip' | 'nine-box'>('reviews')
   const [reviewsExpanded, setReviewsExpanded] = useState(true)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [showDirectReports, setShowDirectReports] = useState(false)
@@ -2567,9 +2642,11 @@ export function PerformanceReviewForm() {
   const [selfAssessments, setSelfAssessments] = useState<{ employee_id: string; status: string; submitted_at: string | null }[]>([])
   const selfAssessmentMap = Object.fromEntries(selfAssessments.map(s => [s.employee_id, s]))
   // DB-backed team (from profiles where manager_id = user.id)
-  type DbTeamMember = { id: string; name: string | null; email: string; role: string; is_active: boolean; start_date: string | null; position: string | null; division: string | null; pronouns: string | null }
+  type DbTeamMember = { id: string; name: string | null; email: string; role: string; is_active: boolean; start_date: string | null; position: string | null; division: string | null; pronouns: string | null; potential_rating?: number | null }
   const [dbTeam, setDbTeam] = useState<DbTeamMember[]>([])
   const [dbTeamSaMap, setDbTeamSaMap] = useState<Record<string, { employee_id: string; status: string; submitted_at: string | null }>>({})
+  const [teamGoals, setTeamGoals] = useState<Record<string, { total: number; complete: number; inProgress: number }>>({})
+  const [teamGoalsLoaded, setTeamGoalsLoaded] = useState(false)
   const [managerGlossarySearch, setManagerGlossarySearch] = useState('')
   const [settings, setSettings] = useState<AppSettings>({ driveFolderUrl: '' })
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -2793,6 +2870,30 @@ export function PerformanceReviewForm() {
       } catch { /* non-critical */ }
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load goals for all team members when Team page opens
+  useEffect(() => {
+    if (activePage !== 'team' || teamGoalsLoaded || dbTeam.length === 0) return
+    setTeamGoalsLoaded(true)
+    Promise.all(
+      dbTeam.map(r =>
+        fetch(`/api/goals?employee_id=${r.id}`)
+          .then(res => res.ok ? res.json() : null)
+          .then((d: { goals?: { status: string }[] } | null) => ({ id: r.id, goals: d?.goals ?? [] }))
+          .catch(() => ({ id: r.id, goals: [] }))
+      )
+    ).then(results => {
+      const map: Record<string, { total: number; complete: number; inProgress: number }> = {}
+      results.forEach(({ id, goals }) => {
+        map[id] = {
+          total: goals.length,
+          complete: goals.filter((g: { status: string }) => g.status === 'complete').length,
+          inProgress: goals.filter((g: { status: string }) => g.status === 'in_progress').length,
+        }
+      })
+      setTeamGoals(map)
+    })
+  }, [activePage, dbTeam, teamGoalsLoaded])
 
   // When the manager's profile name/email loads, backfill supervisorName if still empty
   // Also fires when currentReviewId changes (new review created) so reset doesn't clear it
@@ -3024,17 +3125,19 @@ export function PerformanceReviewForm() {
 
   // ── 1:1 Meetings page ─────────────────────────────────────────────────────────
   const [notesEmployeeId, setNotesEmployeeId] = useState<string>('')
-  const [notesList, setNotesList] = useState<Array<{ id: string; date: string; note: string; tags: string[] }>>([])
+  const [notesList, setNotesList] = useState<Array<{ id: string; date: string; note: string; tags: string[]; is_shared: boolean }>>([])
   const [notesLoading, setNotesLoading] = useState(false)
   const [notesError, setNotesError] = useState('')
   const [newNoteDate, setNewNoteDate] = useState('2026-06-15')
   const [newNoteText, setNewNoteText] = useState('')
   const [newNoteTags, setNewNoteTags] = useState<string[]>([])
+  const [newNoteShared, setNewNoteShared] = useState(false)
   const [notesSaving, setNotesSaving] = useState(false)
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [editNoteText, setEditNoteText] = useState('')
   const [editNoteDate, setEditNoteDate] = useState('')
   const [editNoteTags, setEditNoteTags] = useState<string[]>([])
+  const [editNoteShared, setEditNoteShared] = useState(false)
 
   // ── Recording state ─────────────────────────────────────────────────────────
   const [recordingSessionId, setRecordingSessionId] = useState<string | null>(null)
@@ -3123,11 +3226,12 @@ export function PerformanceReviewForm() {
       const res = await fetch('/api/one-on-one-notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employee_id: notesEmployeeId, date: newNoteDate, note: newNoteText.trim(), tags: newNoteTags }),
+        body: JSON.stringify({ employee_id: notesEmployeeId, meeting_date: newNoteDate, note: newNoteText.trim(), tags: newNoteTags, is_shared: newNoteShared }),
       })
       if (!res.ok) throw new Error('Failed to save note')
       setNewNoteText('')
       setNewNoteTags([])
+      setNewNoteShared(false)
       await fetchNotes(notesEmployeeId)
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'Error saving note')
@@ -3151,7 +3255,7 @@ export function PerformanceReviewForm() {
       const res = await fetch('/api/one-on-one-notes', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: noteId, date: editNoteDate, note: editNoteText.trim(), tags: editNoteTags }),
+        body: JSON.stringify({ id: noteId, meeting_date: editNoteDate, note: editNoteText.trim(), tags: editNoteTags, is_shared: editNoteShared }),
       })
       if (!res.ok) throw new Error('Failed to update note')
       setEditingNoteId(null)
@@ -3768,6 +3872,25 @@ export function PerformanceReviewForm() {
                   />
                 </div>
               </div>
+              {/* Template picker */}
+              <div style={{ position: 'relative', marginBottom: 8 }}>
+                <button onClick={() => setShowNoteTemplates(v => !v)}
+                  style={{ padding: '4px 12px', fontSize: 11, background: 'transparent', border: '1px solid #2a2d3e', borderRadius: 6, color: '#818cf8', cursor: 'pointer', fontWeight: 500 }}>
+                  📋 Use Template {showNoteTemplates ? '▲' : '▼'}
+                </button>
+                {showNoteTemplates && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: '#13151f', border: '1px solid #2a2d3e', borderRadius: 8, zIndex: 10, minWidth: 220, overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                    {NOTE_TEMPLATES.map(t => (
+                      <button key={t.label} onClick={() => { setNewNoteText(t.text); setShowNoteTemplates(false) }}
+                        style={{ display: 'block', width: '100%', padding: '9px 14px', fontSize: 12, color: '#d1d5db', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid #1e2130' }}
+                        onMouseOver={e => { e.currentTarget.style.background = '#1a1f3a'; e.currentTarget.style.color = '#e0e7ff' }}
+                        onMouseOut={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#d1d5db' }}>
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <textarea
                 value={newNoteText}
                 onChange={e => setNewNoteText(e.target.value)}
@@ -3782,6 +3905,21 @@ export function PerformanceReviewForm() {
                     {tag.label}
                   </button>
                 ))}
+              </div>
+              {/* Visibility toggle */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, padding: '10px 12px', background: newNoteShared ? 'rgba(52,211,153,0.06)' : 'rgba(107,114,128,0.06)', border: `1px solid ${newNoteShared ? 'rgba(52,211,153,0.3)' : '#1e2130'}`, borderRadius: 8 }}>
+                <button onClick={() => setNewNoteShared(s => !s)}
+                  style={{ position: 'relative', width: 36, height: 20, background: newNoteShared ? '#059669' : '#374151', border: 'none', borderRadius: 10, cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 }}>
+                  <span style={{ position: 'absolute', top: 2, left: newNoteShared ? 18 : 2, width: 16, height: 16, background: '#fff', borderRadius: '50%', transition: 'left 0.2s', display: 'block' }} />
+                </button>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: newNoteShared ? '#34d399' : '#9ca3af' }}>
+                    {newNoteShared ? '👁 Shared with employee' : '🔒 Private (manager & admin only)'}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#4b5563', marginTop: 1 }}>
+                    {newNoteShared ? 'Employee will be able to see this note.' : 'Only you and admins can see this note.'}
+                  </div>
+                </div>
               </div>
               <button onClick={handleSaveNote} disabled={!newNoteText.trim() || notesSaving}
                 style={{ padding: '8px 20px', background: !newNoteText.trim() || notesSaving ? '#1e2130' : 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: !newNoteText.trim() || notesSaving ? '#4b5563' : 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: !newNoteText.trim() || notesSaving ? 'not-allowed' : 'pointer' }}>
@@ -3818,6 +3956,16 @@ export function PerformanceReviewForm() {
                             </button>
                           ))}
                         </div>
+                        {/* Visibility toggle in edit mode */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, padding: '8px 10px', background: editNoteShared ? 'rgba(52,211,153,0.06)' : 'rgba(107,114,128,0.06)', border: `1px solid ${editNoteShared ? 'rgba(52,211,153,0.3)' : '#1e2130'}`, borderRadius: 8 }}>
+                          <button onClick={() => setEditNoteShared(s => !s)}
+                            style={{ position: 'relative', width: 36, height: 20, background: editNoteShared ? '#059669' : '#374151', border: 'none', borderRadius: 10, cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 }}>
+                            <span style={{ position: 'absolute', top: 2, left: editNoteShared ? 18 : 2, width: 16, height: 16, background: '#fff', borderRadius: '50%', transition: 'left 0.2s', display: 'block' }} />
+                          </button>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: editNoteShared ? '#34d399' : '#9ca3af' }}>
+                            {editNoteShared ? '👁 Shared with employee' : '🔒 Private'}
+                          </span>
+                        </div>
                         <div style={{ display: 'flex', gap: 8 }}>
                           <button onClick={() => handleUpdateNote(note.id)} style={{ padding: '6px 16px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Save</button>
                           <button onClick={() => setEditingNoteId(null)} style={{ padding: '6px 14px', background: 'transparent', color: '#6b7280', border: '1px solid #1e2130', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
@@ -3831,8 +3979,11 @@ export function PerformanceReviewForm() {
                             const tag = NOTE_TAGS.find(t => t.id === tagId)
                             return tag ? <span key={tagId} style={{ padding: '2px 8px', borderRadius: 20, background: tag.bg, color: tag.color, fontSize: 10, fontWeight: 700, border: `1px solid ${tag.color}` }}>{tag.label}</span> : null
                           })}
+                          <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: note.is_shared ? 'rgba(52,211,153,0.1)' : 'rgba(107,114,128,0.1)', color: note.is_shared ? '#34d399' : '#6b7280', border: `1px solid ${note.is_shared ? 'rgba(52,211,153,0.3)' : '#2a2d3a'}` }}>
+                            {note.is_shared ? '👁 Shared' : '🔒 Private'}
+                          </span>
                           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                            <button onClick={() => { setEditingNoteId(note.id); setEditNoteText(note.note); setEditNoteDate(note.date); setEditNoteTags(note.tags || []) }}
+                            <button onClick={() => { setEditingNoteId(note.id); setEditNoteText(note.note); setEditNoteDate(note.date); setEditNoteTags(note.tags || []); setEditNoteShared(note.is_shared ?? false) }}
                               style={{ padding: '4px 12px', background: 'transparent', color: '#818cf8', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Edit</button>
                             <button onClick={() => handleDeleteNote(note.id)}
                               style={{ padding: '4px 12px', background: 'transparent', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Delete</button>
@@ -3869,6 +4020,18 @@ export function PerformanceReviewForm() {
   const [pf360EmployeeId, setPf360EmployeeId] = useState('')
   const [pf360Data, setPf360Data] = useState<any[]>([])
   const [pf360Loading, setPf360Loading] = useState(false)
+  const [pf360SendOpen, setPf360SendOpen] = useState(false)
+  const [pf360SendForId, setPf360SendForId] = useState('')
+  const [pf360SendReviewerId, setPf360SendReviewerId] = useState('')
+  const [pf360SendAnon, setPf360SendAnon] = useState(true)
+  const [pf360SendMsg, setPf360SendMsg] = useState('')
+  const [pf360Sending, setPf360Sending] = useState(false)
+  const [pf360SentLink, setPf360SentLink] = useState<string | null>(null)
+  const [pf360SentCopied, setPf360SentCopied] = useState(false)
+  // Note templates
+  const [showNoteTemplates, setShowNoteTemplates] = useState(false)
+  // Nine-box
+  const [nineBoxSaving, setNineBoxSaving] = useState<string | null>(null)
 
   // PIP state
   const [pipPlans, setPipPlans] = useState<any[]>([])
@@ -4359,10 +4522,116 @@ export function PerformanceReviewForm() {
       ? (pf360Data.reduce((sum, item) => sum + (item.q3_collab_rating || 0), 0) / pf360Data.length).toFixed(1)
       : null
 
+    const sendForEmp = activeEmployees.find(r => r.id === pf360SendForId)
+    const reviewerOptions = activeEmployees.filter(r => r.id !== pf360SendForId)
+
+    async function handleSendRequest() {
+      if (!pf360SendForId || !pf360SendReviewerId) return
+      setPf360Sending(true)
+      setPf360SentLink(null)
+      try {
+        const res = await fetch('/api/feedback-requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requestor_id: pf360SendForId,
+            reviewer_id: pf360SendReviewerId,
+            year: new Date().getFullYear(),
+            is_anonymous: pf360SendAnon,
+            message: pf360SendMsg.trim() || undefined,
+          }),
+        })
+        const json = await res.json()
+        if (!res.ok) { alert(json.error || 'Failed to send request'); return }
+        const appUrl = window.location.origin
+        const token = (json.request as { token?: string } | undefined)?.token
+        if (token) setPf360SentLink(`${appUrl}/feedback/${token}`)
+        setPf360SendForId(''); setPf360SendReviewerId(''); setPf360SendMsg('')
+      } catch { alert('Network error') }
+      finally { setPf360Sending(false) }
+    }
+
     return (
       <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
         <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Peer Reviews (360°)</h1>
-        <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Aggregated peer feedback submitted for your direct reports.</p>
+        <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Send feedback requests and view aggregated peer feedback for your team.</p>
+
+        {/* ── Send Feedback Request panel ── */}
+        <div style={{ marginBottom: 28, background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, overflow: 'hidden' }}>
+          <button type="button" onClick={() => setPf360SendOpen(v => !v)}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '14px 18px', background: 'none', border: 'none', color: '#e0e7ff', cursor: 'pointer', textAlign: 'left' }}>
+            <span style={{ fontSize: 16 }}>📬</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>Send Feedback Request</div>
+              <div style={{ fontSize: 11, color: '#6b7280', marginTop: 1 }}>Ask a team member to provide 360° feedback on a direct report</div>
+            </div>
+            <span style={{ fontSize: 11, color: '#6b7280' }}>{pf360SendOpen ? '▲' : '▼'}</span>
+          </button>
+
+          {pf360SendOpen && (
+            <div style={{ borderTop: '1px solid #1e2130', padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {pf360SentLink ? (
+                <div style={{ background: 'rgba(52,211,153,0.06)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 8, padding: 14 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#34d399', marginBottom: 8 }}>✓ Request sent! Share this link with the reviewer:</div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input readOnly value={pf360SentLink} style={{ flex: 1, padding: '6px 10px', background: '#0d0f1a', border: '1px solid #2a2d3e', borderRadius: 6, color: '#a5b4fc', fontSize: 12 }} />
+                    <button onClick={() => { navigator.clipboard.writeText(pf360SentLink!); setPf360SentCopied(true); setTimeout(() => setPf360SentCopied(false), 2000) }}
+                      style={{ padding: '6px 14px', background: pf360SentCopied ? '#0d2b1f' : '#1a1f3a', border: '1px solid #2a2d3e', borderRadius: 6, color: pf360SentCopied ? '#34d399' : '#818cf8', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      {pf360SentCopied ? '✓ Copied' : '📋 Copy'}
+                    </button>
+                    <button onClick={() => setPf360SentLink(null)} style={{ padding: '6px 12px', background: 'none', border: '1px solid #2a2d3e', borderRadius: 6, color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>
+                      Send Another
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Feedback About</label>
+                      <select value={pf360SendForId} onChange={e => setPf360SendForId(e.target.value)}
+                        style={{ width: '100%', padding: '8px 10px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, color: pf360SendForId ? '#e0e7ff' : '#6b7280', fontSize: 13 }}>
+                        <option value=''>— Select employee —</option>
+                        {activeEmployees.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Reviewer (gives feedback)</label>
+                      <select value={pf360SendReviewerId} onChange={e => setPf360SendReviewerId(e.target.value)}
+                        style={{ width: '100%', padding: '8px 10px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, color: pf360SendReviewerId ? '#e0e7ff' : '#6b7280', fontSize: 13 }}>
+                        <option value=''>— Select reviewer —</option>
+                        {reviewerOptions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Optional Message to Reviewer</label>
+                    <textarea value={pf360SendMsg} onChange={e => setPf360SendMsg(e.target.value)}
+                      placeholder={`Hi [name], I'd appreciate your perspective on ${sendForEmp?.name || 'this employee'}…`}
+                      rows={2} style={{ width: '100%', padding: '8px 10px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, color: '#e0e7ff', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                      <button type="button" onClick={() => setPf360SendAnon(v => !v)}
+                        style={{ position: 'relative', width: 36, height: 20, background: pf360SendAnon ? '#059669' : '#374151', border: 'none', borderRadius: 10, cursor: 'pointer', flexShrink: 0 }}>
+                        <span style={{ position: 'absolute', top: 2, left: pf360SendAnon ? 18 : 2, width: 16, height: 16, background: '#fff', borderRadius: '50%', transition: 'left 0.2s', display: 'block' }} />
+                      </button>
+                      <span style={{ fontSize: 12, color: pf360SendAnon ? '#34d399' : '#9ca3af' }}>
+                        {pf360SendAnon ? '🔒 Anonymous (reviewer identity hidden)' : '👁 Non-anonymous (name shown)'}
+                      </span>
+                    </label>
+                    <button onClick={handleSendRequest} disabled={!pf360SendForId || !pf360SendReviewerId || pf360Sending}
+                      style={{ padding: '8px 20px', background: !pf360SendForId || !pf360SendReviewerId ? '#1e2130' : 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: !pf360SendForId || !pf360SendReviewerId ? '#4b5563' : 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: !pf360SendForId || !pf360SendReviewerId ? 'not-allowed' : 'pointer' }}>
+                      {pf360Sending ? 'Sending…' : 'Send Request →'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Employee selector */}
         <div style={{ marginBottom: 24 }}>
@@ -4476,6 +4745,176 @@ export function PerformanceReviewForm() {
               </div>
             </>
           )
+        )}
+      </div>
+    )
+  }
+
+  const renderNineBox = () => {
+    const activeEmployees = dbTeam.filter(r => r.is_active)
+
+    // Derive performance tier from most recent review's overallScore
+    function perfTier(empId: string): 1 | 2 | 3 | null {
+      const empReviews = saves.filter(s => s.employeeId === empId && s.form.overallScore > 0)
+      if (empReviews.length === 0) return null
+      const latest = empReviews.sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime())[0]
+      const score = latest.form.overallScore
+      if (score <= 2) return 1
+      if (score <= 3) return 2
+      return 3
+    }
+
+    async function savePotential(empId: string, rating: number | null) {
+      setNineBoxSaving(empId)
+      try {
+        await fetch('/api/team', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employee_id: empId, potential_rating: rating }),
+        })
+        // Optimistic update
+        setDbTeam(prev => prev.map(m => m.id === empId ? { ...m, potential_rating: rating } : m))
+      } catch { /* ignore */ }
+      finally { setNineBoxSaving(null) }
+    }
+
+    const PERF_LABELS  = ['', 'Low', 'Medium', 'High']
+    const POTENT_LABELS = ['', 'Low', 'Medium', 'High']
+
+    // Nine-box cells: [potential 3→1 top→bottom][perf 1→3 left→right]
+    const CELL_LABELS: Record<string, string> = {
+      '3-1': 'Rough Diamond',   '3-2': 'High Potential',  '3-3': 'Top Talent',
+      '2-1': 'Inconsistent',    '2-2': 'Core Player',     '2-3': 'High Performer',
+      '1-1': 'Risk',            '1-2': 'Effective',       '1-3': 'Strong Performer',
+    }
+    const CELL_COLORS: Record<string, string> = {
+      '3-3': '#0d2b1f', '3-2': '#1a1f3a', '2-3': '#1a1f3a',
+      '3-1': '#1f1f2e', '2-2': '#1a1f3a', '1-3': '#1a1f3a',
+      '2-1': '#1f1c0d', '1-2': '#13151f', '1-1': '#1f1215',
+    }
+    const CELL_BORDER: Record<string, string> = {
+      '3-3': '#1a4a2e', '3-2': '#2a3060', '2-3': '#2a3060',
+      '3-1': '#2a2a4a', '2-2': '#2a3060', '1-3': '#2a3060',
+      '2-1': '#4a3a0d', '1-2': '#1e2130', '1-1': '#4a1520',
+    }
+
+    // Place employees in cells
+    const placed: Record<string, DbTeamMember[]> = {}
+    const unrated: DbTeamMember[] = []
+    for (const emp of activeEmployees) {
+      const perf = perfTier(emp.id)
+      const pot = emp.potential_rating ?? null
+      if (!perf || !pot) { unrated.push(emp); continue }
+      const key = `${pot}-${perf}`
+      if (!placed[key]) placed[key] = []
+      placed[key].push(emp)
+    }
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 960, margin: '0 auto' }}>
+        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Nine-Box Grid</h1>
+        <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>
+          Plot your team by performance (from reviews) and potential (set below). Assign potential ratings to place employees on the grid.
+        </p>
+
+        {/* Grid */}
+        <div style={{ display: 'flex', gap: 0, marginBottom: 32 }}>
+          {/* Y-axis label */}
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 0, marginRight: 8, width: 20 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', writingMode: 'vertical-rl', transform: 'rotate(180deg)', textAlign: 'center', height: '100%' }}>Potential ↑</div>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gridTemplateRows: 'repeat(3, minmax(100px, auto))', gap: 6 }}>
+              {[3, 2, 1].map(pot =>
+                [1, 2, 3].map(perf => {
+                  const key = `${pot}-${perf}`
+                  const emps = placed[key] ?? []
+                  return (
+                    <div key={key} style={{ background: CELL_COLORS[key], border: `1px solid ${CELL_BORDER[key]}`, borderRadius: 8, padding: '10px 12px', minHeight: 100 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                        {CELL_LABELS[key]}
+                        <span style={{ color: '#374151', fontWeight: 400, marginLeft: 4 }}>
+                          P:{POTENT_LABELS[pot]} / Perf:{PERF_LABELS[perf]}
+                        </span>
+                      </div>
+                      {emps.map(e => (
+                        <div key={e.id} style={{ fontSize: 12, color: '#e0e7ff', background: 'rgba(255,255,255,0.04)', borderRadius: 4, padding: '3px 7px', marginBottom: 4, display: 'inline-block', marginRight: 4 }}>
+                          {e.name || e.email}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+            {/* X-axis labels */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 4 }}>
+              {['Low', 'Medium', 'High'].map(l => (
+                <div key={l} style={{ textAlign: 'center', fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{l}</div>
+              ))}
+            </div>
+            <div style={{ textAlign: 'center', fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>Performance →</div>
+          </div>
+        </div>
+
+        {/* Potential rating assignment */}
+        <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, overflow: 'hidden', marginBottom: 24 }}>
+          <div style={{ padding: '12px 18px', borderBottom: '1px solid #1e2130' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#e0e7ff' }}>Assign Potential Ratings</div>
+            <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Set each employee&apos;s potential to place them on the grid. Performance is derived from their most recent review score.</div>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['Employee', 'Position', 'Performance (from reviews)', 'Potential'].map(h => (
+                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #1e2130' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {activeEmployees.map((emp, i) => {
+                const perf = perfTier(emp.id)
+                const pot = emp.potential_rating ?? null
+                return (
+                  <tr key={emp.id} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(13,15,26,0.4)', borderBottom: '1px solid #0d0f1a' }}>
+                    <td style={{ padding: '10px 16px', fontSize: 13, color: '#e5e7eb' }}>{emp.name || emp.email}</td>
+                    <td style={{ padding: '10px 16px', fontSize: 12, color: '#6b7280' }}>{emp.position || '—'}</td>
+                    <td style={{ padding: '10px 16px' }}>
+                      {perf ? (
+                        <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                          background: perf === 3 ? '#0d2b1f' : perf === 2 ? '#1a1f3a' : '#1f1c0d',
+                          color: perf === 3 ? '#34d399' : perf === 2 ? '#818cf8' : '#f59e0b',
+                          border: `1px solid ${perf === 3 ? '#1a4a2e' : perf === 2 ? '#2a3060' : '#4a3a0d'}` }}>
+                          {PERF_LABELS[perf]}
+                        </span>
+                      ) : <span style={{ fontSize: 12, color: '#4b5563' }}>No review</span>}
+                    </td>
+                    <td style={{ padding: '10px 16px' }}>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {[1, 2, 3].map(r => (
+                          <button key={r} onClick={() => savePotential(emp.id, pot === r ? null : r)} disabled={nineBoxSaving === emp.id}
+                            style={{ padding: '3px 10px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer',
+                              background: pot === r ? (r === 3 ? '#0d2b1f' : r === 2 ? '#1a1f3a' : '#1f1c0d') : 'transparent',
+                              color: pot === r ? (r === 3 ? '#34d399' : r === 2 ? '#818cf8' : '#f59e0b') : '#4b5563',
+                              border: `1px solid ${pot === r ? (r === 3 ? '#1a4a2e' : r === 2 ? '#2a3060' : '#4a3a0d') : '#1e2130'}` }}>
+                            {POTENT_LABELS[r]}
+                          </button>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {unrated.length > 0 && (
+          <div style={{ padding: '12px 16px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, fontSize: 12, color: '#6b7280' }}>
+            <strong style={{ color: '#9ca3af' }}>Not yet placed ({unrated.length}):</strong>{' '}
+            {unrated.map(e => e.name || e.email).join(', ')}
+            {' '}— assign both a potential rating and ensure a review score exists.
+          </div>
         )}
       </div>
     )
@@ -5004,6 +5443,20 @@ export function PerformanceReviewForm() {
               </button>
             )
           })()}
+
+          {/* Nine-Box Grid */}
+          {(() => {
+            const active = activePage === 'nine-box'
+            return (
+              <button onClick={() => setActivePage('nine-box')} title={sidebarCollapsed ? 'Nine-Box Grid' : undefined}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                <span style={{ fontSize: 14 }}>⊞</span>
+                {!sidebarCollapsed && 'Nine-Box Grid'}
+              </button>
+            )
+          })()}
         </div>
 
         {/* Sidebar footer — profile + admin + sign out */}
@@ -5115,74 +5568,152 @@ export function PerformanceReviewForm() {
         )}
 
         {/* ── Team page ── */}
-        {activePage === 'team' && (
-          <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
-            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Team</h1>
-            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Your direct reports and their self-assessment status.</p>
-            {dbTeam.length === 0 ? (
-              <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '40px', textAlign: 'center' }}>
-                <div style={{ fontSize: 36, marginBottom: 10 }}>👥</div>
-                <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 6 }}>No direct reports assigned yet.</div>
-                <div style={{ fontSize: 12, color: '#4b5563' }}>Ask your admin to assign employees to your team in the admin portal.</div>
-              </div>
-            ) : dbTeam.map(r => {
-              const sa = dbTeamSaMap[r.id]
-              const displayName = r.name || r.email
-              const existingReview = saves.find(s => s.employeeId === r.id) ?? saves.find(s => s.employeeName === displayName)
-              const hasReview = !!existingReview
-              return (
-                <div key={r.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '16px 20px', marginBottom: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                    <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'white', flexShrink: 0 }}>
-                      {displayName.charAt(0).toUpperCase()}
+        {activePage === 'team' && (() => {
+          const saSubmitted = dbTeam.filter(r => dbTeamSaMap[r.id]?.status === 'submitted').length
+          const reviewsInProgress = dbTeam.filter(r => {
+            const s = saves.find(sv => sv.employeeId === r.id) ?? saves.find(sv => sv.employeeName === (r.name || r.email))
+            return s && !s.driveUrl && !s.managerSignedAt
+          }).length
+          const reviewsComplete = dbTeam.filter(r => {
+            const s = saves.find(sv => sv.employeeId === r.id) ?? saves.find(sv => sv.employeeName === (r.name || r.email))
+            return s && (s.driveUrl || s.managerSignedAt)
+          }).length
+
+          return (
+            <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
+              <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Team Dashboard</h1>
+              <p style={{ margin: '0 0 20px', fontSize: 13, color: '#6b7280' }}>At-a-glance status for all your direct reports.</p>
+
+              {/* Stat cards */}
+              {dbTeam.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+                  {[
+                    { label: 'Direct Reports', value: dbTeam.length, color: '#9ca3af', bg: '#13151f', border: '#1e2130' },
+                    { label: 'SAs Submitted', value: saSubmitted, color: '#818cf8', bg: '#1e1f3a', border: 'rgba(129,140,248,0.3)' },
+                    { label: 'Reviews In Progress', value: reviewsInProgress, color: '#f59e0b', bg: '#1f1a0d', border: '#92400e' },
+                    { label: 'Reviews Complete', value: reviewsComplete, color: '#34d399', bg: '#0d1a13', border: '#1a4a35' },
+                  ].map(s => (
+                    <div key={s.label} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 12, padding: '14px 18px' }}>
+                      <div style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.value}</div>
+                      <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{s.label}</div>
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e7eb' }}>{displayName}</div>
-                      <div style={{ fontSize: 11, color: '#6b7280' }}>{r.email}</div>
-                    </div>
-                    {sa?.status === 'submitted' && (
-                      <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: '#1e1f3a', color: '#818cf8', border: '1px solid rgba(129,140,248,0.4)' }}>
-                        ✓ Self-assessment submitted
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-                    <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: '#0d1a13', color: '#34d399', border: '1px solid #1a4a35' }}>Active</span>
-                    {sa ? (
-                      <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: sa.status === 'submitted' ? '#1e1f3a' : '#1f1a0d', color: sa.status === 'submitted' ? '#818cf8' : '#f59e0b', border: `1px solid ${sa.status === 'submitted' ? 'rgba(129,140,248,0.4)' : '#92400e'}` }}>
-                        Self-assessment: {sa.status}{sa.submitted_at ? ` · ${new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
-                      </span>
-                    ) : (
-                      <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: '#13151f', color: '#4b5563', border: '1px solid #1e2130' }}>No self-assessment</span>
-                    )}
-                    {hasReview && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: '#0d0f1a', color: '#6b7280', border: '1px solid #1e2130' }}>Review started</span>}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {sa?.status === 'submitted' && (
-                      <button onClick={() => openSA(r.id, r.name || r.email, r.position || '')}
-                        style={{ padding: '7px 14px', background: '#13151f', color: '#818cf8', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                        📋 View SA
-                      </button>
-                    )}
-                    <button onClick={() => {
-                      if (existingReview) {
-                        handleLoad(existingReview)
-                      } else {
-                        handleNewReview()
-                        update({ employeeName: r.name || r.email, employeePosition: r.position || '', employeeDivision: r.division || '', employeePronouns: r.pronouns || '', supervisorName: profileName || profileEmail || '', appraisalPeriod: r.start_date ? computeAppraisalPeriod(r.start_date) : '', reviewDate: r.start_date ? computeReviewDate(r.start_date) : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) })
-                        setCurrentEmployeeId(r.id)
-                      }
-                      setActivePage('reviews')
-                    }}
-                      style={{ padding: '7px 16px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                      {existingReview ? '▶ Continue Review' : sa?.status === 'submitted' ? '✨ Start Review' : 'Start Review'}
-                    </button>
-                  </div>
+                  ))}
                 </div>
-              )
-            })}
-          </div>
-        )}
+              )}
+
+              {dbTeam.length === 0 ? (
+                <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '40px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 36, marginBottom: 10 }}>👥</div>
+                  <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 6 }}>No direct reports assigned yet.</div>
+                  <div style={{ fontSize: 12, color: '#4b5563' }}>Ask your admin to assign employees to your team in the admin portal.</div>
+                </div>
+              ) : dbTeam.map(r => {
+                const sa = dbTeamSaMap[r.id]
+                const displayName = r.name || r.email
+                const existingReview = saves.find(s => s.employeeId === r.id) ?? saves.find(s => s.employeeName === displayName)
+                const revPct = existingReview ? reviewPct(existingReview) : -1
+                const revComplete = existingReview && (existingReview.driveUrl || existingReview.managerSignedAt)
+                const goals = teamGoals[r.id]
+
+                return (
+                  <div key={r.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '18px 20px', marginBottom: 10 }}>
+                    {/* Header row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+                        {displayName.charAt(0).toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e7eb' }}>{displayName}</div>
+                        <div style={{ fontSize: 11, color: '#6b7280' }}>{r.position || r.email}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {sa?.status === 'submitted' && (
+                          <button onClick={() => openSA(r.id, r.name || r.email, r.position || '')}
+                            style={{ padding: '6px 12px', background: '#13151f', color: '#818cf8', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                            📋 View SA
+                          </button>
+                        )}
+                        <button onClick={() => {
+                          if (existingReview) { handleLoad(existingReview) } else {
+                            handleNewReview()
+                            update({ employeeName: r.name || r.email, employeePosition: r.position || '', employeeDivision: r.division || '', employeePronouns: r.pronouns || '', supervisorName: profileName || profileEmail || '', appraisalPeriod: r.start_date ? computeAppraisalPeriod(r.start_date) : '', reviewDate: r.start_date ? computeReviewDate(r.start_date) : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) })
+                            setCurrentEmployeeId(r.id)
+                          }
+                          setActivePage('reviews')
+                        }}
+                          style={{ padding: '6px 14px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                          {existingReview ? '▶ Continue Review' : sa?.status === 'submitted' ? '✨ Start Review' : 'Start Review'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Status grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                      {/* Self-Assessment */}
+                      <div style={{ background: '#0d1117', borderRadius: 8, padding: '10px 12px' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Self-Assessment</div>
+                        {sa ? (
+                          <>
+                            <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: sa.status === 'submitted' ? '#1e1f3a' : '#1f1a0d', color: sa.status === 'submitted' ? '#818cf8' : '#f59e0b', border: `1px solid ${sa.status === 'submitted' ? 'rgba(129,140,248,0.4)' : '#92400e'}` }}>
+                              {sa.status === 'submitted' ? '✓ Submitted' : 'In Draft'}
+                            </span>
+                            {sa.submitted_at && <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4 }}>{new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
+                          </>
+                        ) : (
+                          <span style={{ fontSize: 12, color: '#4b5563' }}>Not started</span>
+                        )}
+                      </div>
+
+                      {/* Performance Review */}
+                      <div style={{ background: '#0d1117', borderRadius: 8, padding: '10px 12px' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Performance Review</div>
+                        {existingReview ? (
+                          <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: revComplete ? '#34d399' : '#f59e0b' }}>
+                                {revComplete ? '✓ Complete' : `Step ${Math.min(existingReview.maxStep + 1, 8)}/8`}
+                              </span>
+                            </div>
+                            <div style={{ height: 4, background: '#1e2130', borderRadius: 3, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${revPct}%`, background: revComplete ? '#34d399' : '#4f46e5', borderRadius: 3 }} />
+                            </div>
+                            {existingReview.driveUrl && <div style={{ fontSize: 10, color: '#34d399', marginTop: 4 }}>📄 Exported to Drive</div>}
+                            {existingReview.managerSignedAt && <div style={{ fontSize: 10, color: '#34d399', marginTop: 2 }}>✍ Signed</div>}
+                          </>
+                        ) : (
+                          <span style={{ fontSize: 12, color: '#4b5563' }}>Not started</span>
+                        )}
+                      </div>
+
+                      {/* Goals */}
+                      <div style={{ background: '#0d1117', borderRadius: 8, padding: '10px 12px' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Goals</div>
+                        {goals ? (
+                          goals.total === 0 ? (
+                            <span style={{ fontSize: 12, color: '#4b5563' }}>No goals set</span>
+                          ) : (
+                            <>
+                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 5 }}>
+                                <span style={{ fontSize: 11, color: '#34d399', fontWeight: 600 }}>{goals.complete} done</span>
+                                {goals.inProgress > 0 && <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>{goals.inProgress} active</span>}
+                                <span style={{ fontSize: 11, color: '#4b5563' }}>/ {goals.total} total</span>
+                              </div>
+                              <div style={{ height: 4, background: '#1e2130', borderRadius: 3, overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${goals.total > 0 ? Math.round((goals.complete / goals.total) * 100) : 0}%`, background: '#34d399', borderRadius: 3 }} />
+                              </div>
+                            </>
+                          )
+                        ) : (
+                          <span style={{ fontSize: 11, color: '#374151' }}>Loading…</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
 
         {/* ── Manager Guide page ── */}
         {activePage === 'guide' && (
@@ -5807,6 +6338,9 @@ export function PerformanceReviewForm() {
         {/* ── PIP / Coaching Plans page ── */}
         {activePage === 'pip' && renderPip()}
 
+        {/* ── Nine-Box Grid page ── */}
+        {activePage === 'nine-box' && renderNineBox()}
+
         {/* ── Performance Reviews (form) ── */}
         {activePage === 'reviews' && (!currentReviewId ? (
           /* Empty state */
@@ -5909,7 +6443,7 @@ export function PerformanceReviewForm() {
           {step === 3 && <StepCompetency form={form} update={update} index={3} type="constructive" />}
           {step === 4 && <StepCompetency form={form} update={update} index={4} type="constructive" />}
           {step === 5 && <StepCompetency form={form} update={update} index={5} type="either" canToggleType />}
-          {step === 6 && <StepGoals form={form} update={update} saves={saves} currentReviewId={reviewIdRef.current} />}
+          {step === 6 && <StepGoals form={form} update={update} saves={saves} currentReviewId={reviewIdRef.current} employeeId={currentEmployeeId || undefined} />}
           {step === 7 && <StepNextGoals form={form} update={update} />}
           {step === 8 && (
             <StepOutput

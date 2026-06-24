@@ -70,7 +70,8 @@ export async function GET(req: NextRequest) {
 
 // ---------------------------------------------------------------------------
 // POST — create a feedback request
-// Body: { reviewer_id, year, message?, is_anonymous? }
+// Body: { reviewer_id, year, message?, is_anonymous?, requestor_id? }
+// requestor_id may be set by managers/admins to create requests on behalf of a direct report
 // ---------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -83,24 +84,41 @@ export async function POST(req: NextRequest) {
     year: number
     message?: string
     is_anonymous?: boolean
+    requestor_id?: string
   }
 
   const { reviewer_id, year, message, is_anonymous } = body
+  let requestorId = user.id
+
+  // Allow managers/admins to specify a different requestor (on behalf of direct report)
+  if (body.requestor_id && body.requestor_id !== user.id) {
+    const { data: callerProfile } = await svc.from('profiles').select('role').eq('id', user.id).single()
+    const callerRole = (callerProfile as { role: string } | null)?.role
+    const isAdmin = callerRole === 'admin' || callerRole === 'dev_admin'
+
+    // Managers can only override if the target is their direct report
+    if (!isAdmin) {
+      const { data: targetProfile } = await svc.from('profiles').select('manager_id').eq('id', body.requestor_id).single()
+      const isDirectReport = (targetProfile as { manager_id: string | null } | null)?.manager_id === user.id
+      if (!isDirectReport) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    requestorId = body.requestor_id
+  }
 
   if (!reviewer_id || !year) {
     return NextResponse.json({ error: 'reviewer_id and year are required' }, { status: 400 })
   }
 
-  // Cannot request feedback from yourself
-  if (reviewer_id === user.id) {
-    return NextResponse.json({ error: 'You cannot request feedback from yourself' }, { status: 400 })
+  // Cannot request feedback from the requestor themselves
+  if (reviewer_id === requestorId) {
+    return NextResponse.json({ error: 'Cannot request feedback from the same person being reviewed' }, { status: 400 })
   }
 
   // Check for duplicate
   const { data: existing } = await svc
     .from('feedback_requests')
     .select('id')
-    .eq('requestor_id', user.id)
+    .eq('requestor_id', requestorId)
     .eq('reviewer_id', reviewer_id)
     .eq('year', year)
     .maybeSingle()
@@ -112,11 +130,11 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Get requestor profile
+  // Get requestor profile (for email notification)
   const { data: requestorProfile } = await svc
     .from('profiles')
     .select('name, email')
-    .eq('id', user.id)
+    .eq('id', requestorId)
     .single()
 
   // Get reviewer profile
@@ -131,7 +149,7 @@ export async function POST(req: NextRequest) {
   const { data: newRequest, error: insertError } = await svc
     .from('feedback_requests')
     .insert({
-      requestor_id: user.id,
+      requestor_id: requestorId,
       reviewer_id,
       year,
       message: message ?? null,

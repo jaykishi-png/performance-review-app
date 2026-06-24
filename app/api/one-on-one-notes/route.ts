@@ -34,6 +34,12 @@ export async function GET(request: NextRequest) {
 
   const serviceClient = await createServiceClient()
   const isPrivileged = role === 'admin' || role === 'dev_admin'
+  const isEmployee = role === 'employee'
+
+  // Employees can only see their own shared notes
+  if (isEmployee && employee_id !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   let query = serviceClient
     .from('one_on_one_notes')
@@ -41,7 +47,9 @@ export async function GET(request: NextRequest) {
     .eq('employee_id', employee_id)
     .order('meeting_date', { ascending: false })
 
-  if (!isPrivileged) {
+  if (isEmployee) {
+    query = query.eq('is_shared', true)
+  } else if (!isPrivileged) {
     query = query.eq('manager_id', user.id)
   }
 
@@ -61,14 +69,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  let body: { employee_id?: string; meeting_date?: string; note?: string; tags?: string[] }
+  let body: { employee_id?: string; meeting_date?: string; note?: string; tags?: string[]; is_shared?: boolean }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { employee_id, meeting_date, note, tags } = body
+  const { employee_id, meeting_date, note, tags, is_shared } = body
 
   if (!employee_id || !meeting_date || !note) {
     return NextResponse.json({ error: 'employee_id, meeting_date, and note are required' }, { status: 400 })
@@ -84,6 +92,7 @@ export async function POST(request: NextRequest) {
       meeting_date,
       note,
       tags: tags ?? [],
+      is_shared: is_shared ?? false,
     })
     .select()
     .single()
@@ -102,14 +111,14 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  let body: { id?: string; note?: string; tags?: string[]; meeting_date?: string }
+  let body: { id?: string; note?: string; tags?: string[]; meeting_date?: string; is_shared?: boolean }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { id, note, tags, meeting_date } = body
+  const { id, note, tags, meeting_date, is_shared } = body
 
   if (!id) {
     return NextResponse.json({ error: 'id is required' }, { status: 400 })
@@ -137,6 +146,7 @@ export async function PATCH(request: NextRequest) {
   if (note !== undefined) updates.note = note
   if (tags !== undefined) updates.tags = tags
   if (meeting_date !== undefined) updates.meeting_date = meeting_date
+  if (is_shared !== undefined) updates.is_shared = is_shared
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'No fields to update' }, { status: 400 })

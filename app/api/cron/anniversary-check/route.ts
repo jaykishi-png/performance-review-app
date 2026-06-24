@@ -23,6 +23,59 @@ function emailCTA(href: string, text: string) {
   return `<a href="${href}" style="display:inline-block;margin-top:8px;padding:11px 24px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;">${text}</a>`
 }
 
+function urgencyBadge(daysLeft: number) {
+  const color = daysLeft <= 1 ? '#ef4444' : daysLeft <= 3 ? '#f59e0b' : '#818cf8'
+  const label = daysLeft <= 1 ? 'Due Tomorrow' : daysLeft <= 3 ? `${daysLeft} Days Left` : 'Halfway Reminder'
+  return `<span style="display:inline-block;padding:3px 10px;background:${color}22;color:${color};border-radius:20px;font-size:11px;font-weight:700;margin-bottom:12px;">${label}</span>`
+}
+
+function saReminderEmail(empName: string, dueDate: string, daysLeft: number) {
+  return emailWrapper(`
+    ${urgencyBadge(daysLeft)}
+    <div style="font-size:24px;margin-bottom:14px;">📝</div>
+    <h1 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#f0f2fa;">Reminder: Complete your self-assessment</h1>
+    <p style="margin:0 0 18px;font-size:14px;color:#9ca3af;line-height:1.6;">
+      Hi ${empName}, your self-assessment is due <strong style="color:#f0f2fa;">${dueDate}</strong>.
+      ${daysLeft <= 1 ? ' Please complete it today to avoid missing the deadline.' : ' Don\'t forget to submit before the deadline.'}
+    </p>
+    ${emailCTA(`${APP_URL}/employee`, 'Complete Self-Assessment')}`)
+}
+
+function reviewReminderEmail(empName: string, empPos: string, dueDate: string, daysLeft: number) {
+  return emailWrapper(`
+    ${urgencyBadge(daysLeft)}
+    <div style="font-size:24px;margin-bottom:14px;">📋</div>
+    <h1 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#f0f2fa;">Reminder: Complete ${empName}'s performance review</h1>
+    <p style="margin:0 0 18px;font-size:14px;color:#9ca3af;line-height:1.6;">
+      The performance review for <strong style="color:#f0f2fa;">${empName}</strong> (${empPos}) is due <strong style="color:#f0f2fa;">${dueDate}</strong>.
+      ${daysLeft <= 1 ? ' Please complete and export it today.' : ''}
+    </p>
+    ${emailCTA(`${APP_URL}/performance-review`, 'Complete Review')}`)
+}
+
+function reviewReminderAdminEmail(empName: string, empPos: string, mgrName: string, dueDate: string, daysLeft: number) {
+  return emailWrapper(`
+    ${urgencyBadge(daysLeft)}
+    <div style="font-size:24px;margin-bottom:14px;">📊</div>
+    <h1 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#f0f2fa;">${empName}'s review deadline is approaching</h1>
+    <p style="margin:0 0 18px;font-size:14px;color:#9ca3af;line-height:1.6;">
+      <strong style="color:#f0f2fa;">${mgrName}</strong> has until <strong style="color:#f0f2fa;">${dueDate}</strong> to complete the performance review for ${empName} (${empPos}).
+    </p>
+    ${emailCTA(`${APP_URL}/admin`, 'View in Admin Portal')}`)
+}
+
+function meetingReminderEmail(empName: string, empPos: string, dueDate: string, daysLeft: number) {
+  return emailWrapper(`
+    ${urgencyBadge(daysLeft)}
+    <div style="font-size:24px;margin-bottom:14px;">🤝</div>
+    <h1 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#f0f2fa;">Reminder: Schedule your 1-on-1 with ${empName}</h1>
+    <p style="margin:0 0 18px;font-size:14px;color:#9ca3af;line-height:1.6;">
+      The meeting and signing window for <strong style="color:#f0f2fa;">${empName}</strong> (${empPos}) closes <strong style="color:#f0f2fa;">${dueDate}</strong>.
+      ${daysLeft <= 1 ? ' Please complete the meeting and collect signatures today.' : ''}
+    </p>
+    ${emailCTA(`${APP_URL}/performance-review`, 'View Review & Sign')}`)
+}
+
 function saOpenEmail(empName: string, dueDate: string) {
   return emailWrapper(`
     <div style="font-size:24px;margin-bottom:14px;">📝</div>
@@ -214,6 +267,9 @@ export async function GET(req: NextRequest) {
       notif_review_open_sent_at: string | null; notif_review_exported_sent_at: string | null
       notif_meeting_sent_at: string | null; notif_signed_sent_at: string | null
       notif_complete_sent_at: string | null
+      notif_sa_halfway_sent_at: string | null; notif_sa_3day_sent_at: string | null; notif_sa_1day_sent_at: string | null
+      notif_review_halfway_sent_at: string | null; notif_review_3day_sent_at: string | null; notif_review_1day_sent_at: string | null
+      notif_meeting_3day_sent_at: string | null; notif_meeting_1day_sent_at: string | null
     }
 
     let cycle: CycleRow | null = existing as CycleRow | null
@@ -397,6 +453,118 @@ export async function GET(req: NextRequest) {
       if (manager) await notify(manager.id, 'complete', `${empName}'s ${annYear} review is complete`, `The cycle has been confirmed by admin.`, cycle.id)
       await sendEmail(emp.email, `Your ${annYear} performance review is complete`, completeEmail(empName, annYear))
       if (manager?.email) await sendEmail(manager.email, `${empName}'s ${annYear} review is complete`, managerCompleteEmail(empName, empPos, annYear))
+    }
+
+    // ── Deadline reminders ────────────────────────────────────────────────────
+
+    function daysUntil(iso: string) {
+      return Math.ceil((new Date(iso).getTime() - nowMs) / 86400000)
+    }
+
+    function halfwayPassed(openIso: string, closeIso: string) {
+      const open = new Date(openIso).getTime()
+      const close = new Date(closeIso).getTime()
+      const half = open + (close - open) / 2
+      return nowMs >= half
+    }
+
+    // SA reminders (only while in sa_open phase and not yet submitted)
+    const effectivePhase = (updates.phase as string | undefined) ?? c.phase
+    if ((effectivePhase === 'sa_open' || c.phase === 'sa_open') && !c.sa_submitted_at) {
+      const dLeft = daysUntil(c.sa_close_at)
+      const due = fmtD(c.sa_close_at)
+
+      // Halfway reminder
+      if (!c.notif_sa_halfway_sent_at && halfwayPassed(c.sa_open_at, c.sa_close_at) && dLeft > 3) {
+        updates.notif_sa_halfway_sent_at = now.toISOString()
+        await notify(emp.id, 'sa_reminder', 'Self-assessment reminder', `You're halfway through your self-assessment window. Due ${due}.`, cycle.id)
+        await sendEmail(emp.email, `Reminder: Your self-assessment is due ${due}`, saReminderEmail(empName, due, dLeft))
+      }
+
+      // 3-day reminder
+      if (!c.notif_sa_3day_sent_at && dLeft <= 3 && dLeft > 1) {
+        updates.notif_sa_3day_sent_at = now.toISOString()
+        await notify(emp.id, 'sa_reminder', `Self-assessment due in ${dLeft} days`, `Please complete your self-assessment by ${due}.`, cycle.id)
+        await sendEmail(emp.email, `Reminder: Self-assessment due in ${dLeft} days`, saReminderEmail(empName, due, dLeft))
+        if (manager?.email) await sendEmail(manager.email, `${empName}'s self-assessment due in ${dLeft} days`, saReminderEmail(empName, due, dLeft))
+      }
+
+      // 1-day reminder
+      if (!c.notif_sa_1day_sent_at && dLeft <= 1 && dLeft >= 0) {
+        updates.notif_sa_1day_sent_at = now.toISOString()
+        await notify(emp.id, 'sa_reminder', 'Self-assessment due tomorrow!', `Last chance — due ${due}.`, cycle.id)
+        await sendEmail(emp.email, `Final reminder: Self-assessment due tomorrow`, saReminderEmail(empName, due, 1))
+        if (manager?.email) await sendEmail(manager.email, `Final reminder: ${empName}'s self-assessment due tomorrow`, saReminderEmail(empName, due, 1))
+      }
+    }
+
+    // Review reminders (only while in review_open phase)
+    if (effectivePhase === 'review_open' || c.phase === 'review_open') {
+      const dLeft = daysUntil(c.review_close_at)
+      const due = fmtD(c.review_close_at)
+
+      // Halfway reminder
+      if (!c.notif_review_halfway_sent_at && halfwayPassed(c.review_open_at, c.review_close_at) && dLeft > 3) {
+        updates.notif_review_halfway_sent_at = now.toISOString()
+        if (manager) {
+          await notify(manager.id, 'review_reminder', `${empName}'s review reminder`, `Halfway through the review window. Due ${due}.`, cycle.id)
+          await sendEmail(manager.email, `Reminder: ${empName}'s performance review due ${due}`, reviewReminderEmail(empName, empPos, due, dLeft))
+        }
+        for (const admin of adminList) {
+          await sendEmail(admin.email, `Halfway reminder: ${empName}'s review due ${due}`, reviewReminderAdminEmail(empName, empPos, mgrName, due, dLeft))
+        }
+      }
+
+      // 3-day reminder
+      if (!c.notif_review_3day_sent_at && dLeft <= 3 && dLeft > 1) {
+        updates.notif_review_3day_sent_at = now.toISOString()
+        if (manager) {
+          await notify(manager.id, 'review_reminder', `${empName}'s review due in ${dLeft} days`, `Complete and export the review by ${due}.`, cycle.id)
+          await sendEmail(manager.email, `Reminder: ${empName}'s review due in ${dLeft} days`, reviewReminderEmail(empName, empPos, due, dLeft))
+        }
+        for (const admin of adminList) {
+          await sendEmail(admin.email, `${empName}'s review due in ${dLeft} days`, reviewReminderAdminEmail(empName, empPos, mgrName, due, dLeft))
+        }
+      }
+
+      // 1-day reminder
+      if (!c.notif_review_1day_sent_at && dLeft <= 1 && dLeft >= 0) {
+        updates.notif_review_1day_sent_at = now.toISOString()
+        if (manager) {
+          await notify(manager.id, 'review_reminder', `Final: ${empName}'s review due tomorrow!`, `Last chance to complete and export the review.`, cycle.id)
+          await sendEmail(manager.email, `Final reminder: ${empName}'s review due tomorrow`, reviewReminderEmail(empName, empPos, due, 1))
+        }
+        for (const admin of adminList) {
+          await sendEmail(admin.email, `Final reminder: ${empName}'s review due tomorrow`, reviewReminderAdminEmail(empName, empPos, mgrName, due, 1))
+        }
+      }
+    }
+
+    // Meeting reminders (only while in meeting phase)
+    if (effectivePhase === 'meeting' || c.phase === 'meeting') {
+      const dLeft = daysUntil(c.meeting_close_at)
+      const due = fmtD(c.meeting_close_at)
+
+      // 3-day reminder
+      if (!c.notif_meeting_3day_sent_at && dLeft <= 3 && dLeft > 1) {
+        updates.notif_meeting_3day_sent_at = now.toISOString()
+        if (manager) {
+          await notify(manager.id, 'meeting_reminder', `${empName}'s meeting due in ${dLeft} days`, `Schedule the 1-on-1 and collect signatures by ${due}.`, cycle.id)
+          await sendEmail(manager.email, `Reminder: Schedule 1-on-1 with ${empName} — ${dLeft} days left`, meetingReminderEmail(empName, empPos, due, dLeft))
+        }
+      }
+
+      // 1-day reminder
+      if (!c.notif_meeting_1day_sent_at && dLeft <= 1 && dLeft >= 0) {
+        updates.notif_meeting_1day_sent_at = now.toISOString()
+        if (manager) {
+          await notify(manager.id, 'meeting_reminder', `Final: ${empName}'s meeting window closes tomorrow!`, `Last chance to hold the meeting and sign off.`, cycle.id)
+          await sendEmail(manager.email, `Final reminder: 1-on-1 with ${empName} due tomorrow`, meetingReminderEmail(empName, empPos, due, 1))
+        }
+        for (const admin of adminList) {
+          await sendEmail(admin.email, `Final reminder: ${empName}'s meeting window closes tomorrow`, meetingReminderEmail(empName, empPos, due, 1))
+        }
+      }
     }
 
     // Persist updates

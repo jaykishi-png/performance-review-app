@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (role === 'admin') {
-      const { data, error } = await serviceClient.from('reviews').select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id').order('saved_at', { ascending: false })
+      const { data, error } = await serviceClient.from('reviews').select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at').order('saved_at', { ascending: false })
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
       return NextResponse.json({ reviews: data ?? [] })
     }
@@ -50,13 +50,14 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // Employee: fetch reviews where employee_id = user.id AND manager has signed
+    // Employee: fetch reviews where employee_id = user.id AND admin has approved
     if (role === 'employee') {
       const { data, error } = await serviceClient
         .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id')
+        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at')
         .eq('employee_id', user.id)
         .not('manager_signed_at', 'is', null)
+        .not('admin_approved_at', 'is', null)
         .order('updated_at', { ascending: false })
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
       return NextResponse.json({ reviews: data ?? [] })

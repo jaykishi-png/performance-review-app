@@ -22,7 +22,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { userId, role, is_active, manager_id, start_date, position, division, pronouns } = body
+    const { userId, role, is_active, manager_id, start_date, position, division, pronouns, potential_rating } = body
 
     if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
 
@@ -44,6 +44,7 @@ export async function PATCH(req: NextRequest) {
     if (position !== undefined) update.position = position
     if (division !== undefined) update.division = division
     if (pronouns !== undefined) update.pronouns = pronouns
+    if (potential_rating !== undefined) update.potential_rating = potential_rating
 
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
