@@ -6,7 +6,24 @@ export const maxDuration = 60
 export const dynamic = 'force-dynamic'
 
 const SA_TEMPLATE_DOC_ID  = '14CTluQZ2yyLDrNLvx8fjtPycIZ9JFhxH_ukQzgsZqLE'
-const SA_FOLDER           = '1vj8HSp0QnBlfwCoLvtzz-z3uJkh_84hg'
+const SA_FOLDER           = '1vj8HSp0QnBlfwCoLvtzz-z3uJkh_84hg' // hardcoded fallback only
+
+async function getTargetFolder(callerFolderId?: string): Promise<string> {
+  if (callerFolderId?.trim()) return callerFolderId.trim()
+  try {
+    const serviceClient = createServiceClient()
+    const { data } = await serviceClient
+      .from('app_settings')
+      .select('sa_drive_folder_url')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const url = data?.sa_drive_folder_url ?? ''
+    const match = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)
+    if (match?.[1]) return match[1]
+  } catch { /* fall through */ }
+  return SA_FOLDER
+}
 
 const STAR_LABELS: Record<number, string> = {
   5: 'Outstanding',
@@ -125,7 +142,7 @@ export async function POST(req: NextRequest) {
       driveFolderId?: string
     }
 
-    const targetFolder = body.driveFolderId?.trim() || SA_FOLDER
+    const targetFolder = await getTargetFolder(body.driveFolderId)
 
     const accessToken = await getAccessToken()
     const auth  = getAuth(accessToken)

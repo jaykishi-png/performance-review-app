@@ -6,9 +6,26 @@ export const maxDuration = 60
 export const dynamic = 'force-dynamic'
 
 // ─── Template & folder ───────────────────────────────────────────────────────
-// The blank template with exact formatting to copy for each review
 const TEMPLATE_DOC_ID    = '1iEf-HdeKnYUTmHMvRtcQygDEh87dOWycSwQzrfZvC8E'
-const PERF_REVIEW_FOLDER = '1vj8HSp0QnBlfwCoLvtzz-z3uJkh_84hg'
+const PERF_REVIEW_FOLDER = '1vj8HSp0QnBlfwCoLvtzz-z3uJkh_84hg' // hardcoded fallback only
+
+async function getTargetFolder(callerFolderId?: string): Promise<string> {
+  if (callerFolderId?.trim()) return callerFolderId.trim()
+  // Fetch from admin settings in the DB
+  try {
+    const serviceClient = createServiceClient()
+    const { data } = await serviceClient
+      .from('app_settings')
+      .select('drive_folder_url')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const url = data?.drive_folder_url ?? ''
+    const match = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)
+    if (match?.[1]) return match[1]
+  } catch { /* fall through */ }
+  return PERF_REVIEW_FOLDER
+}
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 async function getAccessToken(): Promise<string> {
@@ -130,8 +147,7 @@ export async function POST(req: NextRequest) {
       managerEmail?: string
     }
 
-    // Use caller-supplied folder ID if provided, otherwise fall back to default
-    const targetFolder = form.driveFolderId?.trim() || PERF_REVIEW_FOLDER
+    const targetFolder = await getTargetFolder(form.driveFolderId)
 
     const accessToken = await getAccessToken()
     const auth  = getAuth(accessToken)
