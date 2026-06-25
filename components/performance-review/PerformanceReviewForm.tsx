@@ -4826,42 +4826,53 @@ export function PerformanceReviewForm() {
         </p>
 
         {/* Grid */}
-        <div style={{ display: 'flex', gap: 0, marginBottom: 32 }}>
-          {/* Y-axis label */}
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 0, marginRight: 8, width: 20 }}>
-            <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', writingMode: 'vertical-rl', transform: 'rotate(180deg)', textAlign: 'center', height: '100%' }}>Potential ↑</div>
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: 12, marginBottom: 32 }}>
+          {/* Y-axis label — centered alongside the grid rows */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingBottom: 28 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, writingMode: 'vertical-rl', transform: 'rotate(180deg)', userSelect: 'none' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Potential</span>
+              <span style={{ fontSize: 12, color: '#4b5563' }}>↑</span>
+            </div>
           </div>
+
+          {/* Grid + x-axis */}
           <div style={{ flex: 1 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gridTemplateRows: 'repeat(3, minmax(100px, auto))', gap: 6 }}>
+            {/* Y-axis tick labels */}
+            <div style={{ display: 'grid', gridTemplateRows: 'repeat(3, minmax(100px, auto))', gap: 6, position: 'absolute', marginLeft: -38, pointerEvents: 'none' }} />
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gridTemplateRows: 'repeat(3, minmax(110px, auto))', gap: 6 }}>
               {[3, 2, 1].map(pot =>
                 [1, 2, 3].map(perf => {
                   const key = `${pot}-${perf}`
                   const emps = placed[key] ?? []
                   return (
-                    <div key={key} style={{ background: CELL_COLORS[key], border: `1px solid ${CELL_BORDER[key]}`, borderRadius: 8, padding: '10px 12px', minHeight: 100 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                    <div key={key} style={{ background: CELL_COLORS[key], border: `1px solid ${CELL_BORDER[key]}`, borderRadius: 8, padding: '12px 14px', minHeight: 110, display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
                         {CELL_LABELS[key]}
-                        <span style={{ color: '#374151', fontWeight: 400, marginLeft: 4 }}>
-                          P:{POTENT_LABELS[pot]} / Perf:{PERF_LABELS[perf]}
-                        </span>
                       </div>
-                      {emps.map(e => (
-                        <div key={e.id} style={{ fontSize: 12, color: '#e0e7ff', background: 'rgba(255,255,255,0.04)', borderRadius: 4, padding: '3px 7px', marginBottom: 4, display: 'inline-block', marginRight: 4 }}>
-                          {e.name || e.email}
-                        </div>
-                      ))}
+                      <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', alignContent: 'flex-start', gap: 4 }}>
+                        {emps.map(e => (
+                          <div key={e.id} style={{ fontSize: 11, color: '#e0e7ff', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '2px 10px' }}>
+                            {e.name || e.email}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )
                 })
               )}
             </div>
-            {/* X-axis labels */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 4 }}>
+
+            {/* X-axis: tier labels + arrow label */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 6 }}>
               {['Low', 'Medium', 'High'].map(l => (
-                <div key={l} style={{ textAlign: 'center', fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{l}</div>
+                <div key={l} style={{ textAlign: 'center', fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{l}</div>
               ))}
             </div>
-            <div style={{ textAlign: 'center', fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>Performance →</div>
+            <div style={{ textAlign: 'center', marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Performance</span>
+              <span style={{ fontSize: 12, color: '#4b5563' }}>→</span>
+            </div>
           </div>
         </div>
 
