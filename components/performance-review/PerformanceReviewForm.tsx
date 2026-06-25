@@ -4763,8 +4763,12 @@ export function PerformanceReviewForm() {
     const activeEmployees = dbTeam.filter(r => r.is_active)
 
     // Derive performance tier from most recent review's overallScore
-    function perfTier(empId: string): 1 | 2 | 3 | null {
-      const empReviews = saves.filter(s => s.employeeId === empId && s.form.overallScore > 0)
+    function perfTier(emp: DbTeamMember): 1 | 2 | 3 | null {
+      const displayName = emp.name || emp.email
+      const empReviews = saves.filter(s =>
+        (s.form.overallScore > 0) &&
+        (s.employeeId === emp.id || s.employeeName === displayName)
+      )
       if (empReviews.length === 0) return null
       const latest = empReviews.sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime())[0]
       const score = latest.form.overallScore
@@ -4811,7 +4815,7 @@ export function PerformanceReviewForm() {
     const placed: Record<string, DbTeamMember[]> = {}
     const unrated: DbTeamMember[] = []
     for (const emp of activeEmployees) {
-      const perf = perfTier(emp.id)
+      const perf = perfTier(emp)
       const pot = emp.potential_rating ?? null
       if (!perf || !pot) { unrated.push(emp); continue }
       const key = `${pot}-${perf}`
@@ -4893,7 +4897,7 @@ export function PerformanceReviewForm() {
             </thead>
             <tbody>
               {activeEmployees.map((emp, i) => {
-                const perf = perfTier(emp.id)
+                const perf = perfTier(emp)
                 const pot = emp.potential_rating ?? null
                 return (
                   <tr key={emp.id} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(13,15,26,0.4)', borderBottom: '1px solid #0d0f1a' }}>
