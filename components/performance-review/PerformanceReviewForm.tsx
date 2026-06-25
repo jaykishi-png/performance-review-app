@@ -2630,7 +2630,8 @@ export function PerformanceReviewForm() {
   const [form, setForm] = useState<FormData>(defaultForm())
   const [saves, setSaves] = useState<SavedReview[]>([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notifications' | 'cycles' | 'meeting' | 'notes' | 'checkins' | 'peer-feedback' | 'pip' | 'nine-box'>('reviews')
+  const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'cycles' | 'meeting' | 'notes' | 'checkins' | 'peer-feedback' | 'pip' | 'nine-box'>('reviews')
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false)
   const [reviewsExpanded, setReviewsExpanded] = useState(true)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [showDirectReports, setShowDirectReports] = useState(false)
@@ -5331,21 +5332,6 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* Notifications */}
-          {(() => {
-            const active = activePage === 'notifications'
-            const notifCount = saves.filter(s => { const p = reviewPct(s); return p > 0 && p < 100 }).length
-            return (
-              <button onClick={() => setActivePage('notifications')} title={sidebarCollapsed ? 'Notifications' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
-                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
-                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
-                <Bell size={15} color={active ? '#818cf8' : '#6b7280'} />
-                {!sidebarCollapsed && 'Notifications'}
-                {notifCount > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: '#f59e0b', color: '#0d0f1a', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{notifCount}</span>}
-              </button>
-            )
-          })()}
 
           {/* Review Cycles */}
           {(() => {
@@ -5528,7 +5514,74 @@ export function PerformanceReviewForm() {
       </aside>
 
       {/* ── Main content ── */}
-      <main style={{ flex: 1, overflow: 'auto', background: '#0b0d14' }}>
+      <main style={{ flex: 1, overflow: 'auto', background: '#0b0d14', position: 'relative' }}>
+
+        {/* ── Bell notification button (top-right) ── */}
+        {(() => {
+          const notifCount = saves.filter(s => { const p = reviewPct(s); return p > 0 && p < 100 }).length
+          const items: { icon: string; color: string; label: string; detail: string; action?: () => void }[] = []
+          dbTeam.forEach(r => {
+            const sa = dbTeamSaMap[r.id]
+            if (sa?.status === 'submitted') {
+              items.push({ icon: '📋', color: '#818cf8', label: `${r.name || r.email} submitted their self-assessment`, detail: `Submitted ${sa.submitted_at ? new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'recently'}. Start their review when ready.`, action: () => { setShowEmployeePicker(true); setActivePage('reviews'); setShowNotifDropdown(false) } })
+            }
+          })
+          saves.filter(s => { const p = reviewPct(s); return p > 0 && p < 100 }).forEach(s => {
+            const pct = reviewPct(s)
+            items.push({ icon: '✏️', color: '#f59e0b', label: `${s.employeeName}'s review is ${pct}% complete`, detail: 'This review is in progress and hasn\'t been exported yet.', action: () => { handleLoad(s); setActivePage('reviews'); setShowNotifDropdown(false) } })
+          })
+          saves.filter(s => reviewPct(s) === 100 && !s.driveUrl).forEach(s => {
+            items.push({ icon: '✅', color: '#34d399', label: `${s.employeeName}'s review is complete — not yet exported`, detail: 'All steps are done. Export to Google Drive to share with the employee.', action: () => { handleLoad(s); setActivePage('reviews'); setShowNotifDropdown(false) } })
+          })
+          const totalCount = items.length
+          return (
+            <div style={{ position: 'absolute', top: 16, right: 20, zIndex: 50 }}>
+              <button
+                onClick={() => setShowNotifDropdown(v => !v)}
+                style={{ position: 'relative', background: showNotifDropdown ? '#1e1f3a' : 'transparent', border: `1px solid ${showNotifDropdown ? 'rgba(79,70,229,0.4)' : '#1e2130'}`, borderRadius: 8, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: showNotifDropdown ? '#818cf8' : '#6b7280' }}
+                onMouseOver={e => { if (!showNotifDropdown) { e.currentTarget.style.background = '#13151f'; e.currentTarget.style.borderColor = '#2e3148' } }}
+                onMouseOut={e => { if (!showNotifDropdown) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#1e2130' } }}>
+                <Bell size={16} />
+                {totalCount > 0 && (
+                  <span style={{ position: 'absolute', top: -4, right: -4, background: '#f59e0b', color: '#0d0f1a', fontSize: 9, fontWeight: 700, borderRadius: 10, minWidth: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
+                    {totalCount}
+                  </span>
+                )}
+              </button>
+              {showNotifDropdown && (
+                <>
+                  <div onClick={() => setShowNotifDropdown(false)} style={{ position: 'fixed', inset: 0, zIndex: 48 }} />
+                  <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 6, width: 340, background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', zIndex: 49, overflow: 'hidden' }}>
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid #1e2130', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#f0f2fa' }}>Notifications</span>
+                      <span style={{ fontSize: 11, color: '#6b7280' }}>{totalCount} item{totalCount !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div style={{ maxHeight: 400, overflowY: 'auto', padding: '8px' }}>
+                      {items.length === 0 ? (
+                        <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+                          <div style={{ fontSize: 24, marginBottom: 8 }}>🔔</div>
+                          <div style={{ fontSize: 12, color: '#6b7280' }}>All caught up! No pending items.</div>
+                        </div>
+                      ) : items.map((item, i) => (
+                        <div key={i} onClick={item.action}
+                          style={{ borderLeft: `3px solid ${item.color}`, borderRadius: 8, padding: '10px 12px', marginBottom: 6, cursor: item.action ? 'pointer' : 'default', display: 'flex', gap: 10, alignItems: 'flex-start', background: '#0d0f1a' }}
+                          onMouseOver={e => { if (item.action) e.currentTarget.style.background = '#1a1c2e' }}
+                          onMouseOut={e => { e.currentTarget.style.background = '#0d0f1a' }}>
+                          <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{item.icon}</span>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 2 }}>{item.label}</div>
+                            <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>{item.detail}</div>
+                            {item.action && <div style={{ fontSize: 10, color: item.color, marginTop: 4, fontWeight: 600 }}>View →</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )
+        })()}
 
         {/* ── History page ── */}
         {activePage === 'history' && (
@@ -5768,51 +5821,6 @@ export function PerformanceReviewForm() {
                 <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>{c.definition}</div>
               </div>
             ))}
-          </div>
-        )}
-
-        {/* ── Notifications page ── */}
-        {activePage === 'notifications' && (
-          <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
-            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Notifications</h1>
-            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Action items and activity across your team&apos;s review cycle.</p>
-            {(() => {
-              const items: { icon: string; color: string; label: string; detail: string; action?: () => void }[] = []
-              // Submitted self-assessments waiting on a review
-              dbTeam.forEach(r => {
-                const sa = dbTeamSaMap[r.id]
-                if (sa?.status === 'submitted') {
-                  items.push({ icon: '📋', color: '#818cf8', label: `${r.name || r.email} submitted their self-assessment`, detail: `Submitted ${sa.submitted_at ? new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'recently'}. Start their review when ready.`, action: () => { setShowEmployeePicker(true); setActivePage('reviews') } })
-                }
-              })
-              // In-progress reviews
-              saves.filter(s => { const p = reviewPct(s); return p > 0 && p < 100 }).forEach(s => {
-                const pct = reviewPct(s)
-                items.push({ icon: '✏️', color: '#f59e0b', label: `${s.employeeName}'s review is ${pct}% complete`, detail: 'This review is in progress and hasn\'t been exported yet.', action: () => { handleLoad(s); setActivePage('reviews') } })
-              })
-              // Completed reviews not yet exported
-              saves.filter(s => reviewPct(s) === 100 && !s.driveUrl).forEach(s => {
-                items.push({ icon: '✅', color: '#34d399', label: `${s.employeeName}'s review is complete — not yet exported`, detail: 'All steps are done. Export to Google Drive to share with the employee.', action: () => { handleLoad(s); setActivePage('reviews') } })
-              })
-              if (items.length === 0) return (
-                <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '40px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 36, marginBottom: 10 }}>🔔</div>
-                  <div style={{ fontSize: 14, color: '#9ca3af' }}>All caught up! No pending action items.</div>
-                </div>
-              )
-              return items.map((item, i) => (
-                <div key={i} onClick={item.action} style={{ background: '#13151f', border: `1px solid #1e2130`, borderLeft: `3px solid ${item.color}`, borderRadius: 12, padding: '14px 20px', marginBottom: 10, cursor: item.action ? 'pointer' : 'default', display: 'flex', gap: 14, alignItems: 'flex-start' }}
-                  onMouseOver={e => { if (item.action) e.currentTarget.style.background = '#1a1c2e' }}
-                  onMouseOut={e => { e.currentTarget.style.background = '#13151f' }}>
-                  <span style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>{item.icon}</span>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', marginBottom: 3 }}>{item.label}</div>
-                    <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>{item.detail}</div>
-                    {item.action && <div style={{ fontSize: 11, color: item.color, marginTop: 5, fontWeight: 600 }}>View →</div>}
-                  </div>
-                </div>
-              ))
-            })()}
           </div>
         )}
 
