@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft, LogOut, BookOpen, BookMarked, Bell } from 'lucide-react'
+import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft, LogOut, BookOpen, BookMarked, Bell, MessageSquare, Activity, TrendingUp } from 'lucide-react'
 import { SignaturePad, SignatureDisplay, encodeSignature, type SignatureResult } from '@/components/SignaturePad'
 
 // ─── Competency glossary ──────────────────────────────────────────────────────
@@ -5375,7 +5375,7 @@ export function PerformanceReviewForm() {
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
-                <span style={{ fontSize: 14 }}>📝</span>
+                <MessageSquare size={15} color={active ? '#818cf8' : '#6b7280'} />
                 {!sidebarCollapsed && '1:1 Meetings'}
               </button>
             )
@@ -5389,7 +5389,7 @@ export function PerformanceReviewForm() {
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
-                <span style={{ fontSize: 14 }}>📊</span>
+                <Activity size={15} color={active ? '#818cf8' : '#6b7280'} />
                 {!sidebarCollapsed && 'Check-ins'}
               </button>
             )
@@ -5403,7 +5403,7 @@ export function PerformanceReviewForm() {
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
-                <span style={{ fontSize: 14 }}>⭐</span>
+                <Star size={15} color={active ? '#818cf8' : '#6b7280'} />
                 {!sidebarCollapsed && 'Peer Reviews'}
               </button>
             )
@@ -5418,7 +5418,7 @@ export function PerformanceReviewForm() {
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
-                <span style={{ fontSize: 14 }}>📈</span>
+                <TrendingUp size={15} color={active ? '#818cf8' : '#6b7280'} />
                 {!sidebarCollapsed && 'PIPs'}
                 {activePips > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: '#f59e0b', color: '#0d0f1a', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{activePips}</span>}
               </button>
