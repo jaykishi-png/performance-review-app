@@ -1467,16 +1467,14 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Manage manual cycles and track per-employee anniversary reviews.</p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => { setShowTriggerModal(true); setTriggerError(null) }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'transparent', color: '#a5b4fc', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+              <Plus size={14} /> Trigger Cycle
+            </button>
             {cyclesTab === 'manual' && (
               <button onClick={openNewCycle}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
                 <Plus size={14} /> New Cycle
-              </button>
-            )}
-            {cyclesTab === 'employee' && (
-              <button onClick={() => { setShowTriggerModal(true); setTriggerError(null) }}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
-                <Plus size={14} /> Trigger Cycle
               </button>
             )}
           </div>
