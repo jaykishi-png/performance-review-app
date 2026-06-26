@@ -5702,6 +5702,65 @@ export function PerformanceReviewForm() {
                   )}
                 </div>
               </div>
+
+              {/* Team Overview */}
+              {dbTeam.length > 0 && (
+                <div style={{ ...sCard, marginTop: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                    <Users size={15} color="#818cf8" />
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#f0f2fa' }}>Team Overview</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 11, color: '#6b7280' }}>{dbTeam.length} member{dbTeam.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  {/* Header row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 180px 100px', gap: 12, padding: '0 0 8px', borderBottom: '1px solid #1e2130', marginBottom: 4 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Employee</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Self-Assessment</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Review</div>
+                    <div />
+                  </div>
+                  {dbTeam.map(dr => {
+                    const sa = dbTeamSaMap[dr.id]
+                    const review = saves.find(s => s.employeeId === dr.id)
+                    const pct = review ? reviewPct(review) : 0
+                    const saLabel = !sa ? 'Not Started' : sa.status === 'submitted' ? 'Submitted' : 'In Draft'
+                    const saColor = !sa ? '#4b5563' : sa.status === 'submitted' ? '#34d399' : '#fbbf24'
+                    const saBg = !sa ? 'transparent' : sa.status === 'submitted' ? '#0d2b1f' : '#2a1f00'
+                    const saBorder = !sa ? '#1e2130' : sa.status === 'submitted' ? '#1a4a35' : '#4a3300'
+                    const reviewLabel = !review ? 'No Review' : review.driveUrl ? 'Done' : `${pct}% done`
+                    const reviewColor = !review ? '#4b5563' : review.driveUrl ? '#34d399' : '#fbbf24'
+                    const reviewBg = !review ? 'transparent' : review.driveUrl ? '#0d2b1f' : '#2a1f00'
+                    const reviewBorder = !review ? '#1e2130' : review.driveUrl ? '#1a4a35' : '#4a3300'
+                    return (
+                      <div key={dr.id} style={{ display: 'grid', gridTemplateColumns: '1fr 140px 180px 100px', gap: 12, alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #1a1c2a' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                            {(dr.name || dr.email).charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#f0f2fa' }}>{dr.name || dr.email}</div>
+                            {dr.position && <div style={{ fontSize: 11, color: '#6b7280' }}>{dr.position}</div>}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: saColor, background: saBg, border: `1px solid ${saBorder}`, borderRadius: 20, padding: '3px 10px', width: 'fit-content' }}>{saLabel}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: reviewColor, background: reviewBg, border: `1px solid ${reviewBorder}`, borderRadius: 20, padding: '3px 10px', width: 'fit-content' }}>{reviewLabel}</span>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          {review ? (
+                            <button onClick={() => { handleLoad(review); setActivePage('reviews') }}
+                              style={{ padding: '4px 12px', background: '#1e1f3a', border: '1px solid #2d3148', borderRadius: 6, color: '#818cf8', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                              Open
+                            </button>
+                          ) : (
+                            <button onClick={() => { setShowEmployeePicker(true); setActivePage('reviews') }}
+                              style={{ padding: '4px 12px', background: '#1e1f3a', border: '1px solid #2d3148', borderRadius: 6, color: '#818cf8', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                              Start
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )
         })()}
