@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft, LogOut, BookOpen, BookMarked, Bell, MessageSquare, Activity, TrendingUp } from 'lucide-react'
+import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft, LogOut, BookOpen, BookMarked, Bell, MessageSquare, Activity, TrendingUp, BarChart2, AlertCircle } from 'lucide-react'
 import { SignaturePad, SignatureDisplay, encodeSignature, type SignatureResult } from '@/components/SignaturePad'
 
 // ─── Competency glossary ──────────────────────────────────────────────────────
@@ -2630,7 +2630,7 @@ export function PerformanceReviewForm() {
   const [form, setForm] = useState<FormData>(defaultForm())
   const [saves, setSaves] = useState<SavedReview[]>([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'cycles' | 'meeting' | 'notes' | 'checkins' | 'peer-feedback' | 'pip' | 'nine-box'>('reviews')
+  const [activePage, setActivePage] = useState<'dashboard' | 'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'cycles' | 'meeting' | 'notes' | 'checkins' | 'peer-feedback' | 'pip' | 'nine-box'>('dashboard')
   const [showNotifDropdown, setShowNotifDropdown] = useState(false)
   const [reviewsExpanded, setReviewsExpanded] = useState(true)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -2697,10 +2697,6 @@ export function PerformanceReviewForm() {
       setMeetingSALoading(false)
     }
   }
-
-  useEffect(() => {
-    if (activePage === 'meeting') { setActivePage('team'); setTeamTab('reviews') }
-  }, [activePage])
 
   useEffect(() => {
     if (activePage !== 'meeting' || !meetingDetailId) return
@@ -5227,6 +5223,20 @@ export function PerformanceReviewForm() {
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
           {!sidebarCollapsed && <div style={{ fontSize: 10, fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '4px 8px 6px' }}>Menu</div>}
 
+          {/* Dashboard nav item */}
+          {(() => {
+            const active = activePage === 'dashboard'
+            return (
+              <button onClick={() => setActivePage('dashboard')} title={sidebarCollapsed ? 'Dashboard' : undefined}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #6366f1' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                <BarChart2 size={15} color={active ? '#818cf8' : '#6b7280'} />
+                {!sidebarCollapsed && 'Dashboard'}
+              </button>
+            )
+          })()}
+
           {/* Performance Reviews nav item — dropdown */}
           {(() => {
             const active = activePage === 'reviews'
@@ -5527,7 +5537,7 @@ export function PerformanceReviewForm() {
       {/* ── Top header bar ── */}
       <header style={{ height: 52, flexShrink: 0, background: '#0d0f1a', borderBottom: '1px solid #1e2130', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', zIndex: 40 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: '#e0e7ff' }}>
-          {({ reviews: currentReviewId ? (form.employeeName || 'Performance Review') : 'Performance Reviews', history: 'History', team: 'Team Dashboard', guide: 'Manager Guide', glossary: 'Competency Glossary', cycles: 'Review Cycles', meeting: 'Annual Reviews', notes: '1:1 Meetings', checkins: 'Check-ins', 'peer-feedback': 'Peer Reviews', pip: 'PIPs', 'nine-box': 'Nine-Box Grid' } as Record<string, string>)[activePage] ?? 'Performance Reviews'}
+          {({ dashboard: 'Dashboard', reviews: currentReviewId ? (form.employeeName || 'Performance Review') : 'Performance Reviews', history: 'History', team: 'Team Dashboard', guide: 'Manager Guide', glossary: 'Competency Glossary', cycles: 'Review Cycles', meeting: 'Annual Reviews', notes: '1:1 Meetings', checkins: 'Check-ins', 'peer-feedback': 'Peer Reviews', pip: 'PIPs', 'nine-box': 'Nine-Box Grid' } as Record<string, string>)[activePage] ?? 'Performance Reviews'}
         </div>
         <div style={{ position: 'relative' }}>
           {(() => {
@@ -5599,6 +5609,102 @@ export function PerformanceReviewForm() {
         </div>
       </header>
       <main style={{ flex: 1, overflow: 'auto', background: '#0b0d14', position: 'relative' }}>
+
+        {/* ── Dashboard page ── */}
+        {activePage === 'dashboard' && (() => {
+          const saSubmittedCount = selfAssessments.filter(s => s.status === 'submitted').length
+          const reviewsInProgress = saves.filter(s => !s.driveUrl && s.maxStep > 0).length
+          const reviewsComplete = saves.filter(s => !!s.driveUrl).length
+          const reviewedEmpIds = new Set(saves.map(s => s.employeeId).filter(Boolean))
+          const saSubmittedIds = new Set(selfAssessments.filter(s => s.status === 'submitted').map(s => s.employee_id))
+          const unreviewedTeam = dbTeam.filter(dr => !reviewedEmpIds.has(dr.id))
+          const sCard: React.CSSProperties = { background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px' }
+          return (
+            <div style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
+              <div style={{ marginBottom: 28 }}>
+                <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: '#f0f2fa' }}>
+                  Welcome back{profileName ? `, ${profileName.split(' ')[0]}` : ''}
+                </h1>
+                <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Here&apos;s your team&apos;s performance overview</p>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+                {([
+                  { label: 'TEAM SIZE',         value: dbTeam.length,         sub: 'Active employees',       color: '#818cf8' },
+                  { label: 'SELF-ASSESSMENTS',  value: saSubmittedCount,      sub: 'Submitted this cycle',   color: '#34d399' },
+                  { label: 'IN PROGRESS',        value: reviewsInProgress,     sub: 'Reviews underway',       color: '#fbbf24' },
+                  { label: 'COMPLETED',          value: reviewsComplete,       sub: 'Reviews finalized',      color: '#34d399' },
+                ] as { label: string; value: number; sub: string; color: string }[]).map(s => (
+                  <div key={s.label} style={sCard}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>{s.label}</div>
+                    <div style={{ fontSize: 34, fontWeight: 800, color: s.color, lineHeight: 1, marginBottom: 6 }}>{s.value}</div>
+                    <div style={{ fontSize: 12, color: '#4b5563' }}>{s.sub}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div style={sCard}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                    <AlertCircle size={15} color="#f59e0b" />
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#f0f2fa' }}>Action Items</span>
+                    {unreviewedTeam.length > 0 && <span style={{ marginLeft: 'auto', background: '#f59e0b', color: '#0d0f1a', fontSize: 10, fontWeight: 700, borderRadius: 20, padding: '2px 8px' }}>{unreviewedTeam.length}</span>}
+                  </div>
+                  {unreviewedTeam.length === 0 ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#34d399', fontSize: 13 }}><CheckCircle2 size={14} /> All caught up!</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {unreviewedTeam.map(dr => (
+                        <div key={dr.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#f0f2fa' }}>{dr.name || dr.email}</div>
+                            <div style={{ fontSize: 11, color: saSubmittedIds.has(dr.id) ? '#818cf8' : '#f87171' }}>
+                              {saSubmittedIds.has(dr.id) ? 'SA submitted — ready for review' : 'No review started yet'}
+                            </div>
+                          </div>
+                          <button onClick={() => { setShowEmployeePicker(true); setActivePage('reviews') }}
+                            style={{ padding: '5px 12px', background: '#1e1f3a', border: '1px solid #2d3148', borderRadius: 6, color: '#818cf8', fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                            Start Review
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div style={sCard}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                    <FileText size={15} color="#818cf8" />
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#f0f2fa' }}>Recent Reviews</span>
+                  </div>
+                  {saves.length === 0 ? (
+                    <div style={{ fontSize: 13, color: '#4b5563' }}>No reviews yet. Start one from the sidebar.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {saves.slice(0, 4).map(s => {
+                        const pct = reviewPct(s)
+                        return (
+                          <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #1e2130' }}>
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: '#f0f2fa' }}>{s.employeeName}</div>
+                              <div style={{ fontSize: 11, color: '#6b7280' }}>{s.employeePosition || '—'}</div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              {s.driveUrl
+                                ? <span style={{ fontSize: 10, fontWeight: 700, color: '#34d399', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 20, padding: '2px 8px' }}>Done</span>
+                                : <span style={{ fontSize: 10, fontWeight: 700, color: '#fbbf24', background: '#2a1f00', border: '1px solid #4a3300', borderRadius: 20, padding: '2px 8px' }}>{pct}%</span>}
+                              <button onClick={() => { handleLoad(s); setActivePage('reviews') }}
+                                style={{ padding: '4px 10px', background: '#1e1f3a', border: '1px solid #2d3148', borderRadius: 6, color: '#818cf8', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                                Open
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* ── History page ── */}
         {activePage === 'history' && (
