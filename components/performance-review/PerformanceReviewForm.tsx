@@ -2630,7 +2630,7 @@ export function PerformanceReviewForm() {
   const [form, setForm] = useState<FormData>(defaultForm())
   const [saves, setSaves] = useState<SavedReview[]>([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'cycles' | 'notes' | 'checkins' | 'peer-feedback' | 'pip' | 'nine-box'>('reviews')
+  const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notes' | 'checkins' | 'peer-feedback' | 'pip' | 'nine-box'>('reviews')
   const [showNotifDropdown, setShowNotifDropdown] = useState(false)
   const [reviewsExpanded, setReviewsExpanded] = useState(true)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -5338,21 +5338,6 @@ export function PerformanceReviewForm() {
           })()}
 
 
-          {/* Review Cycles */}
-          {(() => {
-            const active = activePage === 'cycles'
-            return (
-              <button onClick={() => setActivePage('cycles')} title={sidebarCollapsed ? 'Review Cycles' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #6366f1' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
-                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
-                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
-                <RefreshCw size={15} color={active ? '#818cf8' : '#6b7280'} />
-                {!sidebarCollapsed && 'Review Cycles'}
-              </button>
-            )
-          })()}
-
-
           {/* 1:1 Meetings */}
           {(() => {
             const active = activePage === 'notes'
@@ -5508,7 +5493,7 @@ export function PerformanceReviewForm() {
       {/* ── Top header bar ── */}
       <header style={{ height: 52, flexShrink: 0, background: '#0d0f1a', borderBottom: '1px solid #1e2130', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', zIndex: 40 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: '#e0e7ff' }}>
-          {({ reviews: meetingDetailId ? `Annual Review — ${saves.find(s => s.id === meetingDetailId)?.employeeName ?? ''}` : currentReviewId ? (form.employeeName || 'Annual Reviews') : 'Annual Reviews', history: 'History', team: 'Team Dashboard', guide: 'Manager Guide', glossary: 'Competency Glossary', cycles: 'Review Cycles', notes: '1:1 Meetings', checkins: 'Check-ins', 'peer-feedback': 'Peer Reviews', pip: 'PIPs', 'nine-box': 'Nine-Box Grid' } as Record<string, string>)[activePage] ?? 'Annual Reviews'}
+          {({ reviews: meetingDetailId ? `Annual Review — ${saves.find(s => s.id === meetingDetailId)?.employeeName ?? ''}` : currentReviewId ? (form.employeeName || 'Annual Reviews') : 'Annual Reviews', history: 'History', team: 'Team Dashboard', guide: 'Manager Guide', glossary: 'Competency Glossary', notes: '1:1 Meetings', checkins: 'Check-ins', 'peer-feedback': 'Peer Reviews', pip: 'PIPs', 'nine-box': 'Nine-Box Grid' } as Record<string, string>)[activePage] ?? 'Annual Reviews'}
         </div>
         <div style={{ position: 'relative' }}>
           {(() => {
@@ -5820,105 +5805,6 @@ export function PerformanceReviewForm() {
                 <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>{c.definition}</div>
               </div>
             ))}
-          </div>
-        )}
-
-        {/* ── Review Cycles page ── */}
-        {activePage === 'cycles' && (
-          <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
-            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Review Cycles</h1>
-            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Track where each employee is in the review process.</p>
-            {dbTeam.length === 0 ? (
-              <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '40px', textAlign: 'center' }}>
-                <div style={{ fontSize: 36, marginBottom: 10 }}>🔄</div>
-                <div style={{ fontSize: 14, color: '#9ca3af' }}>No team members found.</div>
-              </div>
-            ) : dbTeam.map(r => {
-              const displayName = r.name || r.email
-              const saStatus = dbTeamSaMap[r.id]
-              const save = saves.find(s => s.employeeId === r.id) ?? saves.find(s => s.employeeName === displayName)
-              const empSig = save ? reviewSignatures[save.id] : null
-
-              // Derive stage
-              let stage: string
-              let stageColor: string
-              let stageBg: string
-              let stageBorder: string
-              let actionLabel: string
-              let actionFn: () => void
-
-              if (save && save.managerSignedAt && empSig?.employee_signed_at) {
-                stage = 'Both Signed'; stageColor = '#34d399'; stageBg = '#0d1a13'; stageBorder = '#1a4a35'
-                actionLabel = 'Go to Meeting'; actionFn = () => { setMeetingDetailId(save.id); setActivePage('meeting') }
-              } else if (save && save.managerSignedAt) {
-                stage = 'Awaiting Employee Signature'; stageColor = '#f59e0b'; stageBg = '#1f1a0d'; stageBorder = '#92400e'
-                actionLabel = 'Go to Meeting'; actionFn = () => { setMeetingDetailId(save.id); setActivePage('meeting') }
-              } else if (save && reviewPct(save) === 100) {
-                stage = 'Review Complete — Awaiting Sign-off'; stageColor = '#60a5fa'; stageBg = '#0d1523'; stageBorder = '#1e3a5f'
-                actionLabel = 'View Review'; actionFn = () => { handleLoad(save); setActivePage('reviews') }
-              } else if (save && reviewPct(save) > 0) {
-                stage = 'Review In Progress'; stageColor = '#a78bfa'; stageBg = '#1a1430'; stageBorder = '#4c1d95'
-                actionLabel = 'Continue Review'; actionFn = () => { handleLoad(save); setActivePage('reviews') }
-              } else if (saStatus?.status === 'submitted') {
-                stage = 'SA Submitted — Ready to Review'; stageColor = '#818cf8'; stageBg = '#1e1f3a'; stageBorder = 'rgba(129,140,248,0.4)'
-                actionLabel = 'Start Review'; actionFn = () => { handleNewReview(); update({ employeeName: r.name || r.email, employeePosition: r.position || '', employeeDivision: r.division || '', employeePronouns: r.pronouns || '', supervisorName: profileName || profileEmail || '', appraisalPeriod: r.start_date ? computeAppraisalPeriod(r.start_date) : '', reviewDate: r.start_date ? computeReviewDate(r.start_date) : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) }); setCurrentEmployeeId(r.id); setActivePage('reviews') }
-              } else {
-                stage = 'Not Started'; stageColor = '#6b7280'; stageBg = '#13151f'; stageBorder = '#2a2d3a'
-                actionLabel = 'Start Review'; actionFn = () => { handleNewReview(); update({ employeeName: r.name || r.email, employeePosition: r.position || '', employeeDivision: r.division || '', employeePronouns: r.pronouns || '', supervisorName: profileName || profileEmail || '', appraisalPeriod: r.start_date ? computeAppraisalPeriod(r.start_date) : '', reviewDate: r.start_date ? computeReviewDate(r.start_date) : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) }); setCurrentEmployeeId(r.id); setActivePage('reviews') }
-              }
-
-              // Pipeline dots: SA → Review → Complete → Signed → Done
-              const stageIndex = stage === 'Not Started' ? 0
-                : stage === 'SA Submitted — Ready to Review' ? 1
-                : stage === 'Review In Progress' ? 2
-                : stage === 'Review Complete — Awaiting Sign-off' ? 2
-                : stage === 'Awaiting Employee Signature' ? 3
-                : stage === 'Both Signed' ? 4
-                : 0
-              const pipelineStages = ['SA', 'Review', 'Complete', 'Signed', 'Done']
-              const pipelineColors = ['#818cf8', '#a78bfa', '#60a5fa', '#f59e0b', '#34d399']
-
-              return (
-                <div key={r.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '18px 22px', marginBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'white', flexShrink: 0 }}>
-                        {displayName.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e7eb' }}>{displayName}</div>
-                        <div style={{ fontSize: 11, color: '#6b7280' }}>{r.position || r.email}</div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: stageBg, color: stageColor, border: `1px solid ${stageBorder}`, whiteSpace: 'nowrap' }}>{stage}</span>
-                      <button onClick={actionFn} style={{ padding: '6px 14px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>{actionLabel}</button>
-                    </div>
-                  </div>
-                  {/* Pipeline */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-                    {pipelineStages.map((ps, pi) => {
-                      const isActive = pi === stageIndex
-                      const isDone = pi < stageIndex
-                      const color = isDone || isActive ? pipelineColors[pi] : '#2a2d3a'
-                      return (
-                        <div key={ps} style={{ display: 'flex', alignItems: 'center', flex: pi < pipelineStages.length - 1 ? 1 : 'none' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                            <div style={{ width: 28, height: 28, borderRadius: '50%', background: isDone ? color : isActive ? color + '30' : '#13151f', border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: isDone ? '#0d0f1a' : color, fontWeight: 700, flexShrink: 0 }}>
-                              {isDone ? '✓' : pi + 1}
-                            </div>
-                            <span style={{ fontSize: 9, color: isActive ? color : isDone ? '#6b7280' : '#374151', fontWeight: isActive ? 700 : 400, whiteSpace: 'nowrap' }}>{ps}</span>
-                          </div>
-                          {pi < pipelineStages.length - 1 && (
-                            <div style={{ flex: 1, height: 2, background: isDone ? pipelineColors[pi] : '#1e2130', margin: '0 4px', marginBottom: 14, transition: 'background 0.3s' }} />
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
           </div>
         )}
 
@@ -6540,7 +6426,7 @@ export function PerformanceReviewForm() {
             <StepOutput
               key={currentReviewId}
               form={form}
-              onSubmit={() => { setMeetingDetailId(null); setActivePage('meeting') }}
+              onSubmit={() => { setCurrentReviewId(''); setActivePage('reviews') }}
             />
           )}
         </div>
