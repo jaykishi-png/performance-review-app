@@ -2680,6 +2680,7 @@ export function PerformanceReviewForm() {
   const [meetingMgrSigError, setMeetingMgrSigError] = useState('')
   const [meetingDriveStatus, setMeetingDriveStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle')
   const [meetingDriveError, setMeetingDriveError] = useState('')
+  const [teamTab, setTeamTab] = useState<'overview'|'reviews'>('overview')
 
   // ── Meeting SA auto-load (component level) ─────────────────────────────────
   async function loadMeetingSA(empId: string) {
@@ -2696,6 +2697,10 @@ export function PerformanceReviewForm() {
       setMeetingSALoading(false)
     }
   }
+
+  useEffect(() => {
+    if (activePage === 'meeting') { setActivePage('team'); setTeamTab('reviews') }
+  }, [activePage])
 
   useEffect(() => {
     if (activePage !== 'meeting' || !meetingDetailId) return
@@ -5229,7 +5234,7 @@ export function PerformanceReviewForm() {
             return (
               <div style={{ marginBottom: 2 }}>
                 {/* Row: clicking icon/label sets page, clicking chevron toggles dropdown */}
-                <div style={{ display: 'flex', alignItems: 'center', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent' }}
+                <div style={{ display: 'flex', alignItems: 'center', borderRadius: 8, borderLeft: active ? '3px solid #6366f1' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent' }}
                   onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                   onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                   <button
@@ -5311,7 +5316,7 @@ export function PerformanceReviewForm() {
             const active = activePage === 'history'
             return (
               <button onClick={() => setActivePage('history')} title={sidebarCollapsed ? 'History' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #6366f1' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                 <History size={15} color={active ? '#818cf8' : '#6b7280'} />
@@ -5326,7 +5331,7 @@ export function PerformanceReviewForm() {
             const pending = dbTeam.filter(r => dbTeamSaMap[r.id]?.status === 'submitted').length
             return (
               <button onClick={() => setActivePage('team')} title={sidebarCollapsed ? 'Team' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #6366f1' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                 <Users size={15} color={active ? '#818cf8' : '#6b7280'} />
@@ -5342,7 +5347,7 @@ export function PerformanceReviewForm() {
             const active = activePage === 'cycles'
             return (
               <button onClick={() => setActivePage('cycles')} title={sidebarCollapsed ? 'Review Cycles' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #6366f1' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                 <RefreshCw size={15} color={active ? '#818cf8' : '#6b7280'} />
@@ -5357,7 +5362,7 @@ export function PerformanceReviewForm() {
             const signedSaves = saves.filter(s => s.managerSignedAt)
             return (
               <button onClick={() => { setMeetingDetailId(null); setActivePage('meeting') }} title={sidebarCollapsed ? 'Annual Reviews' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #6366f1' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                 <Users size={15} color={active ? '#818cf8' : '#6b7280'} />
@@ -5372,7 +5377,7 @@ export function PerformanceReviewForm() {
             const active = activePage === 'notes'
             return (
               <button onClick={() => setActivePage('notes')} title={sidebarCollapsed ? '1:1 Meetings' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #6366f1' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                 <MessageSquare size={15} color={active ? '#818cf8' : '#6b7280'} />
@@ -5386,7 +5391,7 @@ export function PerformanceReviewForm() {
             const active = activePage === 'checkins'
             return (
               <button onClick={() => setActivePage('checkins')} title={sidebarCollapsed ? 'Check-ins' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #6366f1' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                 <Activity size={15} color={active ? '#818cf8' : '#6b7280'} />
@@ -5400,7 +5405,7 @@ export function PerformanceReviewForm() {
             const active = activePage === 'peer-feedback'
             return (
               <button onClick={() => setActivePage('peer-feedback')} title={sidebarCollapsed ? 'Peer Reviews' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #6366f1' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                 <Star size={15} color={active ? '#818cf8' : '#6b7280'} />
@@ -5415,7 +5420,7 @@ export function PerformanceReviewForm() {
             const activePips = pipPlans.filter(p => p.status === 'active').length
             return (
               <button onClick={() => { setActivePage('pip'); fetchPipPlans() }} title={sidebarCollapsed ? 'PIPs' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #6366f1' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                 <TrendingUp size={15} color={active ? '#818cf8' : '#6b7280'} />
@@ -5430,7 +5435,7 @@ export function PerformanceReviewForm() {
             const active = activePage === 'nine-box'
             return (
               <button onClick={() => setActivePage('nine-box')} title={sidebarCollapsed ? 'Nine-Box Grid' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #6366f1' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                 <span style={{ fontSize: 14 }}>⊞</span>
@@ -5444,7 +5449,7 @@ export function PerformanceReviewForm() {
             const active = activePage === 'guide'
             return (
               <button onClick={() => setActivePage('guide')} title={sidebarCollapsed ? 'Manager Guide' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #6366f1' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                 <BookOpen size={15} color={active ? '#818cf8' : '#6b7280'} />
@@ -5458,7 +5463,7 @@ export function PerformanceReviewForm() {
             const active = activePage === 'glossary'
             return (
               <button onClick={() => setActivePage('glossary')} title={sidebarCollapsed ? 'Competency Glossary' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #6366f1' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                 <BookMarked size={15} color={active ? '#818cf8' : '#6b7280'} />
@@ -5518,74 +5523,82 @@ export function PerformanceReviewForm() {
       </aside>
 
       {/* ── Main content ── */}
-      <main style={{ flex: 1, overflow: 'auto', background: '#0b0d14', position: 'relative' }}>
-
-        {/* ── Bell notification button (top-right) ── */}
-        {(() => {
-          const notifCount = saves.filter(s => { const p = reviewPct(s); return p > 0 && p < 100 }).length
-          const items: { icon: string; color: string; label: string; detail: string; action?: () => void }[] = []
-          dbTeam.forEach(r => {
-            const sa = dbTeamSaMap[r.id]
-            if (sa?.status === 'submitted') {
-              items.push({ icon: '📋', color: '#818cf8', label: `${r.name || r.email} submitted their self-assessment`, detail: `Submitted ${sa.submitted_at ? new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'recently'}. Start their review when ready.`, action: () => { setShowEmployeePicker(true); setActivePage('reviews'); setShowNotifDropdown(false) } })
-            }
-          })
-          saves.filter(s => { const p = reviewPct(s); return p > 0 && p < 100 }).forEach(s => {
-            const pct = reviewPct(s)
-            items.push({ icon: '✏️', color: '#f59e0b', label: `${s.employeeName}'s review is ${pct}% complete`, detail: 'This review is in progress and hasn\'t been exported yet.', action: () => { handleLoad(s); setActivePage('reviews'); setShowNotifDropdown(false) } })
-          })
-          saves.filter(s => reviewPct(s) === 100 && !s.driveUrl).forEach(s => {
-            items.push({ icon: '✅', color: '#34d399', label: `${s.employeeName}'s review is complete — not yet exported`, detail: 'All steps are done. Export to Google Drive to share with the employee.', action: () => { handleLoad(s); setActivePage('reviews'); setShowNotifDropdown(false) } })
-          })
-          const totalCount = items.length
-          return (
-            <div style={{ position: 'absolute', top: 16, right: 20, zIndex: 50 }}>
-              <button
-                onClick={() => setShowNotifDropdown(v => !v)}
-                style={{ position: 'relative', background: showNotifDropdown ? '#1e1f3a' : 'transparent', border: `1px solid ${showNotifDropdown ? 'rgba(79,70,229,0.4)' : '#1e2130'}`, borderRadius: 8, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: showNotifDropdown ? '#818cf8' : '#6b7280' }}
-                onMouseOver={e => { if (!showNotifDropdown) { e.currentTarget.style.background = '#13151f'; e.currentTarget.style.borderColor = '#2e3148' } }}
-                onMouseOut={e => { if (!showNotifDropdown) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#1e2130' } }}>
-                <Bell size={16} />
-                {totalCount > 0 && (
-                  <span style={{ position: 'absolute', top: -4, right: -4, background: '#f59e0b', color: '#0d0f1a', fontSize: 9, fontWeight: 700, borderRadius: 10, minWidth: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
-                    {totalCount}
-                  </span>
-                )}
-              </button>
-              {showNotifDropdown && (
-                <>
-                  <div onClick={() => setShowNotifDropdown(false)} style={{ position: 'fixed', inset: 0, zIndex: 48 }} />
-                  <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 6, width: 340, background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', zIndex: 49, overflow: 'hidden' }}>
-                    <div style={{ padding: '12px 16px', borderBottom: '1px solid #1e2130', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#f0f2fa' }}>Notifications</span>
-                      <span style={{ fontSize: 11, color: '#6b7280' }}>{totalCount} item{totalCount !== 1 ? 's' : ''}</span>
-                    </div>
-                    <div style={{ maxHeight: 400, overflowY: 'auto', padding: '8px' }}>
-                      {items.length === 0 ? (
-                        <div style={{ padding: '24px 16px', textAlign: 'center' }}>
-                          <div style={{ fontSize: 24, marginBottom: 8 }}>🔔</div>
-                          <div style={{ fontSize: 12, color: '#6b7280' }}>All caught up! No pending items.</div>
-                        </div>
-                      ) : items.map((item, i) => (
-                        <div key={i} onClick={item.action}
-                          style={{ borderLeft: `3px solid ${item.color}`, borderRadius: 8, padding: '10px 12px', marginBottom: 6, cursor: item.action ? 'pointer' : 'default', display: 'flex', gap: 10, alignItems: 'flex-start', background: '#0d0f1a' }}
-                          onMouseOver={e => { if (item.action) e.currentTarget.style.background = '#1a1c2e' }}
-                          onMouseOut={e => { e.currentTarget.style.background = '#0d0f1a' }}>
-                          <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{item.icon}</span>
-                          <div>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 2 }}>{item.label}</div>
-                            <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>{item.detail}</div>
-                            {item.action && <div style={{ fontSize: 10, color: item.color, marginTop: 4, fontWeight: 600 }}>View →</div>}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* ── Top header bar ── */}
+      <header style={{ height: 52, flexShrink: 0, background: '#0d0f1a', borderBottom: '1px solid #1e2130', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', zIndex: 40 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#e0e7ff' }}>
+          {({ reviews: currentReviewId ? (form.employeeName || 'Performance Review') : 'Performance Reviews', history: 'History', team: 'Team Dashboard', guide: 'Manager Guide', glossary: 'Competency Glossary', cycles: 'Review Cycles', meeting: 'Annual Reviews', notes: '1:1 Meetings', checkins: 'Check-ins', 'peer-feedback': 'Peer Reviews', pip: 'PIPs', 'nine-box': 'Nine-Box Grid' } as Record<string, string>)[activePage] ?? 'Performance Reviews'}
+        </div>
+        <div style={{ position: 'relative' }}>
+          {(() => {
+            const notifCount = saves.filter(s => { const p = reviewPct(s); return p > 0 && p < 100 }).length
+            const items: { icon: string; color: string; label: string; detail: string; action?: () => void }[] = []
+            dbTeam.forEach(r => {
+              const sa = dbTeamSaMap[r.id]
+              if (sa?.status === 'submitted') {
+                items.push({ icon: '📋', color: '#818cf8', label: `${r.name || r.email} submitted their self-assessment`, detail: `Submitted ${sa.submitted_at ? new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'recently'}. Start their review when ready.`, action: () => { setShowEmployeePicker(true); setActivePage('reviews'); setShowNotifDropdown(false) } })
+              }
+            })
+            saves.filter(s => { const p = reviewPct(s); return p > 0 && p < 100 }).forEach(s => {
+              const pct = reviewPct(s)
+              items.push({ icon: '✏️', color: '#f59e0b', label: `${s.employeeName}'s review is ${pct}% complete`, detail: 'This review is in progress and hasn\'t been exported yet.', action: () => { handleLoad(s); setActivePage('reviews'); setShowNotifDropdown(false) } })
+            })
+            saves.filter(s => reviewPct(s) === 100 && !s.driveUrl).forEach(s => {
+              items.push({ icon: '✅', color: '#34d399', label: `${s.employeeName}'s review is complete — not yet exported`, detail: 'All steps are done. Export to Google Drive to share with the employee.', action: () => { handleLoad(s); setActivePage('reviews'); setShowNotifDropdown(false) } })
+            })
+            const totalCount = items.length
+            void notifCount
+            return (
+              <div>
+                <button
+                  onClick={() => setShowNotifDropdown(v => !v)}
+                  style={{ position: 'relative', background: showNotifDropdown ? '#1e1f3a' : 'transparent', border: `1px solid ${showNotifDropdown ? 'rgba(79,70,229,0.4)' : '#1e2130'}`, borderRadius: 8, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: showNotifDropdown ? '#818cf8' : '#6b7280' }}
+                  onMouseOver={e => { if (!showNotifDropdown) { e.currentTarget.style.background = '#13151f'; e.currentTarget.style.borderColor = '#2e3148' } }}
+                  onMouseOut={e => { if (!showNotifDropdown) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#1e2130' } }}>
+                  <Bell size={16} />
+                  {totalCount > 0 && (
+                    <span style={{ position: 'absolute', top: -4, right: -4, background: '#f59e0b', color: '#0d0f1a', fontSize: 9, fontWeight: 700, borderRadius: 10, minWidth: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
+                      {totalCount}
+                    </span>
+                  )}
+                </button>
+                {showNotifDropdown && (
+                  <>
+                    <div onClick={() => setShowNotifDropdown(false)} style={{ position: 'fixed', inset: 0, zIndex: 48 }} />
+                    <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 6, width: 340, background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', zIndex: 49, overflow: 'hidden' }}>
+                      <div style={{ padding: '12px 16px', borderBottom: '1px solid #1e2130', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#f0f2fa' }}>Notifications</span>
+                        <span style={{ fontSize: 11, color: '#6b7280' }}>{totalCount} item{totalCount !== 1 ? 's' : ''}</span>
+                      </div>
+                      <div style={{ maxHeight: 400, overflowY: 'auto', padding: '8px' }}>
+                        {items.length === 0 ? (
+                          <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+                            <div style={{ fontSize: 24, marginBottom: 8 }}>🔔</div>
+                            <div style={{ fontSize: 12, color: '#6b7280' }}>All caught up! No pending items.</div>
                           </div>
-                        </div>
-                      ))}
+                        ) : items.map((item, i) => (
+                          <div key={i} onClick={item.action}
+                            style={{ borderLeft: `3px solid ${item.color}`, borderRadius: 8, padding: '10px 12px', marginBottom: 6, cursor: item.action ? 'pointer' : 'default', display: 'flex', gap: 10, alignItems: 'flex-start', background: '#0d0f1a' }}
+                            onMouseOver={e => { if (item.action) e.currentTarget.style.background = '#1a1c2e' }}
+                            onMouseOut={e => { e.currentTarget.style.background = '#0d0f1a' }}>
+                            <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{item.icon}</span>
+                            <div>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 2 }}>{item.label}</div>
+                              <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>{item.detail}</div>
+                              {item.action && <div style={{ fontSize: 10, color: item.color, marginTop: 4, fontWeight: 600 }}>View →</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                </>
-              )}
-            </div>
-          )
-        })()}
+                  </>
+                )}
+              </div>
+            )
+          })()}
+        </div>
+      </header>
+      <main style={{ flex: 1, overflow: 'auto', background: '#0b0d14', position: 'relative' }}>
 
         {/* ── History page ── */}
         {activePage === 'history' && (
@@ -5595,7 +5608,8 @@ export function PerformanceReviewForm() {
             {saves.length === 0 ? (
               <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '40px', textAlign: 'center' }}>
                 <div style={{ fontSize: 36, marginBottom: 10 }}>📋</div>
-                <div style={{ fontSize: 14, color: '#9ca3af' }}>No reviews yet. Create your first one.</div>
+                <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 16 }}>No reviews yet. Create your first one.</div>
+                <button onClick={() => setShowEmployeePicker(true)} style={{ padding: '9px 20px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ New Review</button>
               </div>
             ) : saves.map(save => {
               const pct = reviewPct(save)
@@ -6374,16 +6388,50 @@ export function PerformanceReviewForm() {
 
         {/* ── Performance Reviews (form) ── */}
         {activePage === 'reviews' && (!currentReviewId ? (
-          /* Empty state */
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 16, padding: 32 }}>
-            <div style={{ fontSize: 48 }}>📋</div>
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: 18, fontWeight: 700, color: '#e5e7eb', margin: '0 0 8px' }}>No review open</p>
-              <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 24px' }}>Select a review from the sidebar or create a new one.</p>
-              <button onClick={() => setShowEmployeePicker(true)} style={{ padding: '10px 24px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                + New Review
-              </button>
+          /* Empty state — team member landing */
+          <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+              <div>
+                <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Performance Reviews</h1>
+                <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Select a team member to start or continue their review.</p>
+              </div>
+              <button onClick={() => setShowEmployeePicker(true)} style={{ padding: '9px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>+ New Review</button>
             </div>
+            {dbTeam.length === 0 ? (
+              <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: 40, textAlign: 'center' }}>
+                <div style={{ fontSize: 36, marginBottom: 10 }}>📋</div>
+                <div style={{ fontSize: 14, color: '#9ca3af' }}>No team members yet. Ask your admin to assign reports to you.</div>
+              </div>
+            ) : dbTeam.map(r => {
+              const displayName = r.name || r.email
+              const existing = saves.find(s => s.employeeId === r.id) ?? saves.find(s => s.employeeName === displayName)
+              const pct = existing ? reviewPct(existing) : -1
+              const sa = dbTeamSaMap[r.id]
+              return (
+                <div key={r.id}
+                  onClick={() => { if (existing) { handleLoad(existing) } else { setShowEmployeePicker(true) } }}
+                  style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '16px 20px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#1a1c2e'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#13151f'}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: pct === 100 ? '#0d1a13' : 'linear-gradient(135deg,#4f46e5,#7c3aed)', border: pct === 100 ? '2px solid #34d399' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: pct === 100 ? '#34d399' : 'white', flexShrink: 0 }}>
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e7eb' }}>{displayName}</div>
+                    <div style={{ fontSize: 12, color: '#6b7280' }}>{r.position || 'No position'}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                    {sa?.status === 'submitted' && <span style={{ fontSize: 11, background: '#1e1f3a', color: '#818cf8', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 20, padding: '2px 8px' }}>SA Submitted</span>}
+                    {pct >= 0 ? (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: pct === 100 ? '#34d399' : '#f59e0b' }}>{pct === 100 ? '✓ Complete' : `${pct}% done`}</span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: '#4b5563' }}>No review</span>
+                    )}
+                    <ChevronRight size={14} color="#4b5563" />
+                  </div>
+                </div>
+              )
+            })}
           </div>
         ) : (
           <div className="max-w-2xl mx-auto px-6 py-8">
@@ -6416,7 +6464,7 @@ export function PerformanceReviewForm() {
             </div>
 
         {/* Step progress */}
-        <div className="mb-8">
+        <div className="mb-8 sticky top-0 z-30 bg-[#0b0d14] pt-2 pb-3 -mx-6 px-6 border-b border-[#1e2130]">
           <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
             {STEPS.map((s, i) => {
               const isOutput   = i === STEPS.length - 1
@@ -6537,6 +6585,7 @@ export function PerformanceReviewForm() {
         </div>
         ))}
       </main>
+      </div>
 
       {/* ── SA Viewer Modal ── */}
       {viewingSA && (
