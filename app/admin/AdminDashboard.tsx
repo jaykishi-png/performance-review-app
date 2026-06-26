@@ -314,6 +314,11 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
   const [cyclesTab, setCyclesTab] = useState<'manual' | 'employee'>('manual')
   const [confirmingCycle, setConfirmingCycle] = useState<string | null>(null)
+  const [showTriggerModal, setShowTriggerModal] = useState(false)
+  const [triggerEmployeeId, setTriggerEmployeeId] = useState('')
+  const [triggerSaDays, setTriggerSaDays] = useState(14)
+  const [triggeringCycle, setTriggeringCycle] = useState(false)
+  const [triggerError, setTriggerError] = useState<string | null>(null)
 
   // Audit log state
   const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>([])
@@ -462,6 +467,26 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     await fetch('/api/admin/employee-cycles', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
     setConfirmingCycle(null)
     router.refresh()
+  }
+
+  async function handleTriggerCycle() {
+    if (!triggerEmployeeId) return
+    setTriggeringCycle(true)
+    setTriggerError(null)
+    try {
+      const res = await fetch('/api/admin/trigger-cycle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employee_id: triggerEmployeeId, sa_days: triggerSaDays }),
+      })
+      const data = await res.json() as { error?: string }
+      if (!res.ok) { setTriggerError(data.error ?? 'Failed to create cycle'); return }
+      setShowTriggerModal(false)
+      setTriggerEmployeeId('')
+      setTriggerSaDays(14)
+      router.refresh()
+    } catch { setTriggerError('Network error') }
+    finally { setTriggeringCycle(false) }
   }
 
   const fetchAuditLogs = useCallback(async () => {
@@ -1441,12 +1466,18 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Review Cycles</h1>
             <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Manage manual cycles and track per-employee anniversary reviews.</p>
           </div>
-          {cyclesTab === 'manual' && (
-            <button onClick={openNewCycle}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
-              <Plus size={14} /> New Cycle
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => { setShowTriggerModal(true); setTriggerError(null) }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'transparent', color: '#a5b4fc', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+              <Plus size={14} /> Trigger Cycle
             </button>
-          )}
+            {cyclesTab === 'manual' && (
+              <button onClick={openNewCycle}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                <Plus size={14} /> New Cycle
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Tab toggle */}
@@ -2774,6 +2805,58 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           </div>
         </div>
       )}
+
+      {/* ── Trigger Employee Cycle Modal ── */}
+      {showTriggerModal && (() => {
+        const activeIds = new Set(employeeCycles.filter(c => c.phase !== 'complete').map(c => c.employee_id))
+        const eligible = users.filter(u => u.is_active && u.role !== 'pending' && !activeIds.has(u.id))
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
+            onClick={e => { if (e.target === e.currentTarget) { setShowTriggerModal(false); setTriggerError(null) } }}>
+            <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 16, padding: '32px', width: 460 }}>
+              <h2 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#f0f2fa' }}>Trigger Review Cycle</h2>
+              <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
+                Manually start an annual review cycle for any user. The self-assessment window opens immediately.
+              </p>
+
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>User</label>
+              <select value={triggerEmployeeId} onChange={e => setTriggerEmployeeId(e.target.value)}
+                style={{ width: '100%', background: '#0d0f1a', border: '1px solid #2a2d3a', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: '#e5e7eb', marginBottom: 16, boxSizing: 'border-box' as const }}>
+                <option value=''>Select user…</option>
+                {eligible.map(u => (
+                  <option key={u.id} value={u.id}>{u.name || u.email}{u.position ? ` — ${u.position}` : ''}{u.role !== 'employee' ? ` (${ROLE_LABELS[u.role] ?? u.role})` : ''}</option>
+                ))}
+              </select>
+
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>Self-assessment window (days)</label>
+              <input type='number' min={1} max={60} value={triggerSaDays} onChange={e => setTriggerSaDays(Number(e.target.value))}
+                style={{ width: '100%', background: '#0d0f1a', border: '1px solid #2a2d3a', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: '#e5e7eb', marginBottom: 6, boxSizing: 'border-box' as const }} />
+              <p style={{ margin: '0 0 20px', fontSize: 11, color: '#4b5563' }}>
+                SA closes in {triggerSaDays} days → manager review opens for 14 days → meeting/signing for 7 days
+              </p>
+
+              {triggerError && (
+                <div style={{ marginBottom: 16, padding: '8px 12px', background: '#1a0d0d', border: '1px solid #5c1a1a', borderRadius: 8, fontSize: 12, color: '#f87171' }}>{triggerError}</div>
+              )}
+
+              {eligible.length === 0 && (
+                <div style={{ marginBottom: 16, padding: '8px 12px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8, fontSize: 12, color: '#f59e0b' }}>
+                  All active users already have an open review cycle.
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => { setShowTriggerModal(false); setTriggerError(null) }}
+                  style={{ flex: 1, padding: '11px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                <button onClick={handleTriggerCycle} disabled={!triggerEmployeeId || triggeringCycle}
+                  style={{ flex: 1, padding: '11px', background: triggerEmployeeId && !triggeringCycle ? 'linear-gradient(135deg,#4f46e5,#7c3aed)' : '#1e2130', color: triggerEmployeeId && !triggeringCycle ? '#fff' : '#4b5563', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: triggerEmployeeId && !triggeringCycle ? 'pointer' : 'not-allowed' }}>
+                  {triggeringCycle ? 'Creating…' : 'Trigger Cycle'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Create / Edit Cycle Modal ── */}
       {showCycleModal && (
