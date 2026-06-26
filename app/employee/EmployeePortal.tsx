@@ -834,6 +834,8 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   const [feedbackSending, setFeedbackSending] = useState(false)
   const [feedbackSendError, setFeedbackSendError] = useState<string|null>(null)
   const [feedbackSendSuccess, setFeedbackSendSuccess] = useState(false)
+  const [feedbackEmailSent, setFeedbackEmailSent] = useState(false)
+  const [feedbackReviewerEmail, setFeedbackReviewerEmail] = useState<string|null>(null)
 
 
   useEffect(() => {
@@ -2516,6 +2518,8 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
       setFeedbackSending(true)
       setFeedbackSendError(null)
       setFeedbackSendSuccess(false)
+      setFeedbackEmailSent(false)
+      setFeedbackReviewerEmail(null)
       try {
         const res = await fetch('/api/feedback-requests', {
           method: 'POST',
@@ -2526,13 +2530,16 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           const d = await res.json().catch(() => ({}))
           setFeedbackSendError(d.error || 'Failed to send request.')
         } else {
+          const d = await res.json().catch(() => ({}))
           const refreshed = await fetch('/api/feedback-requests?role=requestor').then(r=>r.json())
           setFeedbackSent(refreshed?.requests ?? [])
           setSelectedPeer('')
           setFeedbackMessage('')
           setFeedbackAnon(false)
+          setFeedbackEmailSent(!!d.email_sent)
+          setFeedbackReviewerEmail(d.reviewer_email ?? null)
           setFeedbackSendSuccess(true)
-          setTimeout(() => setFeedbackSendSuccess(false), 4000)
+          setTimeout(() => setFeedbackSendSuccess(false), 6000)
         }
       } catch {
         setFeedbackSendError('Network error. Please try again.')
@@ -2645,8 +2652,20 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             <div style={{ marginBottom: 12, fontSize: 13, color: '#f87171', background: '#1f0a0a', border: '1px solid #3b1515', borderRadius: 8, padding: '8px 12px' }}>{feedbackSendError}</div>
           )}
           {feedbackSendSuccess && (
-            <div style={{ marginBottom: 12, fontSize: 13, color: '#34d399', background: '#052e16', border: '1px solid #065f46', borderRadius: 8, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <CheckCircle2 size={14} /> Request sent!
+            <div style={{ marginBottom: 12, fontSize: 13, color: '#34d399', background: '#052e16', border: '1px solid #065f46', borderRadius: 8, padding: '8px 12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: feedbackEmailSent || feedbackReviewerEmail ? 4 : 0 }}>
+                <CheckCircle2 size={14} /> Request sent!
+              </div>
+              {feedbackEmailSent && feedbackReviewerEmail && (
+                <div style={{ fontSize: 12, color: '#6ee7b7', paddingLeft: 20 }}>
+                  An email notification has been sent to {feedbackReviewerEmail}.
+                </div>
+              )}
+              {!feedbackEmailSent && feedbackReviewerEmail && (
+                <div style={{ fontSize: 12, color: '#fbbf24', paddingLeft: 20 }}>
+                  Email notification could not be sent. You can share the request link directly.
+                </div>
+              )}
             </div>
           )}
           <button

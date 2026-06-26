@@ -171,6 +171,7 @@ export async function POST(req: NextRequest) {
     reviewerEmail || 'Reviewer'
 
   // Send email to reviewer
+  let emailSent = false
   if (reviewerEmail) {
     try {
       const { sendEmail } = await import('@/lib/email')
@@ -178,8 +179,9 @@ export async function POST(req: NextRequest) {
       await sendEmail({
         to: reviewerEmail,
         subject: `${requestorName} has requested your feedback`,
-        html: buildFeedbackRequestEmail({ requestorName, reviewerName, year, feedbackLink }),
+        html: buildFeedbackRequestEmail({ requestorName, reviewerName, year, feedbackLink, message: message ?? null }),
       })
+      emailSent = true
     } catch (err) {
       console.error('[feedback-requests] email send failed:', err)
     }
@@ -194,7 +196,7 @@ export async function POST(req: NextRequest) {
     reference_id: newRequest.id,
   })
 
-  return NextResponse.json({ request: newRequest }, { status: 201 })
+  return NextResponse.json({ request: newRequest, email_sent: emailSent, reviewer_email: reviewerEmail ?? null }, { status: 201 })
 }
 
 // ---------------------------------------------------------------------------
@@ -246,12 +248,25 @@ function buildFeedbackRequestEmail({
   reviewerName,
   year,
   feedbackLink,
+  message,
 }: {
   requestorName: string
   reviewerName: string
   year: number
   feedbackLink: string
+  message: string | null
 }) {
+  const personalNote = message
+    ? `<tr><td style="padding:0 40px 24px;">
+        <table cellpadding="0" cellspacing="0" width="100%">
+          <tr><td style="background:#0d0f1a;border:1px solid #2d3148;border-radius:10px;padding:16px 20px;">
+            <p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.06em;">Message from ${requestorName}</p>
+            <p style="margin:0;font-size:14px;color:#c4c9d4;line-height:1.6;">${message}</p>
+          </td></tr>
+        </table>
+       </td></tr>`
+    : ''
+
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
@@ -271,20 +286,20 @@ function buildFeedbackRequestEmail({
         </td></tr>
 
         <!-- Body -->
-        <tr><td style="padding:32px 40px;">
+        <tr><td style="padding:32px 40px 24px;">
           <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#f0f2fa;letter-spacing:-0.3px;">
             Feedback requested
           </h1>
-          <p style="margin:0 0 20px;font-size:15px;color:#9ca3af;line-height:1.6;">
+          <p style="margin:0 0 8px;font-size:15px;color:#9ca3af;line-height:1.6;">
             Hi <strong style="color:#c4c9d4;">${reviewerName}</strong>,
           </p>
-          <p style="margin:0 0 20px;font-size:15px;color:#9ca3af;line-height:1.6;">
+          <p style="margin:0 0 24px;font-size:15px;color:#9ca3af;line-height:1.6;">
             <strong style="color:#c4c9d4;">${requestorName}</strong> has asked for your feedback as part of their <strong style="color:#c4c9d4;">${year}</strong> performance review.
-            This takes about 5 minutes. Your response can be anonymous.
+            This takes about 5 minutes and your response can be kept anonymous.
           </p>
 
           <!-- CTA Button -->
-          <table cellpadding="0" cellspacing="0" style="margin:28px 0;">
+          <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
             <tr><td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:10px;">
               <a href="${feedbackLink}" style="display:block;padding:14px 32px;font-size:15px;font-weight:600;color:#fff;text-decoration:none;text-align:center;">
                 Give Feedback →
@@ -297,6 +312,8 @@ function buildFeedbackRequestEmail({
             <span style="color:#4f46e5;">${feedbackLink}</span>
           </p>
         </td></tr>
+
+        ${personalNote}
 
         <!-- Footer -->
         <tr><td style="padding:20px 40px;border-top:1px solid #1e2130;text-align:center;">
