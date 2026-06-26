@@ -6,13 +6,13 @@ import {
   ChevronLeft, ChevronRight, FileText, BookOpen, BookMarked,
   Send, LogOut, CheckCircle2, Star, Plus, X, Loader2,
   ExternalLink, Clock, Bell, Target, User, ChevronDown,
-  BarChart2, History, Pencil, Check, Sparkles, Users,
+  BarChart2, History, Pencil, Check, Sparkles, Users, Home,
 } from 'lucide-react'
 import { SignaturePad, SignatureDisplay, encodeSignature, decodeSignature, type SignatureResult } from '@/components/SignaturePad'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Page = 'self-assessment' | 'reviews' | 'timeline' | 'goals' | 'checkins' | 'feedback' | 'guide' | 'glossary' | 'pip'
+type Page = 'dashboard' | 'self-assessment' | 'reviews' | 'timeline' | 'goals' | 'checkins' | 'feedback' | 'guide' | 'glossary' | 'pip'
 
 type KeyResult = {
   id: string
@@ -127,6 +127,7 @@ const SA_STEPS = [
 ]
 
 const NAV_ITEMS: { id: Page; label: string; icon: React.FC<{ size: number; color?: string }> }[] = [
+  { id: 'dashboard',       label: 'Dashboard',            icon: Home       },
   { id: 'self-assessment', label: 'Self Assessment',      icon: FileText   },
   { id: 'reviews',         label: 'Performance Reviews',  icon: BarChart2  },
   { id: 'timeline',        label: 'Review Timeline',      icon: History    },
@@ -325,11 +326,305 @@ function EmployeePipPanel() {
   )
 }
 
+// ── Employee Dashboard Panel ──────────────────────────────────────────────────
+
+type DashboardStats = {
+  goalsTotal: number
+  goalsComplete: number
+  goalsInProgress: number
+  latestReviewScore: number | null
+  latestReviewDate: string | null
+  checkinSubmitted: boolean
+  checkinManagerSubmitted: boolean
+  hasPip: boolean
+  loading: boolean
+}
+
+function EmployeeDashboardPanel({
+  profile,
+  activeCycle,
+  initialSelfReview,
+  onNavigate,
+}: {
+  profile: Profile
+  activeCycle: ActiveCycle
+  initialSelfReview: Partial<SelfReview> | null
+  onNavigate: (page: Page) => void
+}) {
+  const [stats, setStats] = useState<DashboardStats>({
+    goalsTotal: 0, goalsComplete: 0, goalsInProgress: 0,
+    latestReviewScore: null, latestReviewDate: null,
+    checkinSubmitted: false, checkinManagerSubmitted: false,
+    hasPip: false, loading: true,
+  })
+
+  const currentQuarter = Math.ceil((new Date().getMonth() + 1) / 3)
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/goals').then(r => r.ok ? r.json() : null),
+      fetch('/api/reviews').then(r => r.ok ? r.json() : null),
+      fetch(`/api/quarterly-checkins?employee_id=${profile.id}&year=2026&quarter=${currentQuarter}`).then(r => r.ok ? r.json() : null),
+      fetch('/api/pip-plans').then(r => r.ok ? r.json() : null),
+    ]).then(([goalsData, reviewsData, checkinData, pipData]) => {
+      const goalsList: { status: string }[] = goalsData?.goals ?? []
+      const reviewsList: { form_data?: { overallScore?: number }; updated_at: string }[] = reviewsData?.reviews ?? []
+      const ci = checkinData?.data
+      const pipPlans: { status: string }[] = pipData?.data ?? []
+
+      setStats({
+        goalsTotal: goalsList.length,
+        goalsComplete: goalsList.filter(g => g.status === 'complete').length,
+        goalsInProgress: goalsList.filter(g => g.status === 'in_progress').length,
+        latestReviewScore: reviewsList[0]?.form_data?.overallScore ?? null,
+        latestReviewDate: reviewsList[0]?.updated_at ?? null,
+        checkinSubmitted: !!ci?.employee_submitted_at,
+        checkinManagerSubmitted: !!ci?.manager_submitted_at,
+        hasPip: pipPlans.some(p => p.status === 'active'),
+        loading: false,
+      })
+    }).catch(() => setStats(s => ({ ...s, loading: false })))
+  }, [profile.id, currentQuarter])
+
+  const saStatus = initialSelfReview?.status ?? null
+  const saSubmitted = saStatus === 'submitted'
+  const saHasContent = !!(initialSelfReview?.competencies?.some((c: { term?: string }) => c.term))
+
+  const scoreColors: Record<number, string> = { 1: '#f87171', 2: '#fb923c', 3: '#fbbf24', 4: '#34d399', 5: '#a78bfa' }
+  const scoreLabels: Record<number, string> = { 1: 'Unsatisfactory', 2: 'Needs Improvement', 3: 'Meets Expectations', 4: 'Exceeds Requirements', 5: 'Outstanding' }
+
+  const sCard: React.CSSProperties = { background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px' }
+
+  if (stats.loading) {
+    return (
+      <div style={{ padding: '48px 32px', display: 'flex', alignItems: 'center', gap: 10, color: '#6b7280', fontSize: 13 }}>
+        <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Loading your dashboard…
+      </div>
+    )
+  }
+
+  const firstName = profile.name?.split(' ')[0] || profile.email.split('@')[0]
+  const quarterLabel = `Q${currentQuarter} ${new Date().getFullYear()}`
+
+  return (
+    <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
+      {/* Welcome */}
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: '#f0f2fa' }}>
+          Welcome back, {firstName}
+        </h1>
+        <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>
+          Here&apos;s your performance summary — {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+        </p>
+      </div>
+
+      {/* Active PIP alert */}
+      {stats.hasPip && (
+        <div style={{ background: '#1f1207', border: '1px solid #7c2d12', borderRadius: 10, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 16 }}>⚠️</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#fca47c' }}>Active Coaching Plan</div>
+              <div style={{ fontSize: 12, color: '#9a5a3c' }}>You have an active performance improvement plan.</div>
+            </div>
+          </div>
+          <button onClick={() => onNavigate('pip')}
+            style={{ padding: '6px 14px', background: '#7c2d12', color: '#fca47c', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+            View Plan
+          </button>
+        </div>
+      )}
+
+      {/* Stats row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
+        {/* Self-Assessment */}
+        <button onClick={() => onNavigate('self-assessment')} style={{ ...sCard, cursor: 'pointer', textAlign: 'left', transition: 'border-color 0.15s' }}
+          onMouseEnter={e => (e.currentTarget.style.borderColor = '#4f46e5')}
+          onMouseLeave={e => (e.currentTarget.style.borderColor = '#1e2130')}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Self-Assessment</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            {saSubmitted ? (
+              <span style={{ fontSize: 22 }}>✅</span>
+            ) : saHasContent ? (
+              <span style={{ fontSize: 22 }}>📝</span>
+            ) : (
+              <span style={{ fontSize: 22 }}>📋</span>
+            )}
+            <div style={{ fontSize: 16, fontWeight: 700, color: saSubmitted ? '#34d399' : saHasContent ? '#fbbf24' : '#f0f2fa' }}>
+              {saSubmitted ? 'Submitted' : saHasContent ? 'In Progress' : 'Not Started'}
+            </div>
+          </div>
+          <div style={{ fontSize: 12, color: '#6b7280' }}>
+            {saSubmitted ? 'Ready for manager review' : saHasContent ? 'Continue writing' : 'Start your self-assessment'}
+          </div>
+        </button>
+
+        {/* Goals */}
+        <button onClick={() => onNavigate('goals')} style={{ ...sCard, cursor: 'pointer', textAlign: 'left', transition: 'border-color 0.15s' }}
+          onMouseEnter={e => (e.currentTarget.style.borderColor = '#4f46e5')}
+          onMouseLeave={e => (e.currentTarget.style.borderColor = '#1e2130')}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Goals</div>
+          {stats.goalsTotal === 0 ? (
+            <>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#6b7280', marginBottom: 6 }}>None set</div>
+              <div style={{ fontSize: 12, color: '#4b5563' }}>Add your goals to track progress</div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 30, fontWeight: 800, color: '#f0f2fa', lineHeight: 1, marginBottom: 8 }}>{stats.goalsTotal}</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {stats.goalsComplete > 0 && (
+                  <span style={{ fontSize: 11, fontWeight: 600, background: '#0d2b1f', color: '#34d399', borderRadius: 20, padding: '2px 8px' }}>
+                    {stats.goalsComplete} done
+                  </span>
+                )}
+                {stats.goalsInProgress > 0 && (
+                  <span style={{ fontSize: 11, fontWeight: 600, background: '#1c1a0d', color: '#fbbf24', borderRadius: 20, padding: '2px 8px' }}>
+                    {stats.goalsInProgress} in progress
+                  </span>
+                )}
+                {stats.goalsTotal - stats.goalsComplete - stats.goalsInProgress > 0 && (
+                  <span style={{ fontSize: 11, fontWeight: 600, background: '#13151f', color: '#6b7280', borderRadius: 20, padding: '2px 8px' }}>
+                    {stats.goalsTotal - stats.goalsComplete - stats.goalsInProgress} not started
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+        </button>
+
+        {/* Latest Review */}
+        <button onClick={() => onNavigate('reviews')} style={{ ...sCard, cursor: 'pointer', textAlign: 'left', transition: 'border-color 0.15s' }}
+          onMouseEnter={e => (e.currentTarget.style.borderColor = '#4f46e5')}
+          onMouseLeave={e => (e.currentTarget.style.borderColor = '#1e2130')}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Latest Review</div>
+          {stats.latestReviewScore != null ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                <div style={{ fontSize: 30, fontWeight: 800, color: scoreColors[stats.latestReviewScore], lineHeight: 1 }}>{stats.latestReviewScore}</div>
+                <div style={{ display: 'flex', gap: 2 }}>
+                  {[1,2,3,4,5].map(n => (
+                    <Star key={n} size={12} color={n <= stats.latestReviewScore! ? scoreColors[stats.latestReviewScore!] : '#2a2d3e'}
+                      fill={n <= stats.latestReviewScore! ? scoreColors[stats.latestReviewScore!] : 'transparent'} />
+                  ))}
+                </div>
+              </div>
+              <div style={{ fontSize: 12, color: scoreColors[stats.latestReviewScore] }}>{scoreLabels[stats.latestReviewScore]}</div>
+              {stats.latestReviewDate && (
+                <div style={{ fontSize: 11, color: '#4b5563', marginTop: 4 }}>
+                  {new Date(stats.latestReviewDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#6b7280', marginBottom: 6 }}>None yet</div>
+              <div style={{ fontSize: 12, color: '#4b5563' }}>Your manager hasn&apos;t submitted a review</div>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Second row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
+        {/* Quarterly Check-in */}
+        <button onClick={() => onNavigate('checkins')} style={{ ...sCard, cursor: 'pointer', textAlign: 'left', transition: 'border-color 0.15s' }}
+          onMouseEnter={e => (e.currentTarget.style.borderColor = '#4f46e5')}
+          onMouseLeave={e => (e.currentTarget.style.borderColor = '#1e2130')}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>
+            {quarterLabel} Check-in
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            {stats.checkinSubmitted ? (
+              <span style={{ fontSize: 22 }}>✅</span>
+            ) : (
+              <span style={{ fontSize: 22 }}>💬</span>
+            )}
+            <div style={{ fontSize: 16, fontWeight: 700, color: stats.checkinSubmitted ? '#34d399' : '#fbbf24' }}>
+              {stats.checkinSubmitted ? 'Submitted' : 'Pending'}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: stats.checkinSubmitted ? '#0d2b1f' : '#1c1a0d', color: stats.checkinSubmitted ? '#34d399' : '#fbbf24' }}>
+              You: {stats.checkinSubmitted ? 'Done' : 'Pending'}
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: stats.checkinManagerSubmitted ? '#0d2b1f' : '#1e2130', color: stats.checkinManagerSubmitted ? '#34d399' : '#6b7280' }}>
+              Manager: {stats.checkinManagerSubmitted ? 'Done' : 'Pending'}
+            </span>
+          </div>
+        </button>
+
+        {/* Active Cycle */}
+        <div style={sCard}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Review Cycle</div>
+          {activeCycle ? (
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#f0f2fa', marginBottom: 12 }}>
+                {activeCycle.anniversary_year} Annual Review
+              </div>
+              {[
+                { label: 'Self-Assessment', open: activeCycle.sa_open_at, close: activeCycle.sa_close_at, done: saSubmitted },
+                { label: 'Manager Review', open: activeCycle.review_open_at, close: activeCycle.review_close_at, done: false },
+                { label: '1-on-1 Meeting', open: activeCycle.meeting_open_at, close: activeCycle.meeting_close_at, done: false },
+              ].map((phase, i) => {
+                const now = new Date()
+                const isActive = now >= new Date(phase.open) && now <= new Date(phase.close)
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: i < 2 ? '1px solid #1e2130' : 'none' }}>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: phase.done ? '#34d399' : isActive ? '#6366f1' : '#2a2d3e', boxShadow: isActive ? '0 0 6px #6366f1' : 'none', flexShrink: 0 }} />
+                    <span style={{ flex: 1, fontSize: 12, color: isActive ? '#f0f2fa' : phase.done ? '#6b7280' : '#9ca3af', fontWeight: isActive ? 600 : 400 }}>
+                      {phase.label}
+                    </span>
+                    {phase.done && <CheckCircle2 size={12} color="#34d399" />}
+                    {isActive && !phase.done && <span style={{ fontSize: 10, color: '#818cf8', fontWeight: 600 }}>Active</span>}
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#6b7280', marginBottom: 4 }}>No active cycle</div>
+              <div style={{ fontSize: 12, color: '#4b5563' }}>Your review cycle opens ~30 days before your work anniversary.</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div style={sCard}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 14 }}>Quick Actions</div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button onClick={() => onNavigate('self-assessment')}
+            style={{ padding: '8px 16px', background: '#1e2130', color: '#c4c9d4', border: '1px solid #2a2d3e', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FileText size={13} color="#818cf8" /> Self-Assessment
+          </button>
+          <button onClick={() => onNavigate('goals')}
+            style={{ padding: '8px 16px', background: '#1e2130', color: '#c4c9d4', border: '1px solid #2a2d3e', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Target size={13} color="#34d399" /> Goals
+          </button>
+          <button onClick={() => onNavigate('checkins')}
+            style={{ padding: '8px 16px', background: '#1e2130', color: '#c4c9d4', border: '1px solid #2a2d3e', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Sparkles size={13} color="#fbbf24" /> Check-in
+          </button>
+          <button onClick={() => onNavigate('feedback')}
+            style={{ padding: '8px 16px', background: '#1e2130', color: '#c4c9d4', border: '1px solid #2a2d3e', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Users size={13} color="#fb923c" /> 360 Feedback
+          </button>
+          <button onClick={() => onNavigate('reviews')}
+            style={{ padding: '8px 16px', background: '#1e2130', color: '#c4c9d4', border: '1px solid #2a2d3e', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <BarChart2 size={13} color="#a78bfa" /> Reviews
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function EmployeePortal({ profile, position, manager, initialSelfReview, initialDriveUrl, selfReviewId, activeCycle = null, unreadCount = 0 }: Props) {
   const router = useRouter()
-  const [page, setPage] = useState<Page>('self-assessment')
+  const [page, setPage] = useState<Page>('dashboard')
   const [collapsed, setCollapsed] = useState(false)
   const [step, setStep] = useState(0)
   const [review, setReview] = useState<SelfReview>(() => mergeReview(initialSelfReview))
@@ -2537,6 +2832,14 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
 
         {/* Content */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
+          {page === 'dashboard' && (
+            <EmployeeDashboardPanel
+              profile={profile}
+              activeCycle={activeCycle}
+              initialSelfReview={initialSelfReview}
+              onNavigate={setPage}
+            />
+          )}
           {page === 'self-assessment' && saLocked && (
             <div style={{ padding: '48px 32px', maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
               <div style={{ fontSize: 40, marginBottom: 16 }}>🔒</div>

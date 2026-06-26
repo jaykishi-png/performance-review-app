@@ -313,7 +313,7 @@ export function getRoleHomeRoute(role: Role): string {
   switch (role) {
     case 'admin': return '/admin'
     case 'dev_admin': return '/dev'
-    case 'manager': return '/performance-review'
+    case 'manager': return '/manager'
     case 'employee': return '/employee'
     default: return '/pending'
   }
