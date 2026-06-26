@@ -2811,22 +2811,22 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
       {/* ── Trigger Employee Cycle Modal ── */}
       {showTriggerModal && (() => {
         const activeIds = new Set(employeeCycles.filter(c => c.phase !== 'complete').map(c => c.employee_id))
-        const eligible = users.filter(u => u.role === 'employee' && u.is_active && !activeIds.has(u.id))
+        const eligible = users.filter(u => u.is_active && u.role !== 'pending' && !activeIds.has(u.id))
         return (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
             onClick={e => { if (e.target === e.currentTarget) { setShowTriggerModal(false); setTriggerError(null) } }}>
             <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 16, padding: '32px', width: 460 }}>
               <h2 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#f0f2fa' }}>Trigger Review Cycle</h2>
               <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
-                Manually start an annual review cycle for an employee. The self-assessment window opens immediately.
+                Manually start an annual review cycle for any user. The self-assessment window opens immediately.
               </p>
 
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>Employee</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>User</label>
               <select value={triggerEmployeeId} onChange={e => setTriggerEmployeeId(e.target.value)}
                 style={{ width: '100%', background: '#0d0f1a', border: '1px solid #2a2d3a', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: '#e5e7eb', marginBottom: 16, boxSizing: 'border-box' as const }}>
-                <option value=''>Select employee…</option>
+                <option value=''>Select user…</option>
                 {eligible.map(u => (
-                  <option key={u.id} value={u.id}>{u.name || u.email}{u.position ? ` — ${u.position}` : ''}</option>
+                  <option key={u.id} value={u.id}>{u.name || u.email}{u.position ? ` — ${u.position}` : ''}{u.role !== 'employee' ? ` (${ROLE_LABELS[u.role] ?? u.role})` : ''}</option>
                 ))}
               </select>
 
@@ -2843,7 +2843,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
               {eligible.length === 0 && (
                 <div style={{ marginBottom: 16, padding: '8px 12px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8, fontSize: 12, color: '#f59e0b' }}>
-                  All active employees already have an open review cycle.
+                  All active users already have an open review cycle.
                 </div>
               )}
 
