@@ -119,8 +119,12 @@ function annivDate(startDate: string): string {
   if (next < today) next.setFullYear(today.getFullYear() + 1)
   return next.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
-function yearsOfService(startDate: string): number {
-  return new Date().getFullYear() - new Date(startDate).getFullYear()
+function upcomingAnniversaryNumber(startDate: string): number {
+  const start = new Date(startDate + 'T00:00:00')
+  const today = new Date()
+  const thisYearAnniv = new Date(today.getFullYear(), start.getMonth(), start.getDate())
+  const annivYear = thisYearAnniv < today ? today.getFullYear() + 1 : today.getFullYear()
+  return annivYear - start.getFullYear()
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -603,7 +607,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const upcomingReviews = useMemo(() =>
     users
       .filter(u => u.start_date && u.is_active && u.role !== 'pending')
-      .map(u => ({ ...u, daysUntil: daysUntil(u.start_date!), annDate: annivDate(u.start_date!), years: yearsOfService(u.start_date!) + 1 }))
+      .map(u => ({ ...u, daysUntil: daysUntil(u.start_date!), annDate: annivDate(u.start_date!), years: upcomingAnniversaryNumber(u.start_date!) }))
       .filter(u => u.daysUntil <= 90)
       .sort((a, b) => a.daysUntil - b.daysUntil)
   , [users])
@@ -811,7 +815,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr>{['Employee', 'Role', 'Manager', 'Review Date', 'Year', 'Days Away', 'Reminder'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+              <thead><tr>{['Employee', 'Role', 'Manager', 'Start Date', 'Next Review', 'Year', 'Days Away', 'Reminder'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
               <tbody>
                 {upcomingReviews.map(u => {
                   const isUrgent = u.daysUntil <= 30
@@ -821,10 +825,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       <td style={td}><div style={{ fontWeight: 500, color: '#e5e7eb' }}>{u.name || '—'}</div><div style={{ fontSize: 11, color: '#6b7280', marginTop: 1 }}>{u.email}</div></td>
                       <td style={td}><span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500, background: `${ROLE_COLORS[u.role]}18`, color: ROLE_COLORS[u.role] }}>{ROLE_LABELS[u.role]}</span></td>
                       <td style={{ ...td, color: '#9ca3af' }}>{mgr ? (mgr.name || mgr.email) : <span style={{ color: '#374151' }}>Unassigned</span>}</td>
-                      <td style={{ ...td, color: '#c4c9d4', fontWeight: 500 }}>
-                        <div>{new Date(u.start_date! + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                        <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Next: {u.annDate}</div>
-                      </td>
+                      <td style={{ ...td, color: '#c4c9d4', fontWeight: 500 }}>{new Date(u.start_date! + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                      <td style={{ ...td, color: '#c4c9d4', fontWeight: 500 }}>{u.annDate}</td>
                       <td style={{ ...td, color: '#9ca3af' }}>Year {u.years}</td>
                       <td style={td}><span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: isUrgent ? '#92400e30' : '#1e2130', color: isUrgent ? '#f59e0b' : '#9ca3af' }}>{u.daysUntil === 0 ? 'Today!' : `${u.daysUntil}d`}</span></td>
                       <td style={td}><button onClick={() => copyReminder(u)} style={{ padding: '5px 12px', fontSize: 11, cursor: 'pointer', borderRadius: 6, background: reminderCopied === u.id ? '#0d2b1f' : 'transparent', color: reminderCopied === u.id ? '#34d399' : '#6b7280', border: `1px solid ${reminderCopied === u.id ? '#1a4a35' : '#2a2d3e'}` }}>{reminderCopied === u.id ? '✓ Copied' : '📋 Copy Reminder'}</button></td>
