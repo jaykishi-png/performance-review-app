@@ -41,6 +41,24 @@ export async function GET(req: NextRequest) {
         .limit(1)
         .single()
 
+      if (callerRole === 'dev_admin' && data) {
+        return NextResponse.json({
+          selfReview: {
+            id: (data as { id: string }).id,
+            employee_id: (data as { employee_id: string }).employee_id,
+            status: (data as { status: string }).status,
+            submitted_at: (data as { submitted_at: string | null }).submitted_at,
+            updated_at: (data as { updated_at: string }).updated_at,
+            overall_rating: (data as { overall_rating: number | null }).overall_rating,
+            competencies: (data as { competencies: unknown[] }).competencies,
+            goals_objectives: (data as { goals_objectives: unknown[] }).goals_objectives,
+            next_year_goals: (data as { next_year_goals: unknown[] }).next_year_goals,
+            drive_url: null,
+            _contentRedacted: true,
+          },
+        })
+      }
+
       return NextResponse.json({ selfReview: data ?? null })
     }
 

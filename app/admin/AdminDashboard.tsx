@@ -150,7 +150,15 @@ const STATUS_META = {
   not_started: { label: 'Not Started', color: '#6b7280', bg: '#13151f', border: '#2a2d3a' },
 }
 
-function PipAdminPanel() {
+function Redacted({ children }: { children?: React.ReactNode }) {
+  return (
+    <span style={{ background: '#0d0d0d', color: 'transparent', borderRadius: 3, userSelect: 'none', cursor: 'default', display: 'inline-block', lineHeight: 1.4, WebkitUserSelect: 'none' }}>
+      {children ?? '████████████████'}
+    </span>
+  )
+}
+
+function PipAdminPanel({ isDevAdmin }: { isDevAdmin?: boolean }) {
   const [pipPlans, setPipPlans] = useState<any[]>([])
   const [pipLoading, setPipLoading] = useState(true)
 
@@ -210,7 +218,7 @@ function PipAdminPanel() {
                       <div style={{ fontSize: 11, color: '#6b7280' }}>{emp?.email}</div>
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: 13, color: '#9ca3af' }}>{mgr?.name || mgr?.email}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#e5e7eb', maxWidth: 200 }}>{pip.title}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#e5e7eb', maxWidth: 200 }}>{isDevAdmin ? <Redacted>{pip.title}</Redacted> : pip.title}</td>
                     <td style={{ padding: '12px 16px', fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>{new Date(pip.start_date).toLocaleDateString()}</td>
                     <td style={{ padding: '12px 16px', fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>{new Date(pip.target_date).toLocaleDateString()}</td>
                     <td style={{ padding: '12px 16px', fontSize: 12, color: '#9ca3af' }}>{completed_m}/{milestones.length}</td>
@@ -1719,7 +1727,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   }
 
   function renderPipAdmin() {
-    return <PipAdminPanel />
+    return <PipAdminPanel isDevAdmin={isDevAdmin} />
   }
 
   function renderSettings() {
@@ -2940,11 +2948,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 </div>
                 <div style={{ fontSize: 12, color: '#4b5563' }}>Self-Assessment
                   {saData?.submitted_at && <> · Submitted {new Date(saData.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</>}
-                  {saData?.overall_rating && <> · {'★'.repeat(saData.overall_rating)} {['','Needs Improvement','Below Expectations','Meets Expectations','Exceeds Expectations','Outstanding'][saData.overall_rating]}</>}
+                  {!isDevAdmin && saData?.overall_rating && <> · {'★'.repeat(saData.overall_rating)} {['','Needs Improvement','Below Expectations','Meets Expectations','Exceeds Expectations','Outstanding'][saData.overall_rating]}</>}
+                  {isDevAdmin && saData?.overall_rating && <> · <Redacted>{'★'.repeat(saData.overall_rating)} {['','Needs Improvement','Below Expectations','Meets Expectations','Exceeds Expectations','Outstanding'][saData.overall_rating]}</Redacted></>}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {saData?.drive_url && <a href={saData.drive_url} target="_blank" rel="noopener noreferrer" style={{ padding: '6px 12px', background: '#0d1a13', color: '#34d399', border: '1px solid #1a4a35', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>Drive ↗</a>}
+                {!isDevAdmin && saData?.drive_url && <a href={saData.drive_url} target="_blank" rel="noopener noreferrer" style={{ padding: '6px 12px', background: '#0d1a13', color: '#34d399', border: '1px solid #1a4a35', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>Drive ↗</a>}
                 <button onClick={() => setViewingSA(null)} style={{ width: 28, height: 28, borderRadius: '50%', background: '#1e2130', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
               </div>
             </div>
@@ -2964,10 +2973,10 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                           <div key={i} style={{ background: '#0d1117', border: '1px solid #1e2130', borderLeft: `3px solid ${color}`, borderRadius: 8, padding: '12px 14px', marginBottom: 8 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                               <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: color + '20', color, border: `1px solid ${color}40` }}>{c.type === 'positive' ? 'Positive' : c.type === 'constructive' ? 'Constructive' : 'Choice'}</span>
-                              <span style={{ fontWeight: 600, fontSize: 13, color: '#e5e7eb' }}>{c.term}</span>
+                              <span style={{ fontWeight: 600, fontSize: 13, color: '#e5e7eb' }}>{isDevAdmin ? <Redacted>{c.term}</Redacted> : c.term}</span>
                             </div>
                             {c.examples.filter((e: string) => e.trim()).map((ex: string, ei: number) => (
-                              <div key={ei} style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6, marginBottom: 4, paddingLeft: 8, borderLeft: '2px solid #1e2130' }}>{ex}</div>
+                              <div key={ei} style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6, marginBottom: 4, paddingLeft: 8, borderLeft: '2px solid #1e2130' }}>{isDevAdmin ? <Redacted>{ex}</Redacted> : ex}</div>
                             ))}
                           </div>
                         )
@@ -2979,10 +2988,10 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Goals & Objectives</div>
                       {saData.goals_objectives.filter((g: {description:string}) => g.description.trim()).map((g: {description:string;outcome:string;reasoning:string}, i: number) => (
                         <div key={i} style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 8, padding: '12px 14px', marginBottom: 8 }}>
-                          <div style={{ fontSize: 13, color: '#e5e7eb', marginBottom: 6 }}>{g.description}</div>
+                          <div style={{ fontSize: 13, color: '#e5e7eb', marginBottom: 6 }}>{isDevAdmin ? <Redacted>{g.description}</Redacted> : g.description}</div>
                           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                             {g.outcome && <span style={{ fontSize: 11, color: g.outcome === 'successful' ? '#34d399' : g.outcome === 'ongoing' ? '#f59e0b' : '#f87171', fontWeight: 600 }}>{g.outcome === 'successful' ? '✓ Successful' : g.outcome === 'ongoing' ? '↻ Ongoing' : '✗ Unsuccessful'}</span>}
-                            {g.reasoning && <span style={{ fontSize: 11, color: '#6b7280' }}>{g.reasoning}</span>}
+                            {g.reasoning && <span style={{ fontSize: 11, color: '#6b7280' }}>{isDevAdmin ? <Redacted>{g.reasoning}</Redacted> : g.reasoning}</span>}
                           </div>
                         </div>
                       ))}
@@ -2993,8 +3002,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Next Year&apos;s Goals</div>
                       {saData.next_year_goals.filter((g: {goal:string}) => g.goal.trim()).map((g: {goal:string;objective:string}, i: number) => (
                         <div key={i} style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 8, padding: '12px 14px', marginBottom: 8 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{g.goal}</div>
-                          {g.objective && <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.5 }}>{g.objective}</div>}
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{isDevAdmin ? <Redacted>{g.goal}</Redacted> : g.goal}</div>
+                          {g.objective && <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.5 }}>{isDevAdmin ? <Redacted>{g.objective}</Redacted> : g.objective}</div>}
                         </div>
                       ))}
                     </div>
@@ -3022,7 +3031,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
               {(() => { const status = reviewStatus(viewingReview); const sm = STATUS_META[status]; return <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>{sm.label}</span> })()}
               <span style={{ fontSize: 12, color: '#6b7280' }}>Step {Math.min(viewingReview.max_step, TOTAL_CONTENT_STEPS)}/{TOTAL_CONTENT_STEPS}</span>
-              {viewingReview.drive_url && (
+              {!isDevAdmin && viewingReview.drive_url && (
                 <a href={viewingReview.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}>
                   Open in Drive ↗
                 </a>
@@ -3048,6 +3057,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               </div>
             </div>
             {/* Review content */}
+            {isDevAdmin && (
+              <div style={{ background: '#150d1a', border: '1px solid #4a2060', borderRadius: 8, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#f472b6' }}>
+                <span>🔒</span>
+                <span>Review content is restricted for Dev Admin access.</span>
+              </div>
+            )}
             {reviewFormLoading && (
               <div style={{ textAlign: 'center', padding: '24px 0', color: '#4b5563', fontSize: 13 }}>Loading review content…</div>
             )}
@@ -3146,7 +3161,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 </div>
               )
             })()}
-            {!reviewFormLoading && !reviewFormData && viewingReview.drive_url && (
+            {!isDevAdmin && !reviewFormLoading && !reviewFormData && viewingReview.drive_url && (
               <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '14px 18px', marginTop: 4 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Full Review Document</div>
                 <a href={viewingReview.drive_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#34d399', textDecoration: 'none' }}>Open in Google Drive ↗</a>
@@ -3297,7 +3312,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                             <span style={{ marginLeft: 'auto', padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>{sm.label}</span>
                           </div>
                           <div style={{ display: 'flex', gap: 14, fontSize: 11, color: '#6b7280', flexWrap: 'wrap' }}>
-                            {r.drive_url && <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8' }}>📄 View Doc</a>}
+                            {!isDevAdmin && r.drive_url && <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8' }}>📄 View Doc</a>}
                             {r.manager_signed_at && <span>✍️ Signed {new Date(r.manager_signed_at).toLocaleDateString()}</span>}
                             {r.admin_approved_at && <span>✅ Approved</span>}
                             <span>Updated {new Date(r.updated_at).toLocaleDateString()}</span>
@@ -3320,8 +3335,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                           <div key={g.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 10, padding: '14px 16px' }}>
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                               <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{g.title}</div>
-                                {g.description && <div style={{ fontSize: 12, color: '#9ca3af' }}>{g.description}</div>}
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{isDevAdmin ? <Redacted>{g.title}</Redacted> : g.title}</div>
+                                {g.description && <div style={{ fontSize: 12, color: '#9ca3af' }}>{isDevAdmin ? <Redacted>{g.description}</Redacted> : g.description}</div>}
                               </div>
                               <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 600, flexShrink: 0,
                                 background: g.status === 'complete' ? '#0d2b1f' : g.status === 'in_progress' ? '#1a1f3a' : '#13151f',
@@ -3355,10 +3370,10 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                                 {n.is_shared ? '👁 Shared' : '🔒 Private'}
                               </span>
                             </div>
-                            <div style={{ fontSize: 13, color: '#d1d5db', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{n.note}</div>
+                            <div style={{ fontSize: 13, color: '#d1d5db', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{isDevAdmin ? <Redacted>{n.note}</Redacted> : n.note}</div>
                             {n.tags?.length > 0 && (
                               <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                                {n.tags.map(tag => <span key={tag} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 10, background: '#1a1f3a', color: '#818cf8' }}>{tag}</span>)}
+                                {n.tags.map(tag => <span key={tag} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 10, background: '#1a1f3a', color: '#818cf8' }}>{isDevAdmin ? <Redacted>{tag}</Redacted> : tag}</span>)}
                               </div>
                             )}
                           </div>
