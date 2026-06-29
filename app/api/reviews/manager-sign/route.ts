@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
       .eq('id', user.id)
       .single()
     const role = (profile as { role: string; name: string | null; email: string } | null)?.role ?? 'pending'
-    if (role !== 'manager' && role !== 'admin') {
+    if (role !== 'manager' && role !== 'middle_manager' && role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

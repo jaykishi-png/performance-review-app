@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'dev_admin' | 'manager' | 'employee' | 'pending'
+export type Role = 'admin' | 'dev_admin' | 'manager' | 'middle_manager' | 'employee' | 'pending'
 
 export type Permission =
   | 'users.read.all'
@@ -289,10 +289,24 @@ const DEV_ADMIN_PERMISSIONS: Permission[] = [
   'profile.update.own',
 ]
 
+const MIDDLE_MANAGER_PERMISSIONS: Permission[] = [
+  ...MANAGER_PERMISSIONS,
+  'self_assessments.create.own',
+  'self_assessments.read.own',
+  'self_assessments.update.own',
+  'self_assessments.submit.own',
+  'self_assessments.withdraw.own.optional',
+  'review_cycles.read.own',
+  'review_status.read.own',
+  'notifications.read.own',
+  'drive.export.own.optional',
+]
+
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   admin: ADMIN_PERMISSIONS,
   dev_admin: DEV_ADMIN_PERMISSIONS,
   manager: MANAGER_PERMISSIONS,
+  middle_manager: MIDDLE_MANAGER_PERMISSIONS,
   employee: EMPLOYEE_PERMISSIONS,
   pending: [],
 }
@@ -314,6 +328,7 @@ export function getRoleHomeRoute(role: Role): string {
     case 'admin': return '/admin'
     case 'dev_admin': return '/admin'
     case 'manager': return '/performance-review'
+    case 'middle_manager': return '/performance-review'
     case 'employee': return '/employee'
     default: return '/pending'
   }

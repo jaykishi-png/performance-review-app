@@ -84,10 +84,10 @@ type Page = 'dashboard' | 'users' | 'reviews' | 'cycles' | 'analytics' | 'checki
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const ROLE_COLORS: Record<string, string> = {
-  admin: '#818cf8', dev_admin: '#f472b6', manager: '#34d399', employee: '#60a5fa', pending: '#f59e0b',
+  admin: '#818cf8', dev_admin: '#f472b6', manager: '#34d399', middle_manager: '#2dd4bf', employee: '#60a5fa', pending: '#f59e0b',
 }
 const ROLE_LABELS: Record<string, string> = {
-  admin: 'Admin', dev_admin: 'Dev Admin', manager: 'Manager', employee: 'Employee', pending: 'Pending',
+  admin: 'Admin', dev_admin: 'Dev Admin', manager: 'Manager', middle_manager: 'Mid Manager', employee: 'Employee', pending: 'Pending',
 }
 
 const NAV: { id: Page; label: string; icon: React.FC<{ size: number; color?: string }> }[] = [
@@ -253,7 +253,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   // Users state
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole, setInviteRole] = useState<'admin' | 'manager' | 'employee'>('employee')
+  const [inviteRole, setInviteRole] = useState<'admin' | 'manager' | 'middle_manager' | 'employee'>('employee')
   const [inviteManagerId, setInviteManagerId] = useState('')
   const [invitePosition, setInvitePosition] = useState('')
   const [inviteStartDate, setInviteStartDate] = useState('')
@@ -603,16 +603,16 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
-  const managers = users.filter(u => u.role === 'manager' || u.role === 'admin')
+  const managers = users.filter(u => u.role === 'manager' || u.role === 'middle_manager' || u.role === 'admin')
   const saMap = Object.fromEntries(selfAssessments.map(s => [s.employee_id, s]))
   const activeUsers = users.filter(u => u.is_active)
 
   const inviteRoleOptions = isDevAdmin
-    ? (['employee', 'manager'] as const)
-    : (['employee', 'manager', 'admin'] as const)
+    ? (['employee', 'manager', 'middle_manager'] as const)
+    : (['employee', 'manager', 'middle_manager', 'admin'] as const)
   const editRoleOptions = isDevAdmin
-    ? ['manager', 'employee', 'pending']
-    : ['admin', 'dev_admin', 'manager', 'employee', 'pending']
+    ? ['manager', 'middle_manager', 'employee', 'pending']
+    : ['admin', 'dev_admin', 'manager', 'middle_manager', 'employee', 'pending']
 
   const upcomingReviews = useMemo(() =>
     users
@@ -887,7 +887,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           <input value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Search by name or email…" style={{ ...inp, maxWidth: 280 }} />
           <select value={userRoleFilter} onChange={e => setUserRoleFilter(e.target.value)} style={{ ...inp, maxWidth: 150, appearance: 'none' }}>
             <option value="all">All roles</option>
-            {['admin', 'dev_admin', 'manager', 'employee', 'pending'].map(r => <option key={r} value={r}>{ROLE_LABELS[r] ?? r}</option>)}
+            {['admin', 'dev_admin', 'manager', 'middle_manager', 'employee', 'pending'].map(r => <option key={r} value={r}>{ROLE_LABELS[r] ?? r}</option>)}
           </select>
         </div>
 

@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     `)
     .order('created_at', { ascending: false })
 
-  if (role === 'manager') {
+  if (role === 'manager' || role === 'middle_manager') {
     query = employeeId
       ? query.eq('manager_id', user.id).eq('employee_id', employeeId)
       : query.eq('manager_id', user.id)

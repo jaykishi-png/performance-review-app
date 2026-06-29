@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft, LogOut, BookOpen, BookMarked, Bell, MessageSquare, Activity, TrendingUp, BarChart2, AlertCircle, LayoutDashboard } from 'lucide-react'
+import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft, LogOut, BookOpen, BookMarked, Bell, MessageSquare, Activity, TrendingUp, BarChart2, AlertCircle, LayoutDashboard, ExternalLink } from 'lucide-react'
 import { SignaturePad, SignatureDisplay, encodeSignature, type SignatureResult } from '@/components/SignaturePad'
 
 // ─── Competency glossary ──────────────────────────────────────────────────────
@@ -2091,7 +2091,7 @@ function DriveExportSection({
 }
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
-type SAData = { competencies: {type:string;term:string;examples:string[]}[]; goals_objectives: {description:string;outcome:string;reasoning:string}[]; next_year_goals: {goal:string;objective:string}[]; overall_rating: number|null; submitted_at: string|null; drive_url: string|null }
+type SAData = { competencies: {type:string;term:string;examples:string[];reflection?:string}[]; goals_objectives: {description:string;outcome:string;reasoning:string;reflection?:string;status?:string}[]; next_year_goals: {goal:string;objective:string}[]; overall_rating: number|null; submitted_at: string|null; drive_url: string|null; status?: string; strengths?: string; growth_areas?: string }
 
 // ─── ComparisonSection ────────────────────────────────────────────────────────
 
@@ -2631,7 +2631,7 @@ export function PerformanceReviewForm() {
   const [form, setForm] = useState<FormData>(defaultForm())
   const [saves, setSaves] = useState<SavedReview[]>([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [activePage, setActivePage] = useState<'dashboard' | 'reviews' | 'review-meeting' | 'history' | 'team' | 'guide' | 'glossary' | 'notes' | 'checkins' | 'peer-feedback' | 'pip' | 'nine-box'>('dashboard')
+  const [activePage, setActivePage] = useState<'dashboard' | 'reviews' | 'review-meeting' | 'history' | 'team' | 'guide' | 'glossary' | 'notes' | 'checkins' | 'peer-feedback' | 'pip' | 'nine-box' | 'my-sa' | 'my-review'>('dashboard')
   const [showNotifDropdown, setShowNotifDropdown] = useState(false)
   const [reviewsExpanded, setReviewsExpanded] = useState(true)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -2693,6 +2693,22 @@ export function PerformanceReviewForm() {
   const [rmEmpSigLoading, setRmEmpSigLoading] = useState(false)
   const [rmEmpSigError, setRmEmpSigError] = useState('')
 
+  // ── Middle manager "My Performance" state ────────────────────────────────────
+  const [myUserId, setMyUserId] = useState<string | null>(null)
+  const [mySAData, setMySAData] = useState<SAData | null>(null)
+  const [mySALoading, setMySALoading] = useState(false)
+  const [myReviews, setMyReviews] = useState<Array<{
+    id: string; employee_name: string; employee_position: string
+    form_data?: Record<string, unknown>; drive_url?: string | null
+    comparison_report?: string | null; manager_signed_at?: string | null
+    manager_signature?: string | null; employee_signed_at?: string | null
+    employee_signature?: string | null; meeting_confirmed_at?: string | null
+    admin_approved_at?: string | null
+  }>>([])
+  const [myReviewEmpSigLoading, setMyReviewEmpSigLoading] = useState(false)
+  const [myReviewEmpSigError, setMyReviewEmpSigError] = useState('')
+
+
   // ── Meeting SA auto-load (component level) ─────────────────────────────────
   async function loadMeetingSA(empId: string) {
     if (!empId) return
@@ -2744,6 +2760,19 @@ export function PerformanceReviewForm() {
     setRmEmpSigError('')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rmDetailId, activePage])
+
+  // Load own SA data for middle_manager "My Self-Assessment" page
+  useEffect(() => {
+    if (activePage !== 'my-sa' || profileRole !== 'middle_manager') return
+    setMySALoading(true)
+    setMySAData(null)
+    fetch('/api/self-reviews')
+      .then(r => r.json())
+      .then((data: { selfReview: SAData | null }) => { setMySAData(data.selfReview ?? null) })
+      .catch(() => { setMySAData(null) })
+      .finally(() => setMySALoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePage, profileRole])
 
   async function openSA(employeeId: string, employeeName: string, position: string) {
     setViewingSA({ employeeId, employeeName, position })
@@ -2830,6 +2859,7 @@ export function PerformanceReviewForm() {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
+          setMyUserId(user.id)
           setProfileEmail(user.email ?? '')
           const { data: profile } = await supabase.from('profiles').select('name, role').eq('id', user.id).single()
           if (profile) {
@@ -2843,7 +2873,25 @@ export function PerformanceReviewForm() {
       try {
         const res = await fetch('/api/reviews')
         if (res.ok) {
-          const { reviews: rawRows } = await res.json() as { reviews: Record<string, unknown>[] }
+          const json = await res.json() as { reviews: Record<string, unknown>[]; myReviews?: Record<string, unknown>[] }
+          const { reviews: rawRows } = json
+          // Middle manager: also store their own reviews (as employee)
+          if (json.myReviews) {
+            setMyReviews(json.myReviews.map(r => ({
+              id: r.id as string,
+              employee_name: r.employee_name as string,
+              employee_position: r.employee_position as string,
+              form_data: r.form_data as Record<string, unknown> | undefined,
+              drive_url: r.drive_url as string | null,
+              comparison_report: r.comparison_report as string | null,
+              manager_signed_at: r.manager_signed_at as string | null,
+              manager_signature: r.manager_signature as string | null,
+              employee_signed_at: r.employee_signed_at as string | null,
+              employee_signature: r.employee_signature as string | null,
+              meeting_confirmed_at: r.meeting_confirmed_at as string | null,
+              admin_approved_at: r.admin_approved_at as string | null,
+            })))
+          }
           const remote = rawRows.map(dbRowToSave)
           if (remote.length > 0) {
             // Merge with localStorage: keep non-null local values if DB returned null
@@ -3661,6 +3709,297 @@ export function PerformanceReviewForm() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Middle Manager: My Self-Assessment ──────────────────────────────────────
+  const renderMySA = () => {
+    const card = { background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 16 }
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 860, margin: '0 auto' }}>
+        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>My Self-Assessment</h1>
+        <p style={{ margin: '0 0 28px', fontSize: 13, color: '#6b7280' }}>Your own self-assessment form, submitted as part of your performance review with your manager.</p>
+
+        {mySALoading ? (
+          <div style={{ textAlign: 'center', padding: '48px', color: '#6b7280', fontSize: 13 }}>Loading…</div>
+        ) : !mySAData ? (
+          <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '48px 32px' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>No self-assessment yet</div>
+            <p style={{ margin: '0 0 20px', fontSize: 13, color: '#4b5563', lineHeight: 1.7 }}>Fill out your self-assessment in the Employee Portal. It will be shared with your manager as part of your review.</p>
+            <a href="/employee" style={{ display: 'inline-block', padding: '10px 24px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>Open Self-Assessment Form</a>
+          </div>
+        ) : (
+          <>
+            <div style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>Self-Assessment</div>
+                <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#6b7280' }}>
+                  <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                    background: mySAData.status === 'submitted' ? '#0d2b1f' : '#1a1c2e',
+                    color: mySAData.status === 'submitted' ? '#34d399' : '#818cf8',
+                    border: `1px solid ${mySAData.status === 'submitted' ? '#1a4a2e' : '#2a2d4e'}` }}>
+                    {mySAData.status === 'submitted' ? 'Submitted' : 'Draft'}
+                  </span>
+                  {mySAData.submitted_at && <span>Submitted {new Date(mySAData.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>}
+                  {mySAData.overall_rating && <span>{'★'.repeat(mySAData.overall_rating)} ({mySAData.overall_rating}/5)</span>}
+                </div>
+              </div>
+              <a href="/employee" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#13151f', color: '#818cf8', border: '1px solid #2a2d4e', borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+                {mySAData.status === 'submitted' ? 'View in Employee Portal' : 'Continue in Employee Portal'}
+              </a>
+            </div>
+
+            {/* Competencies */}
+            {(mySAData.competencies ?? []).filter(c => c.term).length > 0 && (
+              <div style={card}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>Competencies</div>
+                {(mySAData.competencies ?? []).filter(c => c.term).map((c, i) => (
+                  <div key={i} style={{ marginBottom: 14, paddingBottom: i < (mySAData.competencies ?? []).filter(c => c.term).length - 1 ? 14 : 0, borderBottom: i < (mySAData.competencies ?? []).filter(c => c.term).length - 1 ? '1px solid #1e2130' : 'none' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', marginBottom: 6 }}>{c.term}</div>
+                    {c.reflection && <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>{c.reflection}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Goals */}
+            {(mySAData.goals_objectives ?? []).filter(g => g.description?.trim()).length > 0 && (
+              <div style={card}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>Goals & Objectives</div>
+                {(mySAData.goals_objectives ?? []).filter(g => g.description?.trim()).map((g, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 10, paddingBottom: 10, borderBottom: i < (mySAData.goals_objectives ?? []).length - 1 ? '1px solid #1e2130' : 'none' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, color: '#e5e7eb', marginBottom: 4 }}>{g.description}</div>
+                      {g.reflection && <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>{g.reflection}</div>}
+                    </div>
+                    {g.status && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: g.status === 'met' ? '#0d2b1f' : g.status === 'exceeded' ? '#0d1a3a' : '#1f1c0d', color: g.status === 'met' ? '#34d399' : g.status === 'exceeded' ? '#60a5fa' : '#f59e0b', border: '1px solid transparent', flexShrink: 0 }}>{g.status}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Strengths / Growth */}
+            {(mySAData.strengths || mySAData.growth_areas) && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                {mySAData.strengths && (
+                  <div style={card}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Strengths</div>
+                    <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>{mySAData.strengths}</div>
+                  </div>
+                )}
+                {mySAData.growth_areas && (
+                  <div style={card}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Growth Areas</div>
+                    <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>{mySAData.growth_areas}</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // ── Middle Manager: My Performance Review ────────────────────────────────────
+  const renderMyReview = () => {
+    const card = { background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 16 }
+    const confirmedReviews = myReviews.filter(r => r.meeting_confirmed_at)
+    const latestConfirmed = confirmedReviews[0] ?? null
+
+    if (myReviews.length === 0) {
+      return (
+        <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>My Performance Review</h1>
+          <p style={{ margin: '0 0 28px', fontSize: 13, color: '#6b7280' }}>Your performance review from your manager, visible once it has been signed and approved.</p>
+          <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '48px 32px' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>📄</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>No performance reviews yet</div>
+            <p style={{ margin: 0, fontSize: 13, color: '#4b5563', lineHeight: 1.7 }}>Once your manager completes, signs, and admin approves your performance review, it will appear here.</p>
+          </div>
+        </div>
+      )
+    }
+
+    if (!latestConfirmed) {
+      return (
+        <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>My Performance Review</h1>
+          <p style={{ margin: '0 0 28px', fontSize: 13, color: '#6b7280' }}>Your performance review from your manager, visible once the meeting has been confirmed.</p>
+          <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '48px 32px' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>Awaiting meeting confirmation</div>
+            <p style={{ margin: 0, fontSize: 13, color: '#4b5563', lineHeight: 1.7 }}>Your review is ready. This panel will unlock once your manager confirms the performance review meeting has taken place.</p>
+          </div>
+        </div>
+      )
+    }
+
+    const mr = latestConfirmed
+    const fd = mr.form_data
+    const mgrCompetencies = fd ? [fd.competencyOne, fd.competencyTwo, fd.competencyThree, fd.competencyFour, fd.competencyFive].filter(Boolean) as Array<{ competency: string; examples: string[] }> : []
+    const bothSigned = !!(mr.manager_signed_at && mr.employee_signed_at)
+    const myEmpSig = mr.employee_signed_at ? { employee_signed_at: mr.employee_signed_at, employee_signature: mr.employee_signature ?? '' } : null
+
+    async function handleMyEmpSign(result: SignatureResult) {
+      if (!myUserId) return
+      setMyReviewEmpSigLoading(true)
+      setMyReviewEmpSigError('')
+      try {
+        const res = await fetch('/api/reviews/employee-sign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reviewId: mr.id, employeeSignature: encodeSignature(result) }),
+        })
+        const data = await res.json() as { ok?: boolean; signedAt?: string; error?: string }
+        if (!res.ok) throw new Error(data.error ?? 'Failed')
+        const signedAt = data.signedAt ?? new Date().toISOString()
+        setMyReviews(prev => prev.map(r => r.id === mr.id ? { ...r, employee_signed_at: signedAt, employee_signature: encodeSignature(result) } : r))
+      } catch (e) {
+        setMyReviewEmpSigError(String(e))
+      } finally {
+        setMyReviewEmpSigLoading(false)
+      }
+    }
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 1160, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 16 }}>
+          <div>
+            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>My Performance Review</h1>
+            <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>
+              Meeting confirmed {new Date(mr.meeting_confirmed_at!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              {fd?.appraisalPeriod ? <> · {String(fd.appraisalPeriod)}</> : null}
+            </p>
+          </div>
+          {mr.drive_url && (
+            <a href={mr.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#0d1a13', color: '#34d399', border: '1px solid #1a4a35', borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}>
+              <ExternalLink size={12} /> Drive Document
+            </a>
+          )}
+        </div>
+
+        {/* Side-by-side panels */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+          {/* Left: My Self-Assessment */}
+          <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 680, overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', background: '#120d1a', border: '1px solid #3b1f5e', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>My Self-Assessment</div>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#0d0f1a', border: '1px solid #3b1f5e', borderRadius: '0 0 10px 10px' }}>
+              {mySALoading ? (
+                <div style={{ textAlign: 'center', padding: '32px 16px', color: '#6b7280', fontSize: 13 }}>Loading…</div>
+              ) : !mySAData ? (
+                <div style={{ textAlign: 'center', padding: '32px 16px', color: '#6b7280', fontSize: 13 }}>
+                  <div style={{ fontSize: 24, marginBottom: 8 }}>📋</div>
+                  No self-assessment found.
+                </div>
+              ) : (
+                <>
+                  {(mySAData.competencies ?? []).filter(c => c.term).map((c, i) => (
+                    <div key={i} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: '1px solid #1e2130' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', marginBottom: 4 }}>{c.term}</div>
+                      {c.reflection && <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>{c.reflection}</div>}
+                    </div>
+                  ))}
+                  {(mySAData.goals_objectives ?? []).filter(g => g.description?.trim()).map((g, i) => (
+                    <div key={i} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #1e2130' }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{g.description}</div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        {g.status && <span style={{ padding: '1px 6px', borderRadius: 20, fontSize: 10, fontWeight: 600, background: '#1f1c0d', color: '#f59e0b' }}>{g.status}</span>}
+                        {g.reflection && <span style={{ fontSize: 11, color: '#6b7280' }}>{g.reflection}</span>}
+                      </div>
+                    </div>
+                  ))}
+                  {mySAData.overall_rating && <div style={{ fontSize: 13, color: '#f59e0b', marginTop: 8 }}>{'★'.repeat(mySAData.overall_rating)} Overall Rating</div>}
+                  {mySAData.strengths && <div style={{ marginTop: 12 }}><div style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', marginBottom: 4 }}>Strengths</div><div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>{mySAData.strengths}</div></div>}
+                  {mySAData.growth_areas && <div style={{ marginTop: 12 }}><div style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', marginBottom: 4 }}>Growth Areas</div><div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>{mySAData.growth_areas}</div></div>}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Manager's Review of Me */}
+          <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 680, overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', background: '#0d1523', border: '1px solid #1e3a5f', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Manager Performance Review</div>
+              {fd?.reviewDate ? <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Review Date: {String(fd.reviewDate)}</div> : null}
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#0d0f1a', border: '1px solid #1e3a5f', borderRadius: '0 0 10px 10px' }}>
+              {!fd ? (
+                <div style={{ textAlign: 'center', padding: '32px 16px', color: '#6b7280', fontSize: 13 }}>
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>📄</div>
+                  No review data available.
+                </div>
+              ) : (
+                <>
+                  {mgrCompetencies.map((c, i) => (
+                    <div key={i} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: '1px solid #1e2130' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', marginBottom: 4 }}>{c.competency}</div>
+                      {c.examples?.length > 0 && <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>{c.examples.map((ex, j) => <li key={j} style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>{ex}</li>)}</ul>}
+                    </div>
+                  ))}
+                  {fd.overallScore && <div style={{ fontSize: 13, fontWeight: 700, color: '#34d399', marginBottom: 12 }}>Overall Score: {fd.overallScore as number}/5</div>}
+                  {fd.overallSummary && <div style={{ marginBottom: 12 }}><div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', marginBottom: 4 }}>Summary</div><div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>{fd.overallSummary as string}</div></div>}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Comparison Report */}
+        {mr.comparison_report && (
+          <div style={{ ...card, marginBottom: 24 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>AI Comparison Report</div>
+            {mr.comparison_report.split('## ').filter(Boolean).map((section, i) => {
+              const [title, ...rest] = section.split('\n')
+              return (
+                <div key={i} style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#e5e7eb', marginBottom: 6 }}>{title?.trim()}</div>
+                  <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.7 }}>{rest.join('\n').trim()}</div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Signatures */}
+        <div style={{ ...card }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>Signatures</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Manager</div>
+              {mr.manager_signed_at ? (
+                <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                  <SignatureDisplay stored={mr.manager_signature ?? ''} date={mr.manager_signed_at} />
+                </div>
+              ) : (
+                <div style={{ padding: '12px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, fontSize: 13, color: '#6b7280' }}>Awaiting manager signature</div>
+              )}
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Employee (Me)</div>
+              {myEmpSig ? (
+                <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                  <SignatureDisplay stored={myEmpSig.employee_signature} date={myEmpSig.employee_signed_at ?? ''} />
+                </div>
+              ) : mr.manager_signed_at ? (
+                <>
+                  <SignaturePad onSign={handleMyEmpSign} loading={myReviewEmpSigLoading} error={myReviewEmpSigError} buttonLabel="✍️ Sign as Employee" />
+                </>
+              ) : (
+                <div style={{ padding: '12px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, fontSize: 13, color: '#6b7280' }}>Available after manager signs</div>
+              )}
+            </div>
+          </div>
+          {bothSigned && (
+            <div style={{ marginTop: 16, padding: '12px 16px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8, fontSize: 13, color: '#34d399', fontWeight: 600, textAlign: 'center' }}>
+              ✓ Both parties have signed this performance review.
             </div>
           )}
         </div>
@@ -5831,6 +6170,41 @@ export function PerformanceReviewForm() {
             )
           })()}
 
+          {/* My Performance (middle_manager only) */}
+          {profileRole === 'middle_manager' && (
+            <>
+              {!sidebarCollapsed && <div style={{ fontSize: 10, fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '10px 8px 4px', marginTop: 4 }}>My Performance</div>}
+              {(() => {
+                const active = activePage === 'my-sa'
+                const submitted = !!mySAData
+                return (
+                  <button onClick={() => setActivePage('my-sa')} title={sidebarCollapsed ? 'My Self-Assessment' : undefined}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #a78bfa' : '3px solid transparent', border: active ? '1px solid rgba(167,139,250,0.3)' : '1px solid transparent', background: active ? '#1a1330' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                    onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                    onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1a1330' : 'transparent' }}>
+                    <FileText size={15} color={active ? '#a78bfa' : '#6b7280'} />
+                    {!sidebarCollapsed && 'My Self-Assessment'}
+                    {submitted && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: '#34d399', color: '#0d1a13', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>✓</span>}
+                  </button>
+                )
+              })()}
+              {(() => {
+                const active = activePage === 'my-review'
+                const confirmedCount = myReviews.filter(r => r.meeting_confirmed_at).length
+                return (
+                  <button onClick={() => setActivePage('my-review')} title={sidebarCollapsed ? 'My Performance Review' : undefined}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #a78bfa' : '3px solid transparent', border: active ? '1px solid rgba(167,139,250,0.3)' : '1px solid transparent', background: active ? '#1a1330' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                    onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                    onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1a1330' : 'transparent' }}>
+                    <BarChart2 size={15} color={active ? '#a78bfa' : '#6b7280'} />
+                    {!sidebarCollapsed && 'My Performance Review'}
+                    {confirmedCount > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: '#10b981', color: '#0d1a13', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{confirmedCount}</span>}
+                  </button>
+                )
+              })()}
+            </>
+          )}
+
           {/* Manager Guide */}
           {(() => {
             const active = activePage === 'guide'
@@ -5914,7 +6288,7 @@ export function PerformanceReviewForm() {
       {/* ── Top header bar ── */}
       <header style={{ height: 52, flexShrink: 0, background: '#0d0f1a', borderBottom: '1px solid #1e2130', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', zIndex: 40 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: '#e0e7ff' }}>
-          {({ reviews: meetingDetailId ? `Performance Review — ${saves.find(s => s.id === meetingDetailId)?.employeeName ?? ''}` : currentReviewId ? (form.employeeName || 'Performance Review Forms') : 'Performance Review Forms', 'review-meeting': rmDetailId ? `Performance Review Meeting — ${saves.find(s => s.id === rmDetailId)?.employeeName ?? ''}` : 'Performance Review Meeting', history: 'History', team: 'Team Dashboard', guide: 'Manager Guide', glossary: 'Competency Glossary', notes: '1:1 Meetings', checkins: 'Check-ins', 'peer-feedback': 'Peer Reviews', pip: 'PIPs', 'nine-box': 'Nine-Box Grid' } as Record<string, string>)[activePage] ?? 'Performance Review Forms'}
+          {({ reviews: meetingDetailId ? `Performance Review — ${saves.find(s => s.id === meetingDetailId)?.employeeName ?? ''}` : currentReviewId ? (form.employeeName || 'Performance Review Forms') : 'Performance Review Forms', 'review-meeting': rmDetailId ? `Performance Review Meeting — ${saves.find(s => s.id === rmDetailId)?.employeeName ?? ''}` : 'Performance Review Meeting', history: 'History', team: 'Team Dashboard', guide: 'Manager Guide', glossary: 'Competency Glossary', notes: '1:1 Meetings', checkins: 'Check-ins', 'peer-feedback': 'Peer Reviews', pip: 'PIPs', 'nine-box': 'Nine-Box Grid', 'my-sa': 'My Self-Assessment', 'my-review': 'My Performance Review' } as Record<string, string>)[activePage] ?? 'Performance Review Forms'}
         </div>
         <div style={{ position: 'relative' }}>
           {(() => {
@@ -6775,6 +7149,12 @@ export function PerformanceReviewForm() {
 
         {/* ── Performance Review Meeting page ── */}
         {activePage === 'review-meeting' && renderReviewMeeting()}
+
+        {/* ── My Self-Assessment page (middle_manager) ── */}
+        {activePage === 'my-sa' && renderMySA()}
+
+        {/* ── My Performance Review page (middle_manager) ── */}
+        {activePage === 'my-review' && renderMyReview()}
 
         {/* ── 1:1 Meetings page ── */}
         {activePage === 'notes' && renderNotes()}
