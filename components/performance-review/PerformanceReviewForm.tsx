@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft, LogOut, BookOpen, BookMarked, Bell, MessageSquare, Activity, TrendingUp, BarChart2, AlertCircle } from 'lucide-react'
+import { Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft, LogOut, BookOpen, BookMarked, Bell, MessageSquare, Activity, TrendingUp, BarChart2, AlertCircle, LayoutDashboard } from 'lucide-react'
 import { SignaturePad, SignatureDisplay, encodeSignature, type SignatureResult } from '@/components/SignaturePad'
 
 // ─── Competency glossary ──────────────────────────────────────────────────────
@@ -2630,7 +2630,7 @@ export function PerformanceReviewForm() {
   const [form, setForm] = useState<FormData>(defaultForm())
   const [saves, setSaves] = useState<SavedReview[]>([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [activePage, setActivePage] = useState<'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notes' | 'checkins' | 'peer-feedback' | 'pip' | 'nine-box'>('reviews')
+  const [activePage, setActivePage] = useState<'dashboard' | 'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notes' | 'checkins' | 'peer-feedback' | 'pip' | 'nine-box'>('dashboard')
   const [showNotifDropdown, setShowNotifDropdown] = useState(false)
   const [reviewsExpanded, setReviewsExpanded] = useState(true)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -5223,6 +5223,20 @@ export function PerformanceReviewForm() {
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
           {!sidebarCollapsed && <div style={{ fontSize: 10, fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '4px 8px 6px' }}>Menu</div>}
 
+          {/* Dashboard */}
+          {(() => {
+            const active = activePage === 'dashboard'
+            return (
+              <button onClick={() => setActivePage('dashboard')} title={sidebarCollapsed ? 'Dashboard' : undefined}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #6366f1' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                <LayoutDashboard size={15} color={active ? '#818cf8' : '#6b7280'} />
+                {!sidebarCollapsed && 'Dashboard'}
+              </button>
+            )
+          })()}
+
           {/* Annual Reviews nav item — dropdown */}
           {(() => {
             const active = activePage === 'reviews'
@@ -5565,6 +5579,120 @@ export function PerformanceReviewForm() {
         </div>
       </header>
       <main style={{ flex: 1, overflow: 'auto', background: '#0b0d14', position: 'relative' }}>
+
+        {/* ── Dashboard page ── */}
+        {activePage === 'dashboard' && (() => {
+          const inProgress = saves.filter(s => { const p = reviewPct(s); return p > 0 && p < 100 })
+          const completed = saves.filter(s => reviewPct(s) === 100)
+          const saSubmitted = Object.values(dbTeamSaMap).filter(s => s.status === 'submitted').length
+          const saDraft = Object.values(dbTeamSaMap).filter(s => s.status === 'draft').length
+          const saNotStarted = dbTeam.filter(m => !dbTeamSaMap[m.id]).length
+          const activePips = pipPlans.filter(p => p.status === 'active').length
+          const statCard = (label: string, value: number | string, sub: string, accent: string) => (
+            <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '18px 20px', flex: '1 1 160px', minWidth: 140 }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: accent, marginBottom: 4 }}>{value}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#e0e7ff', marginBottom: 2 }}>{label}</div>
+              <div style={{ fontSize: 11, color: '#4b5563' }}>{sub}</div>
+            </div>
+          )
+          return (
+            <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
+              <div style={{ marginBottom: 24 }}>
+                <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Dashboard</h1>
+                <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>A snapshot of your team&apos;s performance review activity.</p>
+              </div>
+
+              {/* Stat cards */}
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 28 }}>
+                {statCard('Team Members', dbTeam.length, 'active direct reports', '#818cf8')}
+                {statCard('Reviews In Progress', inProgress.length, 'not yet exported', '#f59e0b')}
+                {statCard('Reviews Completed', completed.length, 'exported / signed', '#34d399')}
+                {statCard('SAs Submitted', saSubmitted, 'self-assessments received', '#60a5fa')}
+                {statCard('SAs In Draft', saDraft, 'started but not submitted', '#a78bfa')}
+                {statCard('SAs Not Started', saNotStarted, 'no self-assessment yet', '#6b7280')}
+                {activePips > 0 && statCard('Active PIPs', activePips, 'improvement plans in progress', '#f87171')}
+              </div>
+
+              {/* Team member review status table */}
+              <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflow: 'hidden', marginBottom: 24 }}>
+                <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e2130', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Users size={14} color="#818cf8" />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#e0e7ff' }}>Team Review Status</span>
+                </div>
+                {dbTeam.length === 0 ? (
+                  <div style={{ padding: '32px', textAlign: 'center', color: '#4b5563', fontSize: 13 }}>No team members found. Add direct reports to get started.</div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: '#0d0f1a' }}>
+                        {['Employee', 'Position', 'Self-Assessment', 'Annual Review', 'Goals'].map(h => (
+                          <th key={h} style={{ padding: '8px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dbTeam.map((member, idx) => {
+                        const sa = dbTeamSaMap[member.id]
+                        const review = saves.find(s => s.employeeId === member.id || s.employeeName === member.name)
+                        const pct = review ? reviewPct(review) : 0
+                        const goals = teamGoals[member.id]
+                        const saLabel = sa?.status === 'submitted' ? 'Submitted' : sa?.status === 'draft' ? 'Draft' : 'Not Started'
+                        const saColor = sa?.status === 'submitted' ? '#34d399' : sa?.status === 'draft' ? '#f59e0b' : '#4b5563'
+                        const reviewLabel = !review ? 'Not Started' : pct === 100 ? 'Complete' : `${pct}%`
+                        const reviewColor = !review ? '#4b5563' : pct === 100 ? '#34d399' : '#f59e0b'
+                        return (
+                          <tr key={member.id} style={{ borderTop: '1px solid #1e2130', background: idx % 2 === 0 ? 'transparent' : '#0d0f18' }}>
+                            <td style={{ padding: '10px 16px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                                  {(member.name || member.email).charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: 12, fontWeight: 500, color: '#e0e7ff' }}>{member.name || '—'}</div>
+                                  <div style={{ fontSize: 10, color: '#4b5563' }}>{member.email}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ padding: '10px 16px', fontSize: 12, color: '#9ca3af' }}>{member.position || '—'}</td>
+                            <td style={{ padding: '10px 16px' }}>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: saColor, background: `${saColor}18`, borderRadius: 6, padding: '2px 8px' }}>{saLabel}</span>
+                            </td>
+                            <td style={{ padding: '10px 16px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                {review && pct < 100 && (
+                                  <div style={{ width: 60, height: 4, background: '#1e2130', borderRadius: 2, overflow: 'hidden' }}>
+                                    <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg,#4f46e5,#7c3aed)', borderRadius: 2 }} />
+                                  </div>
+                                )}
+                                <span style={{ fontSize: 11, fontWeight: 600, color: reviewColor, background: `${reviewColor}18`, borderRadius: 6, padding: '2px 8px' }}>{reviewLabel}</span>
+                              </div>
+                            </td>
+                            <td style={{ padding: '10px 16px', fontSize: 12, color: goals ? '#9ca3af' : '#4b5563' }}>
+                              {goals ? `${goals.complete}/${goals.total} complete` : '—'}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Quick actions */}
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <button onClick={() => setActivePage('reviews')} style={{ padding: '9px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  Go to Annual Reviews
+                </button>
+                <button onClick={() => setActivePage('team')} style={{ padding: '9px 18px', background: '#13151f', color: '#9ca3af', border: '1px solid #1e2130', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  View Team
+                </button>
+                <button onClick={() => { setActivePage('checkins') }} style={{ padding: '9px 18px', background: '#13151f', color: '#9ca3af', border: '1px solid #1e2130', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  Check-ins
+                </button>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* ── History page ── */}
         {activePage === 'history' && (
