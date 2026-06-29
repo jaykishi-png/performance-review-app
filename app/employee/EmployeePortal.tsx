@@ -1486,13 +1486,31 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           ))}
         </div>
 
-        {!isSubmitted ? (
+        {!isSubmitted ? (() => {
+          const incompleteSteps = [1,2,3,4,5,6,7].filter(i => !isStepComplete(i, review))
+          const allComplete = incompleteSteps.length === 0
+          return (
           <div style={card}>
             <div style={{ fontWeight: 600, fontSize: 13, color: '#e5e7eb', marginBottom: 8 }}>Ready to submit?</div>
             <p style={{ margin: '0 0 16px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>Once submitted, your self-assessment is shared with your manager and cannot be edited. You&apos;ll then be able to export it to Google Drive.</p>
-            <button onClick={() => setSubmitConfirm(true)} style={{ width: '100%', padding: '11px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Submit Self-Assessment</button>
+            {!allComplete && (
+              <div style={{ marginBottom: 14, padding: '10px 14px', background: '#1a0f0f', border: '1px solid #7f1d1d', borderRadius: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#f87171', marginBottom: 6 }}>Please complete the following steps before submitting:</div>
+                <ul style={{ margin: 0, padding: '0 0 0 16px' }}>
+                  {incompleteSteps.map(i => (
+                    <li key={i} style={{ fontSize: 12, color: '#fca5a5', marginBottom: 2 }}>
+                      <button onClick={() => goStep(i)} style={{ background: 'none', border: 'none', color: '#fca5a5', cursor: 'pointer', padding: 0, fontSize: 12, textDecoration: 'underline' }}>
+                        {SA_STEPS[i].label}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <button onClick={() => setSubmitConfirm(true)} disabled={!allComplete} style={{ width: '100%', padding: '11px', background: allComplete ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e1e2e', color: allComplete ? '#fff' : '#4b4b6b', border: allComplete ? 'none' : '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: allComplete ? 'pointer' : 'not-allowed' }}>Submit Self-Assessment</button>
           </div>
-        ) : driveUrl ? (
+          )
+        })() : driveUrl ? (
           <div style={{ ...card, background: '#0d1a13', border: '1px solid #1a4a35' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <div style={{ fontSize: 22 }}>✅</div>
