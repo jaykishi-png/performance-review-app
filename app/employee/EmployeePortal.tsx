@@ -128,8 +128,8 @@ const SA_STEPS = [
 
 const NAV_ITEMS: { id: Page; label: string; icon: React.FC<{ size: number; color?: string }> }[] = [
   { id: 'dashboard',       label: 'Dashboard',            icon: Home       },
-  { id: 'self-assessment', label: 'Self Assessment',      icon: FileText   },
-  { id: 'reviews',         label: 'Performance Reviews',  icon: BarChart2  },
+  { id: 'self-assessment', label: 'Self Assessment Form',       icon: FileText   },
+  { id: 'reviews',         label: 'Performance Review Meeting', icon: BarChart2  },
   { id: 'timeline',        label: 'Review Timeline',      icon: History    },
   { id: 'goals',           label: 'Goals Tracker',        icon: Target     },
   { id: 'checkins',        label: 'Quarterly Check-ins',  icon: Sparkles   },
@@ -687,6 +687,9 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     employee_position: string
     overall_score: number | null
     drive_url: string | null
+    comparison_report: string | null
+    admin_approved_at: string | null
+    meeting_confirmed_at: string | null
     manager_signed_at: string
     manager_signature: string
     employee_signed_at: string | null
@@ -1556,215 +1559,317 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     return null
   }
 
-  // ── Page: Performance Reviews ─────────────────────────────────────────────
+  // ── Page: Performance Review Meeting ─────────────────────────────────────
   function renderReviewsPage() {
+    const confirmedReviews = managerReviews.filter(r => r.meeting_confirmed_at)
+    const latestConfirmed = confirmedReviews[0] ?? null
+
+    if (managerReviews.length === 0) {
+      return (
+        <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Performance Review Meeting</h1>
+          <p style={{ margin: '0 0 28px', fontSize: 13, color: '#6b7280' }}>Side-by-side view of your self-assessment and manager review, available once a meeting has been scheduled.</p>
+          <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '48px 32px' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>📅</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>No performance reviews yet</div>
+            <p style={{ margin: 0, fontSize: 13, color: '#4b5563', lineHeight: 1.7 }}>Once your manager completes and submits your performance review, this panel will show a side-by-side comparison of your self-assessment and their review.</p>
+          </div>
+        </div>
+      )
+    }
+
+    if (!latestConfirmed) {
+      return (
+        <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Performance Review Meeting</h1>
+          <p style={{ margin: '0 0 28px', fontSize: 13, color: '#6b7280' }}>Side-by-side view of your self-assessment and manager review, available once a meeting has been scheduled.</p>
+          <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '48px 32px' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>Awaiting meeting confirmation</div>
+            <p style={{ margin: 0, fontSize: 13, color: '#4b5563', lineHeight: 1.7 }}>Your manager review is ready. This panel will unlock once your manager confirms that the performance review meeting has taken place.</p>
+          </div>
+        </div>
+      )
+    }
+
+    const mr = latestConfirmed
+    const fd = mr.form_data
+    const bothSigned = !!(mr.manager_signed_at && mr.employee_signed_at)
+    const competencies = fd ? [fd.competencyOne, fd.competencyTwo, fd.competencyThree, fd.competencyFour, fd.competencyFive].filter(Boolean) as Array<{ competency: string; examples: string[] }> : []
+    const saCompetencies = review.competencies.filter(c => c.term)
+    const saGoals = review.goals_objectives.filter(g => g.description?.trim())
+    const saNextGoals = review.next_year_goals.filter(g => g.goal?.trim())
+
     return (
-      <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Performance Reviews</h1>
-        <p style={{ margin: '0 0 28px', fontSize: 13, color: '#6b7280' }}>Your submitted self-assessments and manager performance reviews.</p>
+      <div style={{ padding: '28px 32px', maxWidth: 1160, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 16 }}>
+          <div>
+            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Performance Review Meeting</h1>
+            <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>
+              Meeting confirmed {new Date(mr.meeting_confirmed_at!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              {fd?.appraisalPeriod && <> · {fd.appraisalPeriod}</>}
+            </p>
+          </div>
+          {mr.drive_url && (
+            <a href={mr.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#0d1a13', color: '#34d399', border: '1px solid #1a4a35', borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}>
+              <ExternalLink size={12} /> Drive Document
+            </a>
+          )}
+        </div>
 
-        <div style={{ fontWeight: 600, fontSize: 11, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Your Self-Assessments</div>
-        {isSubmitted ? (
-          <div style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 14, color: '#e5e7eb' }}>Self-Assessment</div>
-              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
-                Submitted {review.submitted_at ? new Date(review.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''}
-                {review.overall_rating && <> · <span style={{ color: STAR_LABELS[review.overall_rating].color }}>{'★'.repeat(review.overall_rating)}</span> {STAR_LABELS[review.overall_rating].label}</>}
-              </div>
+        {/* Side-by-side panels */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+          {/* Left: Self-Assessment */}
+          <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 680, overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', background: '#1a1430', border: '1px solid #4c1d95', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Your Self-Assessment</div>
+              {review.submitted_at && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Submitted {new Date(review.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
             </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              {driveUrl && <a href={driveUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}><ExternalLink size={12} /> Drive</a>}
-              <button onClick={() => { setPage('self-assessment'); setStep(8) }} style={{ padding: '6px 12px', background: '#13151f', color: '#9ca3af', border: '1px solid #1e2130', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>View</button>
-            </div>
-          </div>
-        ) : (
-          <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '32px' }}>
-            <div style={{ fontSize: 32, marginBottom: 10 }}>📋</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>No submitted self-assessments yet</div>
-            <button onClick={() => setPage('self-assessment')} style={{ padding: '8px 20px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Start Self-Assessment</button>
-          </div>
-        )}
-
-        <div style={{ fontWeight: 600, fontSize: 11, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '24px 0 10px' }}>Manager Performance Reviews</div>
-        {managerReviews.length === 0 ? (
-          <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '32px' }}>
-            <div style={{ fontSize: 32, marginBottom: 10 }}>📄</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>No reviews yet</div>
-            <p style={{ margin: 0, fontSize: 12, color: '#4b5563', lineHeight: 1.6 }}>When your manager completes and signs your performance review, it will appear here.</p>
-          </div>
-        ) : managerReviews.map(r => {
-          const isExpanded = expandedReviewId === r.id
-          const fd = r.form_data
-          const score = fd?.overallScore ?? r.overall_score ?? 0
-          const competencies = [fd?.competencyOne, fd?.competencyTwo, fd?.competencyThree, fd?.competencyFour, fd?.competencyFive].filter(Boolean) as Array<{ competency: string; examples: string[] }>
-          return (
-            <div key={r.id} style={{ ...card, marginBottom: 12, padding: 0, overflow: 'hidden' }}>
-              {/* Card header */}
-              <div style={{ padding: '16px 20px' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: '#e5e7eb', marginBottom: 4 }}>{new Date(r.manager_signed_at).getFullYear()} Performance Review</div>
-                    {r.employee_position && <div style={{ fontSize: 12, color: '#6b7280' }}>{r.employee_position}</div>}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
-                    {r.drive_url && <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}><ExternalLink size={12} /> Drive</a>}
-                    <button
-                      onClick={() => setExpandedReviewId(isExpanded ? null : r.id)}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: '#13151f', color: '#818cf8', border: '1px solid #2a2d3a', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      {isExpanded ? '▲ Hide Details' : '▼ View Details'}
-                    </button>
-                  </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#0d0f1a', border: '1px solid #4c1d95', borderRadius: '0 0 10px 10px' }}>
+              {!isSubmitted ? (
+                <div style={{ textAlign: 'center', padding: '32px 16px', color: '#6b7280', fontSize: 13 }}>
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
+                  No self-assessment submitted yet.
                 </div>
-                {/* Signatures */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: r.employee_signed_at ? 0 : 12 }}>
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Manager</div>
-                    <div style={{ padding: '10px 12px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
-                      <SignatureDisplay stored={r.manager_signature} date={r.manager_signed_at} />
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>You</div>
-                    {r.employee_signed_at ? (
-                      <div style={{ padding: '10px 12px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
-                        <SignatureDisplay stored={r.employee_signature} date={r.employee_signed_at} />
-                      </div>
-                    ) : (
-                      <div style={{ padding: '6px 10px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8, fontSize: 11, fontWeight: 600, color: '#f59e0b' }}>
-                        Awaiting your signature
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {!r.employee_signed_at && (
-                  signingId === r.id ? (
-                    <div style={{ background: '#0a0c14', border: '1px solid #2a2d3a', borderRadius: 10, padding: '16px' }}>
-                      <p style={{ margin: '0 0 12px', fontSize: 13, color: '#9ca3af' }}>By signing, you acknowledge that you have reviewed this performance evaluation and discussed it with your manager.</p>
-                      <SignaturePad
-                        onSign={result => handleEmployeeSign(r.id, result)}
-                        loading={signLoading}
-                        error={signError}
-                        buttonLabel="✍️ Sign & Acknowledge"
-                        onCancel={() => { setSigningId(null); setSignError('') }}
-                      />
-                    </div>
-                  ) : (
-                    <button onClick={() => { setSigningId(r.id); setSignError('') }} style={{ padding: '8px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                      ✍️ Sign &amp; Acknowledge
-                    </button>
-                  )
-                )}
-              </div>
-
-              {/* Expanded detail panel */}
-              {isExpanded && fd && (
-                <div style={{ background: '#0d1425', borderTop: '1px solid #1e2130', borderLeft: '3px solid #4f46e5', padding: '20px', borderBottomLeftRadius: 10, borderBottomRightRadius: 10 }}>
-
-                  {/* Overall Score */}
-                  {(score > 0 || fd.overallSummary) && (
-                    <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Overall Score</div>
-                      {score > 0 && (
-                        <div style={{ fontSize: 22, marginBottom: 6, letterSpacing: 2 }}>
-                          {Array.from({ length: 5 }, (_, i) => (
-                            <span key={i} style={{ color: i < score ? '#fbbf24' : '#374151' }}>{i < score ? '★' : '☆'}</span>
-                          ))}
-                          <span style={{ fontSize: 13, color: '#9ca3af', marginLeft: 8 }}>{score} / 5</span>
-                        </div>
-                      )}
-                      {fd.overallSummary && (
-                        <p style={{ margin: 0, fontSize: 13, color: '#d1d5db', lineHeight: 1.6 }}>{fd.overallSummary}</p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Goals */}
-                  {fd.goals && fd.goals.length > 0 && (
-                    <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Goals &amp; Objectives</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {fd.goals.map((g, i) => {
-                          const statusStyle =
-                            g.status === 'Successful' ? { bg: '#052e16', color: '#34d399', border: '#1a4a35' } :
-                            g.status === 'Unsuccessful' ? { bg: '#1f0a0a', color: '#f87171', border: '#4a1a1a' } :
-                            { bg: '#1f1a0d', color: '#fbbf24', border: '#92400e' }
-                          return (
-                            <div key={i} style={{ padding: '10px 12px', background: '#0a0c14', border: '1px solid #1e2130', borderRadius: 8 }}>
-                              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-                                <div style={{ fontSize: 13, color: '#e5e7eb', flex: 1 }}>{g.text}</div>
-                                {g.status && (
-                                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', background: statusStyle.bg, color: statusStyle.color, border: `1px solid ${statusStyle.border}`, borderRadius: 4, flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                    {g.status}
-                                  </span>
-                                )}
-                              </div>
-                              {g.explanation && (
-                                <div style={{ marginTop: 6, fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>{g.explanation}</div>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Competencies */}
-                  {competencies.length > 0 && (
-                    <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Competencies</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {competencies.map((c, i) => {
-                          const validExamples = (c.examples || []).filter(e => e && e.trim()).slice(0, 3)
-                          return (
-                            <div key={i} style={{ padding: '12px 14px', background: '#0a0c14', border: '1px solid #1e2130', borderRadius: 8 }}>
-                              <div style={{ fontSize: 13, fontWeight: 700, color: '#c7d2fe', marginBottom: validExamples.length ? 8 : 0 }}>{c.competency}</div>
-                              {validExamples.length > 0 && (
-                                <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                  {validExamples.map((ex, j) => (
-                                    <li key={j} style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.5 }}>{ex}</li>
-                                  ))}
-                                </ul>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Next Year's Goals */}
-                  {fd.nextGoals && fd.nextGoals.length > 0 && (
-                    <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Next Year&apos;s Goals</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {fd.nextGoals.map((ng, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, padding: '10px 12px', background: '#0a0c14', border: '1px solid #1e2130', borderRadius: 8 }}>
-                            <div style={{ fontSize: 13, color: '#e5e7eb', flex: 1 }}>{ng.text}</div>
-                            {ng.targetDate && (
-                              <span style={{ fontSize: 11, color: '#818cf8', flexShrink: 0 }}>Target: {ng.targetDate}</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Drive Document */}
-                  {r.drive_url && (
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {saCompetencies.length > 0 && (
                     <div>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Drive Document</div>
-                      <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: 'linear-gradient(135deg,#4f46e5,#6d28d9)', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-                        <ExternalLink size={14} /> Open Google Doc →
-                      </a>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Competencies</div>
+                      {saCompetencies.map((c, i) => {
+                        const col = c.type === 'positive' ? '#10b981' : c.type === 'constructive' ? '#f97316' : '#818cf8'
+                        return (
+                          <div key={i} style={{ background: '#13151f', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{c.term}</div>
+                            {c.examples.filter(e => e.trim()).map((ex, ei) => (
+                              <div key={ei} style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.5, marginBottom: 2 }}>{ex}</div>
+                            ))}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                  {saGoals.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Goals &amp; Objectives</div>
+                      {saGoals.map((g, i) => (
+                        <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                          <div style={{ fontSize: 12, color: '#e5e7eb', marginBottom: 4 }}>{g.description}</div>
+                          {g.outcome && <span style={{ fontSize: 11, fontWeight: 600, color: g.outcome === 'successful' ? '#34d399' : g.outcome === 'ongoing' ? '#f59e0b' : '#f87171' }}>{g.outcome}</span>}
+                          {g.reasoning && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{g.reasoning}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {review.overall_rating !== null && review.overall_rating !== undefined && review.overall_rating > 0 && (
+                    <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Self Rating</span>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: '#a78bfa' }}>{'★'.repeat(review.overall_rating)}{'☆'.repeat(5 - review.overall_rating)}</span>
+                      <span style={{ fontSize: 12, color: '#9ca3af' }}>{STAR_LABELS[review.overall_rating]?.label}</span>
+                    </div>
+                  )}
+                  {review.strengths?.trim() && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Strengths</div>
+                      <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6, background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px' }}>{review.strengths}</div>
+                    </div>
+                  )}
+                  {review.growth_areas?.trim() && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Growth Areas</div>
+                      <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6, background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px' }}>{review.growth_areas}</div>
+                    </div>
+                  )}
+                  {saNextGoals.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Next Year&apos;s Goals</div>
+                      {saNextGoals.map((g, i) => (
+                        <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 2 }}>{g.goal}</div>
+                          {g.objective && <div style={{ fontSize: 11, color: '#9ca3af' }}>{g.objective}</div>}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
               )}
             </div>
-          )
-        })}
+          </div>
+
+          {/* Right: Manager Performance Review */}
+          <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 680, overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', background: '#0d1523', border: '1px solid #1e3a5f', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Manager Performance Review</div>
+              {fd?.reviewDate && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Review Date: {fd.reviewDate}</div>}
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#0d0f1a', border: '1px solid #1e3a5f', borderRadius: '0 0 10px 10px' }}>
+              {!fd ? (
+                <div style={{ textAlign: 'center', padding: '32px 16px', color: '#6b7280', fontSize: 13 }}>
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>📄</div>
+                  No review data available.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {fd.supervisorName && (
+                    <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 14px' }}>
+                      <div style={{ fontSize: 11, color: '#6b7280' }}>Supervisor: {fd.supervisorName}</div>
+                    </div>
+                  )}
+                  {competencies.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Competencies</div>
+                      {competencies.map((c, i) => (
+                        <div key={i} style={{ background: '#13151f', border: '1px solid #1e3a5f', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{c.competency}</div>
+                          {(c.examples || []).filter(e => e && e.trim()).map((ex, ei) => (
+                            <div key={ei} style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.5, marginBottom: 2 }}>{ei + 1}. {ex}</div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {fd.goals && fd.goals.filter(g => g.text?.trim()).length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Goals &amp; Objectives</div>
+                      {fd.goals.filter(g => g.text?.trim()).map((g, i) => (
+                        <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                          <div style={{ fontSize: 12, color: '#e5e7eb', marginBottom: 2 }}>{g.text}</div>
+                          {g.status && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: g.status === 'Successful' ? '#0d2b1f' : g.status === 'Unsuccessful' ? '#1f0d0d' : '#1f1a0d', color: g.status === 'Successful' ? '#34d399' : g.status === 'Unsuccessful' ? '#f87171' : '#f59e0b' }}>{g.status}</span>}
+                          {g.explanation && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>{g.explanation}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {(fd.overallScore ?? 0) > 0 && (
+                    <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Manager Score</span>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: '#60a5fa' }}>{'★'.repeat(fd.overallScore ?? 0)}{'☆'.repeat(5 - (fd.overallScore ?? 0))}</span>
+                    </div>
+                  )}
+                  {fd.overallSummary?.trim() && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Overall Summary</div>
+                      <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6, background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px' }}>{fd.overallSummary}</div>
+                    </div>
+                  )}
+                  {fd.nextGoals && fd.nextGoals.filter(g => g.text?.trim()).length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Next Year&apos;s Goals</div>
+                      {fd.nextGoals.filter(g => g.text?.trim()).map((g, i) => (
+                        <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 2 }}>{g.text}</div>
+                          {g.targetDate && <div style={{ fontSize: 11, color: '#6b7280' }}>Target: {g.targetDate}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Comparison Report */}
+        {mr.comparison_report && (
+          <div style={{ ...card, marginBottom: 24 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#f0f2fa', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 18 }}>🔀</span> Comparison Report
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {mr.comparison_report.split(/\n(?=## )/).map((section, idx) => {
+                const lines = section.split('\n')
+                const heading = lines[0].replace(/^## /, '')
+                const body = lines.slice(1).join('\n').trim()
+                return (
+                  <div key={idx} style={{ padding: '14px 16px', background: idx % 2 === 0 ? '#0d0f1a' : '#0a0c14', borderRadius: 8, borderLeft: '3px solid #4f46e5' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#818cf8', marginBottom: 6 }}>{heading}</div>
+                    <div style={{ fontSize: 13, color: '#d1d5db', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{body}</div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Signatures */}
+        <div style={{ ...card }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#f0f2fa', marginBottom: 16 }}>Signatures</div>
+          {bothSigned ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Manager</div>
+                <div style={{ padding: '10px 12px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                  <SignatureDisplay stored={mr.manager_signature} date={mr.manager_signed_at} />
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>You</div>
+                <div style={{ padding: '10px 12px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                  <SignatureDisplay stored={mr.employee_signature ?? ''} date={mr.employee_signed_at ?? ''} />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Manager</div>
+                  <div style={{ padding: '10px 12px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                    <SignatureDisplay stored={mr.manager_signature} date={mr.manager_signed_at} />
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>You</div>
+                  {mr.employee_signed_at ? (
+                    <div style={{ padding: '10px 12px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                      <SignatureDisplay stored={mr.employee_signature ?? ''} date={mr.employee_signed_at} />
+                    </div>
+                  ) : (
+                    <div style={{ padding: '8px 10px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8, fontSize: 11, fontWeight: 600, color: '#f59e0b' }}>
+                      Awaiting your signature
+                    </div>
+                  )}
+                </div>
+              </div>
+              {!mr.employee_signed_at && (
+                signingId === mr.id ? (
+                  <div style={{ background: '#0a0c14', border: '1px solid #2a2d3a', borderRadius: 10, padding: '16px' }}>
+                    <p style={{ margin: '0 0 12px', fontSize: 13, color: '#9ca3af' }}>By signing, you acknowledge that you have reviewed this performance evaluation and discussed it with your manager.</p>
+                    <SignaturePad
+                      onSign={result => handleEmployeeSign(mr.id, result)}
+                      loading={signLoading}
+                      error={signError}
+                      buttonLabel="✍️ Sign &amp; Acknowledge"
+                      onCancel={() => { setSigningId(null); setSignError('') }}
+                    />
+                  </div>
+                ) : (
+                  <button onClick={() => { setSigningId(mr.id); setSignError('') }} style={{ padding: '8px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start' }}>
+                    ✍️ Sign &amp; Acknowledge
+                  </button>
+                )
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Additional reviews (if more than one confirmed) */}
+        {confirmedReviews.length > 1 && (
+          <div style={{ marginTop: 24 }}>
+            <div style={{ fontWeight: 600, fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Previous Meetings</div>
+            {confirmedReviews.slice(1).map(r => (
+              <div key={r.id} style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb' }}>{r.form_data?.appraisalPeriod || new Date(r.manager_signed_at).getFullYear() + ' Review'}</div>
+                  <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Meeting: {new Date(r.meeting_confirmed_at!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+                </div>
+                {r.drive_url && (
+                  <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}><ExternalLink size={12} /> Drive</a>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     )
   }
