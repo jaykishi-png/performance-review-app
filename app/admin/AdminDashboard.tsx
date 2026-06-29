@@ -282,6 +282,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [profileNotes, setProfileNotes] = useState<Array<{id:string;meeting_date:string;note:string;tags:string[];is_shared:boolean}>>([])
   const [profileDataLoading, setProfileDataLoading] = useState(false)
   const [exportingUserId, setExportingUserId] = useState<string | null>(null)
+  const [confirmDeactivateUser, setConfirmDeactivateUser] = useState<UserRecord | null>(null)
   const [saData, setSAData] = useState<SAData|null>(null)
   const [viewingReview, setViewingReview] = useState<ReviewRecord|null>(null)
   const [viewingComparison, setViewingComparison] = useState<ReviewRecord|null>(null)
@@ -1014,9 +1015,15 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                         👤 Profile
                       </button>
                       {u.id !== currentUser.id && (
-                        <button onClick={() => toggleActive(u.id, u.is_active)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: u.is_active ? '#f87171' : '#34d399', border: `1px solid ${u.is_active ? '#5c2020' : '#0d2b1f'}`, borderRadius: 6, cursor: 'pointer' }}>
-                          {u.is_active ? 'Deactivate' : 'Reactivate'}
-                        </button>
+                        u.is_active ? (
+                          <button onClick={() => setConfirmDeactivateUser(u)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: '#f87171', border: '1px solid #5c2020', borderRadius: 6, cursor: 'pointer' }}>
+                            Deactivate
+                          </button>
+                        ) : (
+                          <button onClick={() => toggleActive(u.id, false)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: '#34d399', border: '1px solid #0d2b1f', borderRadius: 6, cursor: 'pointer' }}>
+                            Reactivate
+                          </button>
+                        )
                       )}
                     </div>
                   </td>
@@ -3256,6 +3263,43 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   </div>
                 )
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Deactivation Confirmation Modal ── */}
+      {confirmDeactivateUser && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={e => { if (e.target === e.currentTarget) setConfirmDeactivateUser(null) }}>
+          <div style={{ background: '#0d0f1a', border: '1px solid #3b1010', borderRadius: 14, padding: '28px 32px', maxWidth: 440, width: '90%' }}>
+            <div style={{ fontSize: 28, marginBottom: 10 }}>⚠️</div>
+            <h2 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: '#f0f2fa' }}>Deactivate {confirmDeactivateUser.name || confirmDeactivateUser.email}?</h2>
+            <p style={{ margin: '0 0 20px', fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>
+              This will remove their access to the portal. Their data will be retained. You can reactivate them at any time.
+            </p>
+            <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b', marginBottom: 6 }}>Before deactivating, consider exporting their data</div>
+              <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280' }}>
+                Export all reviews, self-assessments, check-ins, 1:1 notes, PIPs, and audit logs as a JSON archive.
+              </p>
+              <button
+                onClick={() => exportUserData(confirmDeactivateUser.id, confirmDeactivateUser.name || confirmDeactivateUser.email)}
+                disabled={exportingUserId === confirmDeactivateUser.id}
+                style={{ padding: '7px 14px', fontSize: 12, fontWeight: 600, background: '#1e2130', color: exportingUserId === confirmDeactivateUser.id ? '#4b5563' : '#818cf8', border: '1px solid #2a2d3a', borderRadius: 7, cursor: exportingUserId === confirmDeactivateUser.id ? 'default' : 'pointer' }}>
+                {exportingUserId === confirmDeactivateUser.id ? '⏳ Exporting…' : '⬇ Export User Data'}
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setConfirmDeactivateUser(null)}
+                style={{ padding: '9px 20px', fontSize: 13, fontWeight: 500, background: 'transparent', color: '#9ca3af', border: '1px solid #2a2d3a', borderRadius: 8, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button
+                onClick={async () => { await toggleActive(confirmDeactivateUser.id, true); setConfirmDeactivateUser(null) }}
+                style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, background: '#5c2020', color: '#f87171', border: '1px solid #7c2020', borderRadius: 8, cursor: 'pointer' }}>
+                Deactivate
+              </button>
             </div>
           </div>
         </div>

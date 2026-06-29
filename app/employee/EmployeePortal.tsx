@@ -687,6 +687,8 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     employee_position: string
     overall_score: number | null
     drive_url: string | null
+    comparison_report: string | null
+    admin_approved_at: string | null
     manager_signed_at: string
     manager_signature: string
     employee_signed_at: string | null
@@ -2075,71 +2077,98 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
 
   // ── Page: Review Timeline ──────────────────────────────────────────────────
   function renderTimelinePage() {
-    const events: { icon: string; label: string; time: string; color: string; sortKey: string }[] = []
     const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    if (review.submitted_at) events.push({ icon: '✅', label: 'Self-assessment submitted', time: fmtDate(review.submitted_at), color: '#34d399', sortKey: review.submitted_at })
-    if (driveUrl) events.push({ icon: '📤', label: 'Exported to Google Drive', time: 'Recent', color: '#818cf8', sortKey: '9999' })
-    if (review.status === 'draft') events.push({ icon: '💾', label: 'Draft in progress', time: 'Auto-saved', color: '#f59e0b', sortKey: '0000' })
+    const mr = managerReviews[0] ?? null
 
-    // Manager review events
-    if (managerReviews.length > 0) {
-      const mr = managerReviews[0]
-      events.push({ icon: '📝', label: 'Manager review completed', time: fmtDate(mr.manager_signed_at), color: '#818cf8', sortKey: mr.manager_signed_at })
-      if (mr.employee_signed_at) {
-        events.push({ icon: '✍️', label: 'You signed your review', time: fmtDate(mr.employee_signed_at), color: '#34d399', sortKey: mr.employee_signed_at })
-      } else {
-        events.push({ icon: '🔘', label: 'Awaiting your signature', time: 'Pending', color: '#f59e0b', sortKey: 'pending-signature' })
-      }
-    } else if (review.submitted_at) {
-      events.push({ icon: '🔘', label: 'Manager review', time: 'Pending', color: '#4b5563', sortKey: 'pending-mr' })
-    }
+    type Stage = { icon: string; label: string; time: string | null; done: boolean }
+    const stages: Stage[] = [
+      {
+        icon: '📝',
+        label: 'Self-Assessment Submitted',
+        time: review.submitted_at ? fmtDate(review.submitted_at) : null,
+        done: !!review.submitted_at,
+      },
+      {
+        icon: '📤',
+        label: 'Self-Assessment Exported to Google Drive',
+        time: driveUrl ? 'Completed' : null,
+        done: !!driveUrl,
+      },
+      {
+        icon: '📋',
+        label: 'Manager Performance Review Submitted',
+        time: mr?.manager_signed_at ? fmtDate(mr.manager_signed_at) : null,
+        done: !!mr?.manager_signed_at,
+      },
+      {
+        icon: '📤',
+        label: 'Manager Review Exported to Google Drive',
+        time: mr?.drive_url ? 'Completed' : null,
+        done: !!mr?.drive_url,
+      },
+      {
+        icon: '🔄',
+        label: 'Performance Comparison Generated',
+        time: mr?.comparison_report ? 'Completed' : null,
+        done: !!mr?.comparison_report,
+      },
+      {
+        icon: '📅',
+        label: 'Annual Performance Review Meeting Confirmed',
+        time: mr?.manager_signed_at ? fmtDate(mr.manager_signed_at) : null,
+        done: !!mr?.manager_signed_at,
+      },
+      {
+        icon: '✍️',
+        label: 'Manager Signed',
+        time: mr?.manager_signed_at ? fmtDate(mr.manager_signed_at) : null,
+        done: !!mr?.manager_signed_at,
+      },
+      {
+        icon: '✅',
+        label: 'Employee Signed',
+        time: mr?.employee_signed_at ? fmtDate(mr.employee_signed_at) : null,
+        done: !!mr?.employee_signed_at,
+      },
+      {
+        icon: '🔒',
+        label: 'Admin Closed Review',
+        time: mr?.admin_approved_at ? fmtDate(mr.admin_approved_at) : null,
+        done: !!mr?.admin_approved_at,
+      },
+    ]
 
-    // Quarterly check-in events
-    for (const qn of [1, 2, 3]) {
-      const ci = allCheckins.find(c => c.quarter === qn)
-      if (ci?.employee_submitted_at) {
-        events.push({ icon: '📋', label: `Q${qn} Check-in Submitted`, time: fmtDate(ci.employee_submitted_at), color: '#34d399', sortKey: ci.employee_submitted_at })
-      } else {
-        events.push({ icon: '🔘', label: `Q${qn} Check-in`, time: 'Pending', color: '#4b5563', sortKey: `pending-q${qn}` })
-      }
-      if (ci?.manager_submitted_at) {
-        events.push({ icon: '👤', label: `Q${qn} Manager Check-in`, time: fmtDate(ci.manager_submitted_at), color: '#818cf8', sortKey: ci.manager_submitted_at })
-      }
-    }
-
-    // Sort: real timestamps first (ISO strings sort lexicographically), pending/special last
-    events.sort((a, b) => {
-      const aReal = /^\d{4}-\d{2}-\d{2}/.test(a.sortKey)
-      const bReal = /^\d{4}-\d{2}-\d{2}/.test(b.sortKey)
-      if (aReal && bReal) return a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0
-      if (aReal) return -1
-      if (bReal) return 1
-      return a.sortKey < b.sortKey ? -1 : 1
-    })
+    // Find the first incomplete stage to mark as "In Progress"
+    const firstPendingIdx = stages.findIndex(s => !s.done)
 
     return (
       <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
         <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Review Timeline</h1>
-        <p style={{ margin: '0 0 28px', fontSize: 13, color: '#6b7280' }}>A chronological log of your review activity and milestones.</p>
-        {events.length === 0 ? (
-          <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '32px' }}>
-            <div style={{ fontSize: 32, marginBottom: 10 }}>🕐</div>
-            <div style={{ fontSize: 14, color: '#9ca3af' }}>No activity recorded yet</div>
-          </div>
-        ) : (
-          <div style={{ position: 'relative' }}>
-            <div style={{ position: 'absolute', left: 19, top: 8, bottom: 8, width: 2, background: '#1e2130' }} />
-            {events.map((e, i) => (
-              <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 16, position: 'relative' }}>
-                <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#13151f', border: `2px solid ${e.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, zIndex: 1 }}>{e.icon}</div>
-                <div style={{ flex: 1, padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 10 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb' }}>{e.label}</div>
-                  <div style={{ fontSize: 11, color: '#6b7280', marginTop: 3 }}>{e.time}</div>
+        <p style={{ margin: '0 0 28px', fontSize: 13, color: '#6b7280' }}>Your annual performance review progress from start to close.</p>
+        <div style={{ position: 'relative' }}>
+          <div style={{ position: 'absolute', left: 19, top: 8, bottom: 8, width: 2, background: '#1e2130' }} />
+          {stages.map((s, i) => {
+            const isNext = i === firstPendingIdx
+            const isPast = i < firstPendingIdx || (firstPendingIdx === -1)
+            const dotColor = s.done ? '#34d399' : isNext ? '#f59e0b' : '#1e2130'
+            const dotBorder = s.done ? '#34d399' : isNext ? '#f59e0b' : '#374151'
+            return (
+              <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 14, position: 'relative', opacity: !s.done && !isNext ? 0.45 : 1 }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: s.done ? 'rgba(52,211,153,0.12)' : '#0d0f1a', border: `2px solid ${dotBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0, zIndex: 1 }}>
+                  {s.done ? '✓' : s.icon}
+                </div>
+                <div style={{ flex: 1, padding: '10px 14px', background: '#13151f', border: `1px solid ${s.done ? 'rgba(52,211,153,0.2)' : isNext ? 'rgba(245,158,11,0.25)' : '#1e2130'}`, borderRadius: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: s.done ? '#e5e7eb' : isNext ? '#fbbf24' : '#6b7280' }}>{s.label}</div>
+                    {isNext && <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.15)', borderRadius: 4, padding: '1px 6px' }}>UP NEXT</span>}
+                    {s.done && <span style={{ fontSize: 10, fontWeight: 700, color: '#34d399', background: 'rgba(52,211,153,0.12)', borderRadius: 4, padding: '1px 6px' }}>DONE</span>}
+                  </div>
+                  <div style={{ fontSize: 11, color: s.done ? '#34d399' : '#4b5563', marginTop: 3 }}>{s.done && s.time ? s.time : isNext ? 'Awaiting completion' : 'Upcoming'}</div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            )
+          })}
+        </div>
       </div>
     )
   }
