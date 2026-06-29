@@ -2063,6 +2063,19 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     if (driveUrl) events.push({ icon: '📤', label: 'Exported to Google Drive', time: 'Recent', color: '#818cf8', sortKey: '9999' })
     if (review.status === 'draft') events.push({ icon: '💾', label: 'Draft in progress', time: 'Auto-saved', color: '#f59e0b', sortKey: '0000' })
 
+    // Manager review events
+    if (managerReviews.length > 0) {
+      const mr = managerReviews[0]
+      events.push({ icon: '📝', label: 'Manager review completed', time: fmtDate(mr.manager_signed_at), color: '#818cf8', sortKey: mr.manager_signed_at })
+      if (mr.employee_signed_at) {
+        events.push({ icon: '✍️', label: 'You signed your review', time: fmtDate(mr.employee_signed_at), color: '#34d399', sortKey: mr.employee_signed_at })
+      } else {
+        events.push({ icon: '🔘', label: 'Awaiting your signature', time: 'Pending', color: '#f59e0b', sortKey: 'pending-signature' })
+      }
+    } else if (review.submitted_at) {
+      events.push({ icon: '🔘', label: 'Manager review', time: 'Pending', color: '#4b5563', sortKey: 'pending-mr' })
+    }
+
     // Quarterly check-in events
     for (const qn of [1, 2, 3]) {
       const ci = allCheckins.find(c => c.quarter === qn)

@@ -269,6 +269,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [profileGoals, setProfileGoals] = useState<Array<{id:string;title:string;status:string;target_date:string|null;description:string|null}>>([])
   const [profileNotes, setProfileNotes] = useState<Array<{id:string;meeting_date:string;note:string;tags:string[];is_shared:boolean}>>([])
   const [profileDataLoading, setProfileDataLoading] = useState(false)
+  const [exportingUserId, setExportingUserId] = useState<string | null>(null)
   const [saData, setSAData] = useState<SAData|null>(null)
   const [viewingReview, setViewingReview] = useState<ReviewRecord|null>(null)
   const [viewingComparison, setViewingComparison] = useState<ReviewRecord|null>(null)
@@ -713,6 +714,24 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
   async function toggleActive(userId: string, isActive: boolean) {
     await updateField(userId, { is_active: !isActive })
+  }
+
+  async function exportUserData(userId: string, userName: string) {
+    setExportingUserId(userId)
+    try {
+      const res = await fetch(`/api/admin/export-user-data?userId=${userId}`)
+      if (!res.ok) { alert('Export failed'); return }
+      const data = await res.json()
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `user-data-export-${(userName || userId).replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setExportingUserId(null)
+    }
   }
 
   async function openProfile(u: UserRecord) {
@@ -3241,6 +3260,13 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 <div style={{ fontSize: 16, fontWeight: 700, color: '#f0f2fa' }}>{profileUser.name || profileUser.email}</div>
                 <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{profileUser.position || 'No position'}{profileUser.division ? ` · ${profileUser.division}` : ''}</div>
               </div>
+              <button
+                onClick={() => exportUserData(profileUser.id, profileUser.name || profileUser.email)}
+                disabled={exportingUserId === profileUser.id}
+                title="Export all user data as JSON"
+                style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, background: '#13151f', color: exportingUserId === profileUser.id ? '#4b5563' : '#818cf8', border: '1px solid #2a2d3a', borderRadius: 7, cursor: exportingUserId === profileUser.id ? 'default' : 'pointer' }}>
+                {exportingUserId === profileUser.id ? '⏳ Exporting…' : '⬇ Export Data'}
+              </button>
               <button onClick={() => setProfileUser(null)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
             </div>
 
