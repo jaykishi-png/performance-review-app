@@ -19,16 +19,19 @@ export async function GET(req: NextRequest) {
     const role = await getActorRole(user.id)
     const serviceClient = createServiceClient()
 
-    // Single-review fetch — always returns full form_data
+    // Single-review fetch — returns full form_data; dev_admin gets form_data but no comparison_report/drive_url
     const singleId = new URL(req.url).searchParams.get('id')
     if (singleId) {
       const query = serviceClient
         .from('reviews')
         .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id')
         .eq('id', singleId)
-      if (role !== 'admin') query.eq('user_id', user.id)
+      if (role !== 'admin' && role !== 'dev_admin') query.eq('user_id', user.id)
       const { data, error } = await query.single()
       if (error || !data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      if (role === 'dev_admin') {
+        return NextResponse.json({ review: { ...(data as Record<string, unknown>), comparison_report: null, drive_url: null, _contentRedacted: true } })
+      }
       return NextResponse.json({ review: data })
     }
 

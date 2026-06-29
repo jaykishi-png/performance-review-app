@@ -3057,12 +3057,6 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               </div>
             </div>
             {/* Review content */}
-            {isDevAdmin && (
-              <div style={{ background: '#150d1a', border: '1px solid #4a2060', borderRadius: 8, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#f472b6' }}>
-                <span>🔒</span>
-                <span>Review content is restricted for Dev Admin access.</span>
-              </div>
-            )}
             {reviewFormLoading && (
               <div style={{ textAlign: 'center', padding: '24px 0', color: '#4b5563', fontSize: 13 }}>Loading review content…</div>
             )}
@@ -3090,9 +3084,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   {/* Header info */}
                   {(fd.supervisorName || fd.appraisalPeriod || fd.reviewDate) && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                      {fd.supervisorName && <div style={{ background: '#0d0f1a', borderRadius: 7, padding: '9px 13px' }}><div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Supervisor</div><div style={{ fontSize: 12, color: '#c4c9d4' }}>{fd.supervisorName}</div></div>}
-                      {fd.appraisalPeriod && <div style={{ background: '#0d0f1a', borderRadius: 7, padding: '9px 13px' }}><div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Period</div><div style={{ fontSize: 12, color: '#c4c9d4' }}>{fd.appraisalPeriod}</div></div>}
-                      {fd.reviewDate && <div style={{ background: '#0d0f1a', borderRadius: 7, padding: '9px 13px' }}><div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Review Date</div><div style={{ fontSize: 12, color: '#c4c9d4' }}>{fd.reviewDate}</div></div>}
+                      {fd.supervisorName && <div style={{ background: '#0d0f1a', borderRadius: 7, padding: '9px 13px' }}><div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Supervisor</div><div style={{ fontSize: 12, color: '#c4c9d4' }}>{isDevAdmin ? <Redacted>{fd.supervisorName}</Redacted> : fd.supervisorName}</div></div>}
+                      {fd.appraisalPeriod && <div style={{ background: '#0d0f1a', borderRadius: 7, padding: '9px 13px' }}><div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Period</div><div style={{ fontSize: 12, color: '#c4c9d4' }}>{isDevAdmin ? <Redacted>{fd.appraisalPeriod}</Redacted> : fd.appraisalPeriod}</div></div>}
+                      {fd.reviewDate && <div style={{ background: '#0d0f1a', borderRadius: 7, padding: '9px 13px' }}><div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Review Date</div><div style={{ fontSize: 12, color: '#c4c9d4' }}>{isDevAdmin ? <Redacted>{fd.reviewDate}</Redacted> : fd.reviewDate}</div></div>}
                     </div>
                   )}
                   {/* Competencies */}
@@ -3103,11 +3097,11 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                         {competencies.map((c, ci) => (
                           <div key={ci} style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px' }}>
                             <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{c.label}</div>
-                            <div style={{ fontSize: 13, color: '#e0e4f0', fontWeight: 600, marginBottom: 8 }}>{c.data!.competency}</div>
+                            <div style={{ fontSize: 13, color: '#e0e4f0', fontWeight: 600, marginBottom: 8 }}>{isDevAdmin ? <Redacted>{c.data!.competency}</Redacted> : c.data!.competency}</div>
                             {c.data!.examples.filter(Boolean).map((ex, ei) => (
                               <div key={ei} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
                                 <span style={{ color: '#6366f1', flexShrink: 0, marginTop: 1 }}>•</span>
-                                <span style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>{ex}</span>
+                                <span style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>{isDevAdmin ? <Redacted>{ex}</Redacted> : ex}</span>
                               </div>
                             ))}
                           </div>
@@ -3123,19 +3117,19 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                         {fd.goals.filter(g => g.text).map((g, gi) => (
                           <div key={gi} style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px' }}>
                             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: g.explanation ? 8 : 0 }}>
-                              <div style={{ fontSize: 13, color: '#e0e4f0', fontWeight: 600, flex: 1 }}>{g.text}</div>
+                              <div style={{ fontSize: 13, color: '#e0e4f0', fontWeight: 600, flex: 1 }}>{isDevAdmin ? <Redacted>{g.text}</Redacted> : g.text}</div>
                               {g.status && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12, flexShrink: 0, background: g.status === 'Met' ? 'rgba(52,211,153,0.12)' : g.status === 'Exceeded' ? 'rgba(99,102,241,0.15)' : 'rgba(251,191,36,0.12)', color: g.status === 'Met' ? '#34d399' : g.status === 'Exceeded' ? '#818cf8' : '#fbbf24' }}>{g.status}</span>}
                             </div>
-                            {g.explanation && <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>{g.explanation}</div>}
+                            {g.explanation && <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>{isDevAdmin ? <Redacted>{g.explanation}</Redacted> : g.explanation}</div>}
                           </div>
                         ))}
                         {fd.overallScore != null && fd.overallScore > 0 && (
                           <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 16 }}>
                             <div>
                               <div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Overall Score</div>
-                              <div style={{ fontSize: 22, fontWeight: 700, color: '#818cf8' }}>{fd.overallScore}<span style={{ fontSize: 13, color: '#4b5563' }}>/5</span></div>
+                              <div style={{ fontSize: 22, fontWeight: 700, color: '#818cf8' }}>{isDevAdmin ? <Redacted>{String(fd.overallScore)}</Redacted> : fd.overallScore}<span style={{ fontSize: 13, color: '#4b5563' }}>{isDevAdmin ? '' : '/5'}</span></div>
                             </div>
-                            {fd.overallSummary && <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6, flex: 1 }}>{fd.overallSummary}</div>}
+                            {fd.overallSummary && <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6, flex: 1 }}>{isDevAdmin ? <Redacted>{fd.overallSummary}</Redacted> : fd.overallSummary}</div>}
                           </div>
                         )}
                       </div>
@@ -3150,9 +3144,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                           <div key={gi} style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                             <div style={{ display: 'flex', gap: 8 }}>
                               <span style={{ color: '#6366f1', flexShrink: 0, marginTop: 1 }}>•</span>
-                              <span style={{ fontSize: 13, color: '#c4c9d4', lineHeight: 1.6 }}>{g.text}</span>
+                              <span style={{ fontSize: 13, color: '#c4c9d4', lineHeight: 1.6 }}>{isDevAdmin ? <Redacted>{g.text}</Redacted> : g.text}</span>
                             </div>
-                            {g.targetDate && <span style={{ fontSize: 11, color: '#6b7280', flexShrink: 0, marginTop: 2 }}>Target: {g.targetDate}</span>}
+                            {g.targetDate && <span style={{ fontSize: 11, color: '#6b7280', flexShrink: 0, marginTop: 2 }}>Target: {isDevAdmin ? <Redacted>{g.targetDate}</Redacted> : g.targetDate}</span>}
                           </div>
                         ))}
                       </div>
