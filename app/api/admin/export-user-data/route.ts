@@ -296,9 +296,9 @@ export async function GET(req: NextRequest) {
     // ── PIPs ──────────────────────────────────────────────────────────────────
     const pipsAsManager = (pipsAsManagerRes.data ?? []) as Record<string, unknown>[]
     const pipsAsEmployee = (pipsAsEmployeeRes.data ?? []) as Record<string, unknown>[]
-    const allPips = [
-      ...pipsAsManager.map(p => ({ ...p, _role: 'Manager' as const })),
-      ...pipsAsEmployee.map(p => ({ ...p, _role: 'Employee' as const })),
+    const allPips: (Record<string, unknown> & { _role: string })[] = [
+      ...pipsAsManager.map(p => ({ ...p, _role: 'Manager' })),
+      ...pipsAsEmployee.map(p => ({ ...p, _role: 'Employee' })),
     ]
     sectionTitle(doc, `Performance Improvement Plans (${allPips.length})`)
     if (allPips.length === 0) {
