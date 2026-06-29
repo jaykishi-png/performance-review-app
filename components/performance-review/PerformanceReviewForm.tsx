@@ -206,6 +206,7 @@ interface SavedReview {
   employeeId?: string
   managerSignedAt?: string
   managerSignature?: string
+  meetingConfirmedAt?: string
 }
 
 /** Returns true if a step's required fields are filled — independent of current position. */
@@ -2630,7 +2631,7 @@ export function PerformanceReviewForm() {
   const [form, setForm] = useState<FormData>(defaultForm())
   const [saves, setSaves] = useState<SavedReview[]>([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [activePage, setActivePage] = useState<'dashboard' | 'reviews' | 'history' | 'team' | 'guide' | 'glossary' | 'notes' | 'checkins' | 'peer-feedback' | 'pip' | 'nine-box'>('dashboard')
+  const [activePage, setActivePage] = useState<'dashboard' | 'reviews' | 'review-meeting' | 'history' | 'team' | 'guide' | 'glossary' | 'notes' | 'checkins' | 'peer-feedback' | 'pip' | 'nine-box'>('dashboard')
   const [showNotifDropdown, setShowNotifDropdown] = useState(false)
   const [reviewsExpanded, setReviewsExpanded] = useState(true)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -2682,6 +2683,16 @@ export function PerformanceReviewForm() {
   const [meetingDriveError, setMeetingDriveError] = useState('')
   const [teamTab, setTeamTab] = useState<'overview'|'reviews'>('overview')
 
+  // ── Review Meeting page state ────────────────────────────────────────────────
+  const [rmDetailId, setRmDetailId] = useState<string | null>(null)
+  const [rmSAData, setRmSAData] = useState<SAData | null>(null)
+  const [rmSALoading, setRmSALoading] = useState(false)
+  const [rmConfirmLoading, setRmConfirmLoading] = useState(false)
+  const [rmMgrSigLoading, setRmMgrSigLoading] = useState(false)
+  const [rmMgrSigError, setRmMgrSigError] = useState('')
+  const [rmEmpSigLoading, setRmEmpSigLoading] = useState(false)
+  const [rmEmpSigError, setRmEmpSigError] = useState('')
+
   // ── Meeting SA auto-load (component level) ─────────────────────────────────
   async function loadMeetingSA(empId: string) {
     if (!empId) return
@@ -2715,6 +2726,25 @@ export function PerformanceReviewForm() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meetingDetailId, activePage])
 
+  useEffect(() => {
+    if (activePage !== 'review-meeting' || !rmDetailId) return
+    const save = saves.find(s => s.id === rmDetailId)
+    if (save?.employeeId) {
+      setRmSALoading(true)
+      setRmSAData(null)
+      fetch(`/api/self-reviews?employeeId=${save.employeeId}`)
+        .then(r => r.json())
+        .then((data: { selfReview: SAData | null }) => { setRmSAData(data.selfReview ?? null) })
+        .catch(() => { setRmSAData(null) })
+        .finally(() => setRmSALoading(false))
+    }
+    setRmMgrSigLoading(false)
+    setRmMgrSigError('')
+    setRmEmpSigLoading(false)
+    setRmEmpSigError('')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rmDetailId, activePage])
+
   async function openSA(employeeId: string, employeeName: string, position: string) {
     setViewingSA({ employeeId, employeeName, position })
     setSAData(null)
@@ -2743,6 +2773,7 @@ export function PerformanceReviewForm() {
       employeeId: (r.employee_id as string) || undefined,
       managerSignedAt: (r.manager_signed_at as string) || undefined,
       managerSignature: (r.manager_signature as string) || undefined,
+      meetingConfirmedAt: (r.meeting_confirmed_at as string) || undefined,
     }
   }
 
@@ -3277,6 +3308,364 @@ export function PerformanceReviewForm() {
 
   const toggleNewNoteTag = (tagId: string) => {
     setNewNoteTags(prev => prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId])
+  }
+
+  const renderReviewMeeting = () => {
+    const meetingSaves = saves.filter(s => s.managerSignedAt || s.driveUrl || s.maxStep >= 8)
+
+    // ── LIST VIEW ────────────────────────────────────────────────────────────
+    if (!rmDetailId) {
+      return (
+        <div style={{ padding: '28px 32px', maxWidth: 1000, margin: '0 auto' }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Performance Review Meeting</h1>
+          <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>Conduct the review meeting with each employee — view side-by-side comparisons, confirm the meeting took place, and capture signatures.</p>
+
+          {meetingSaves.length === 0 ? (
+            <div style={{ padding: '40px 32px', background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, textAlign: 'center', color: '#6b7280' }}>
+              <div style={{ fontSize: 32, marginBottom: 10 }}>📅</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>No reviews ready for a meeting yet</div>
+              <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>Complete and sign a performance review form first, then return here to conduct the meeting.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {meetingSaves.map(s => {
+                const empSig = reviewSignatures[s.id]
+                const bothSigned = !!(s.managerSignedAt && empSig?.employee_signed_at)
+                const confirmed = !!s.meetingConfirmedAt
+                let status: string, statusColor: string, statusBg: string, statusBorder: string
+                if (bothSigned) {
+                  status = 'Both Signed'; statusColor = '#34d399'; statusBg = '#0d2b1f'; statusBorder = '#1a4a35'
+                } else if (s.managerSignedAt && !empSig?.employee_signed_at) {
+                  status = 'Awaiting Employee Signature'; statusColor = '#f59e0b'; statusBg = '#2a1f00'; statusBorder = '#4a3300'
+                } else if (confirmed) {
+                  status = 'Meeting Confirmed'; statusColor = '#60a5fa'; statusBg = '#0d1523'; statusBorder = '#1e3a5f'
+                } else {
+                  status = 'Pending Meeting'; statusColor = '#6b7280'; statusBg = '#13151f'; statusBorder = '#2a2d3a'
+                }
+                return (
+                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: confirmed ? '#0d1a13' : '#1e2130', border: confirmed ? '2px solid #34d399' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: confirmed ? '#34d399' : '#6b7280', flexShrink: 0 }}>
+                        {s.employeeName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e7eb' }}>{s.employeeName}</div>
+                        <div style={{ fontSize: 12, color: '#6b7280' }}>{s.employeePosition}{s.managerSignedAt ? ` · Signed ${new Date(s.managerSignedAt).toLocaleDateString()}` : ''}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: statusBg, border: `1px solid ${statusBorder}`, color: statusColor, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{status}</span>
+                      <button
+                        onClick={() => setRmDetailId(s.id)}
+                        style={{ padding: '7px 16px', background: '#1e2130', border: '1px solid #2d3148', borderRadius: 8, color: '#c7d0f8', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        Open →
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    // ── DETAIL VIEW ──────────────────────────────────────────────────────────
+    const rmSave = saves.find(s => s.id === rmDetailId)
+    if (!rmSave) {
+      return (
+        <div style={{ padding: '28px 32px' }}>
+          <button onClick={() => setRmDetailId(null)} style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: 13, marginBottom: 16, padding: 0 }}>← Back to Performance Review Meeting</button>
+          <div style={{ color: '#6b7280' }}>Review not found.</div>
+        </div>
+      )
+    }
+
+    const rmEmpSig = reviewSignatures[rmSave.id]
+    const rmBothSigned = !!(rmSave.managerSignedAt && rmEmpSig?.employee_signed_at)
+    const rmConfirmed = !!rmSave.meetingConfirmedAt
+    const rmForm = rmSave.form
+
+    async function handleRmMgrSign(result: SignatureResult) {
+      setRmMgrSigLoading(true)
+      setRmMgrSigError('')
+      try {
+        const res = await fetch('/api/reviews/manager-sign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reviewId: rmSave!.id, managerSignature: encodeSignature(result) }),
+        })
+        const data = await res.json() as { ok?: boolean; signedAt?: string; error?: string }
+        if (!res.ok) throw new Error(data.error ?? 'Failed')
+        const signedAt = data.signedAt ?? new Date().toISOString()
+        setSaves(prev => prev.map(s => s.id === rmSave!.id ? { ...s, managerSignedAt: signedAt, managerSignature: encodeSignature(result) } : s))
+        setRmMgrSigError('')
+      } catch (e) {
+        setRmMgrSigError(String(e))
+      } finally {
+        setRmMgrSigLoading(false)
+      }
+    }
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 1200, margin: '0 auto' }}>
+        <button onClick={() => setRmDetailId(null)} style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: 13, marginBottom: 16, padding: 0 }}>
+          ← Back to Performance Review Meeting
+        </button>
+
+        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>
+          {rmSave.employeeName}
+        </h1>
+        <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>
+          {rmSave.employeePosition}{rmForm?.appraisalPeriod ? ` · ${rmForm.appraisalPeriod}` : ''}
+        </p>
+
+        {/* Meeting Confirmation */}
+        <div style={{ background: '#0d1117', border: `1px solid ${rmConfirmed ? '#1a4a35' : '#1e2130'}`, borderRadius: 12, padding: '16px 20px', marginBottom: 24 }}>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 14, cursor: rmConfirmed ? 'default' : 'pointer' }}>
+            <div style={{ position: 'relative', flexShrink: 0, marginTop: 2 }}>
+              <input
+                type="checkbox"
+                checked={rmConfirmed}
+                disabled={rmConfirmed || rmConfirmLoading}
+                onChange={async () => {
+                  if (rmConfirmed) return
+                  setRmConfirmLoading(true)
+                  const now = new Date().toISOString()
+                  try {
+                    await apiPatchReview(rmSave.id, { meeting_confirmed_at: now })
+                    setSaves(prev => prev.map(s => s.id === rmSave.id ? { ...s, meetingConfirmedAt: now } : s))
+                  } finally {
+                    setRmConfirmLoading(false)
+                  }
+                }}
+                style={{ width: 18, height: 18, accentColor: '#34d399', cursor: rmConfirmed ? 'default' : 'pointer' }}
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: rmConfirmed ? '#34d399' : '#e5e7eb' }}>
+                {rmConfirmed ? '✓ Meeting took place' : 'Meeting took place'}
+              </div>
+              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                {rmConfirmed
+                  ? `Confirmed ${new Date(rmSave.meetingConfirmedAt!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} — the employee can now view the side-by-side comparison in their portal.`
+                  : 'Check this box once you have conducted the performance review meeting with this employee. This will unlock the side-by-side view in the employee portal.'}
+              </div>
+            </div>
+          </label>
+        </div>
+
+        {/* Side-by-side */}
+        {rmForm && (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+              {/* Left: Self-Assessment */}
+              <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 640, overflow: 'hidden' }}>
+                <div style={{ padding: '12px 16px', background: '#1a1430', border: '1px solid #4c1d95', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Self-Assessment</div>
+                  {rmSAData?.submitted_at && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Submitted {new Date(rmSAData.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
+                </div>
+                <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#0d0f1a', border: '1px solid #4c1d95', borderRadius: '0 0 10px 10px' }}>
+                  {rmSALoading ? (
+                    <div style={{ textAlign: 'center', padding: 32, color: '#6b7280' }}>Loading…</div>
+                  ) : !rmSAData ? (
+                    <div style={{ textAlign: 'center', padding: 32, color: '#6b7280', fontSize: 13 }}>No self-assessment found for this employee.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      {rmSAData.competencies?.filter(c => c.term).length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Competencies</div>
+                          {rmSAData.competencies.filter(c => c.term).map((c, i) => {
+                            const col = c.type === 'positive' ? '#10b981' : c.type === 'constructive' ? '#f97316' : '#818cf8'
+                            return (
+                              <div key={i} style={{ background: '#13151f', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                                <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{c.term}</div>
+                                {c.examples.filter(e => e.trim()).map((ex, ei) => (
+                                  <div key={ei} style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.5, marginBottom: 2 }}>{ex}</div>
+                                ))}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                      {rmSAData.goals_objectives?.filter(g => g.description?.trim()).length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Goals &amp; Objectives</div>
+                          {rmSAData.goals_objectives.filter(g => g.description?.trim()).map((g, i) => (
+                            <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                              <div style={{ fontSize: 12, color: '#e5e7eb', marginBottom: 4 }}>{g.description}</div>
+                              {g.outcome && <span style={{ fontSize: 11, fontWeight: 600, color: g.outcome === 'successful' ? '#34d399' : g.outcome === 'ongoing' ? '#f59e0b' : '#f87171' }}>{g.outcome}</span>}
+                              {g.reasoning && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{g.reasoning}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {rmSAData.overall_rating !== null && rmSAData.overall_rating !== undefined && (
+                        <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Self Rating</span>
+                          <span style={{ fontSize: 16, fontWeight: 700, color: '#a78bfa' }}>{'★'.repeat(rmSAData.overall_rating || 0)}{'☆'.repeat(5 - (rmSAData.overall_rating || 0))}</span>
+                        </div>
+                      )}
+                      {rmSAData.next_year_goals?.filter(g => g.goal?.trim()).length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Next Year&apos;s Goals</div>
+                          {rmSAData.next_year_goals.filter(g => g.goal?.trim()).map((g, i) => (
+                            <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 2 }}>{g.goal}</div>
+                              {g.objective && <div style={{ fontSize: 11, color: '#9ca3af' }}>{g.objective}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: Performance Review */}
+              <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 640, overflow: 'hidden' }}>
+                <div style={{ padding: '12px 16px', background: '#0d1523', border: '1px solid #1e3a5f', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Performance Review</div>
+                  {rmForm.reviewDate && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Review Date: {rmForm.reviewDate}</div>}
+                </div>
+                <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#0d0f1a', border: '1px solid #1e3a5f', borderRadius: '0 0 10px 10px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 14px' }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{rmForm.employeeName}</div>
+                      <div style={{ fontSize: 11, color: '#6b7280' }}>{rmForm.employeePosition}{rmForm.appraisalPeriod ? ` · ${rmForm.appraisalPeriod}` : ''}</div>
+                      {rmForm.supervisorName && <div style={{ fontSize: 11, color: '#4b5563', marginTop: 2 }}>Supervisor: {rmForm.supervisorName}</div>}
+                    </div>
+                    {[
+                      { entry: rmForm.competencyOne, type: 'positive' },
+                      { entry: rmForm.competencyTwo, type: 'positive' },
+                      { entry: rmForm.competencyThree, type: 'constructive' },
+                      { entry: rmForm.competencyFour, type: 'constructive' },
+                      { entry: rmForm.competencyFive, type: rmForm.competencyFiveType },
+                    ].filter(c => c.entry?.competency).length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Competencies</div>
+                        {[
+                          { entry: rmForm.competencyOne, type: 'positive' },
+                          { entry: rmForm.competencyTwo, type: 'positive' },
+                          { entry: rmForm.competencyThree, type: 'constructive' },
+                          { entry: rmForm.competencyFour, type: 'constructive' },
+                          { entry: rmForm.competencyFive, type: rmForm.competencyFiveType },
+                        ].filter(c => c.entry?.competency).map((c, i) => {
+                          const col = c.type === 'positive' ? '#10b981' : '#f97316'
+                          return (
+                            <div key={i} style={{ background: '#13151f', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{c.entry.competency}</div>
+                              {c.entry.examples.filter(e => e.trim()).map((ex, ei) => (
+                                <div key={ei} style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.5, marginBottom: 2 }}>{ei + 1}. {ex}</div>
+                              ))}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                    {rmForm.goals?.filter(g => g.text.trim()).length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Goals &amp; Objectives</div>
+                        {rmForm.goals.filter(g => g.text.trim()).map((g, i) => (
+                          <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                            <div style={{ fontSize: 12, color: '#e5e7eb', marginBottom: 2 }}>{g.text}</div>
+                            {g.status && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: g.status === 'successful' ? '#0d2b1f' : g.status === 'unsuccessful' ? '#1f0d0d' : '#1f1a0d', color: g.status === 'successful' ? '#34d399' : g.status === 'unsuccessful' ? '#f87171' : '#f59e0b' }}>{g.status}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {rmForm.overallScore > 0 && (
+                      <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Overall Score</span>
+                        <span style={{ fontSize: 16, fontWeight: 700, color: '#60a5fa' }}>{'★'.repeat(rmForm.overallScore)}{'☆'.repeat(5 - rmForm.overallScore)}</span>
+                        <span style={{ fontSize: 12, color: '#9ca3af' }}>{SCORE_LABELS[rmForm.overallScore]?.label}</span>
+                      </div>
+                    )}
+                    {rmForm.nextGoals?.filter(g => g.text.trim()).length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Next Year&apos;s Goals</div>
+                        {rmForm.nextGoals.filter(g => g.text.trim()).map((g, i) => (
+                          <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 2 }}>{g.text}</div>
+                            {g.targetDate && <div style={{ fontSize: 11, color: '#6b7280' }}>Target: {g.targetDate}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Comparison Section */}
+            <div style={{ marginBottom: 20 }}>
+              <ComparisonSection
+                form={rmSave.form ?? { ...defaultForm(), employeeName: rmSave.employeeName, employeePosition: rmSave.employeePosition }}
+                savedComparisonReport={rmSave.comparisonReport}
+                saData={rmSAData}
+                onReportSaved={report => {
+                  apiPatchReview(rmSave.id, { comparison_report: report || null })
+                  setSaves(prev => prev.map(s => s.id === rmSave.id ? { ...s, comparisonReport: report || undefined } : s))
+                }}
+              />
+            </div>
+          </>
+        )}
+
+        {/* Signatures */}
+        <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#f0f2fa', marginBottom: 16 }}>Signatures</div>
+          {rmBothSigned ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Manager</div>
+                <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                  <SignatureDisplay stored={rmSave.managerSignature ?? ''} date={rmSave.managerSignedAt ?? ''} />
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Employee</div>
+                <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                  <SignatureDisplay stored={rmEmpSig?.employee_signature ?? ''} date={rmEmpSig?.employee_signed_at ?? ''} />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Manager</div>
+                {rmSave.managerSignedAt ? (
+                  <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                    <SignatureDisplay stored={rmSave.managerSignature ?? ''} date={rmSave.managerSignedAt} />
+                  </div>
+                ) : (
+                  <SignaturePad
+                    onSign={handleRmMgrSign}
+                    loading={rmMgrSigLoading}
+                    error={rmMgrSigError}
+                    buttonLabel="✍️ Manager Sign"
+                  />
+                )}
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Employee</div>
+                {rmEmpSig?.employee_signed_at ? (
+                  <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                    <SignatureDisplay stored={rmEmpSig.employee_signature ?? ''} date={rmEmpSig.employee_signed_at} />
+                  </div>
+                ) : (
+                  <div style={{ padding: '14px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b', marginBottom: 4 }}>Awaiting Employee Signature</div>
+                    <div style={{ fontSize: 11, color: '#6b7280' }}>The employee will sign from their portal after reviewing the performance evaluation.</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
   }
 
   const renderNotes = () => {
@@ -5249,10 +5638,10 @@ export function PerformanceReviewForm() {
                   onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
                   <button
                     onClick={() => { setMeetingDetailId(null); setActivePage('reviews'); if (!reviewsExpanded) setReviewsExpanded(true) }}
-                    title={sidebarCollapsed ? 'Annual Reviews' : undefined}
+                    title={sidebarCollapsed ? 'Performance Review Forms' : undefined}
                     style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', background: 'none', border: 'none', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start' }}>
                     <FileText size={15} color={active ? '#818cf8' : '#6b7280'} />
-                    {!sidebarCollapsed && 'Annual Reviews'}
+                    {!sidebarCollapsed && 'Performance Review Forms'}
                     {!sidebarCollapsed && inProgressSaves.length > 0 && (
                       <span style={{ marginLeft: 4, background: '#4f46e5', color: 'white', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{inProgressSaves.length}</span>
                     )}
@@ -5318,6 +5707,24 @@ export function PerformanceReviewForm() {
                   </div>
                 )}
               </div>
+            )
+          })()}
+
+          {/* Performance Review Meeting */}
+          {(() => {
+            const active = activePage === 'review-meeting'
+            const confirmedCount = saves.filter(s => s.meetingConfirmedAt).length
+            return (
+              <button
+                onClick={() => { setRmDetailId(null); setActivePage('review-meeting') }}
+                title={sidebarCollapsed ? 'Performance Review Meeting' : undefined}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #6366f1' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? '#1e1f3a' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1e1f3a' : 'transparent' }}>
+                <Users size={15} color={active ? '#818cf8' : '#6b7280'} />
+                {!sidebarCollapsed && 'Performance Review Meeting'}
+                {confirmedCount > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: '#10b981', color: '#0d1a13', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{confirmedCount}</span>}
+              </button>
             )
           })()}
 
@@ -5507,7 +5914,7 @@ export function PerformanceReviewForm() {
       {/* ── Top header bar ── */}
       <header style={{ height: 52, flexShrink: 0, background: '#0d0f1a', borderBottom: '1px solid #1e2130', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', zIndex: 40 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: '#e0e7ff' }}>
-          {({ reviews: meetingDetailId ? `Annual Review — ${saves.find(s => s.id === meetingDetailId)?.employeeName ?? ''}` : currentReviewId ? (form.employeeName || 'Annual Reviews') : 'Annual Reviews', history: 'History', team: 'Team Dashboard', guide: 'Manager Guide', glossary: 'Competency Glossary', notes: '1:1 Meetings', checkins: 'Check-ins', 'peer-feedback': 'Peer Reviews', pip: 'PIPs', 'nine-box': 'Nine-Box Grid' } as Record<string, string>)[activePage] ?? 'Annual Reviews'}
+          {({ reviews: meetingDetailId ? `Performance Review — ${saves.find(s => s.id === meetingDetailId)?.employeeName ?? ''}` : currentReviewId ? (form.employeeName || 'Performance Review Forms') : 'Performance Review Forms', 'review-meeting': rmDetailId ? `Performance Review Meeting — ${saves.find(s => s.id === rmDetailId)?.employeeName ?? ''}` : 'Performance Review Meeting', history: 'History', team: 'Team Dashboard', guide: 'Manager Guide', glossary: 'Competency Glossary', notes: '1:1 Meetings', checkins: 'Check-ins', 'peer-feedback': 'Peer Reviews', pip: 'PIPs', 'nine-box': 'Nine-Box Grid' } as Record<string, string>)[activePage] ?? 'Performance Review Forms'}
         </div>
         <div style={{ position: 'relative' }}>
           {(() => {
@@ -6366,6 +6773,9 @@ export function PerformanceReviewForm() {
           )
         })()}
 
+        {/* ── Performance Review Meeting page ── */}
+        {activePage === 'review-meeting' && renderReviewMeeting()}
+
         {/* ── 1:1 Meetings page ── */}
         {activePage === 'notes' && renderNotes()}
 
@@ -6387,7 +6797,7 @@ export function PerformanceReviewForm() {
           <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
               <div>
-                <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Annual Reviews</h1>
+                <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Performance Review Forms</h1>
                 <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Track each team member through the full performance review cycle.</p>
               </div>
               <button onClick={() => setShowEmployeePicker(true)} style={{ padding: '9px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>+ New Review</button>
