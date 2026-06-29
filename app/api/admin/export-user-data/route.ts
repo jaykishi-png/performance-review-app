@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const PDFDocument = require('pdfkit') as typeof import('pdfkit')
+import PDFDocument from 'pdfkit'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
