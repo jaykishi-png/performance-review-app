@@ -128,7 +128,7 @@ export async function GET(req: NextRequest) {
 
     // ── Build PDF ──────────────────────────────────────────────────────────────
     const doc = new PDFDocument({
-      margin: 50,
+      margins: { top: 50, left: 50, right: 50, bottom: 28 },
       size: 'LETTER',
       bufferPages: true,
       info: {
@@ -381,15 +381,18 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Footer on each buffered page — lineBreak:false prevents phantom page creation
+    // Stamp footers on all buffered pages.
+    // Footer Y must stay inside the printable area (above bottom margin boundary).
+    // With margins.bottom=28, the printable area ends at 792-28=764; writing at 758 is safe.
     const range = doc.bufferedPageRange()
+    const footerY = doc.page.height - doc.page.margins.bottom - 6
     for (let i = 0; i < range.count; i++) {
       doc.switchToPage(range.start + i)
       doc.fontSize(7.5).fillColor(LABEL)
         .text(
           `Page ${i + 1} of ${range.count}  ·  Confidential — InnoSupps HR Platform`,
           50,
-          doc.page.height - 32,
+          footerY,
           { align: 'center', width: doc.page.width - 100, lineBreak: false }
         )
     }
