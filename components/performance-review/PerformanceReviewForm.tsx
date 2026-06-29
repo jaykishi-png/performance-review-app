@@ -3394,12 +3394,12 @@ export function PerformanceReviewForm() {
         const res = await fetch('/api/reviews/manager-sign', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reviewId: rmSave.id, managerSignature: encodeSignature(result) }),
+          body: JSON.stringify({ reviewId: rmSave!.id, managerSignature: encodeSignature(result) }),
         })
         const data = await res.json() as { ok?: boolean; signedAt?: string; error?: string }
         if (!res.ok) throw new Error(data.error ?? 'Failed')
         const signedAt = data.signedAt ?? new Date().toISOString()
-        setSaves(prev => prev.map(s => s.id === rmSave.id ? { ...s, managerSignedAt: signedAt, managerSignature: encodeSignature(result) } : s))
+        setSaves(prev => prev.map(s => s.id === rmSave!.id ? { ...s, managerSignedAt: signedAt, managerSignature: encodeSignature(result) } : s))
         setRmMgrSigError('')
       } catch (e) {
         setRmMgrSigError(String(e))

@@ -706,6 +706,8 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
       competencyThree?: { competency: string; examples: string[] }
       competencyFour?: { competency: string; examples: string[] }
       competencyFive?: { competency: string; examples: string[] }
+      appraisalPeriod?: string
+      reviewDate?: string
     }
   }>>([])
   const [signingId, setSigningId] = useState<string | null>(null)
