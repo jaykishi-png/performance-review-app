@@ -3280,7 +3280,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b', marginBottom: 6 }}>Before deactivating, consider exporting their data</div>
               <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280' }}>
-                Export all reviews, self-assessments, check-ins, 1:1 notes, PIPs, and audit logs as a JSON archive.
+                Export all reviews, self-assessments, check-ins, 1:1 notes, PIPs, and audit logs as a PDF.
               </p>
               <button
                 onClick={() => exportUserData(confirmDeactivateUser.id, confirmDeactivateUser.name || confirmDeactivateUser.email)}

@@ -4,6 +4,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 const PDFDocument = require('pdfkit') as typeof import('pdfkit')
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -106,7 +107,7 @@ export async function GET(req: NextRequest) {
     const profile = profileRes.data as Record<string, unknown> | null
 
     // ── Build PDF ──────────────────────────────────────────────────────────────
-    const doc = new PDFDocument({ margin: 50, size: 'LETTER', info: { Title: `User Data Export — ${profile?.name ?? profile?.email ?? targetId}`, Author: 'InnoSupps HR Platform' } })
+    const doc = new PDFDocument({ margin: 50, size: 'LETTER', bufferPages: true, info: { Title: `User Data Export — ${profile?.name ?? profile?.email ?? targetId}`, Author: 'InnoSupps HR Platform' } })
 
     // Background
     doc.rect(0, 0, doc.page.width, doc.page.height).fill('#0b0d14')
