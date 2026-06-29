@@ -128,14 +128,35 @@ export async function GET(req: NextRequest) {
 
     // ── Build PDF ──────────────────────────────────────────────────────────────
     const doc = new PDFDocument({
-      margins: { top: 50, left: 50, right: 50, bottom: 28 },
+      margin: 50,
       size: 'LETTER',
-      bufferPages: true,
+      autoFirstPage: false,
       info: {
         Title: `User Data Export — ${String(profile?.name ?? profile?.email ?? targetId)}`,
         Author: 'InnoSupps HR Platform',
       },
     })
+
+    // Stamp footer on every page via the pageAdded event.
+    // Temporarily zero margins.bottom so the footer can be placed in the
+    // physical margin zone without pdfkit triggering an extra page.
+    let pageNum = 0
+    doc.on('pageAdded', () => {
+      pageNum++
+      const origBottom = (doc.page.margins as { bottom: number }).bottom
+      ;(doc.page.margins as { bottom: number }).bottom = 0
+      doc.fontSize(7.5).fillColor(LABEL)
+        .text(
+          `Page ${pageNum}  ·  Confidential — InnoSupps HR Platform`,
+          50,
+          doc.page.height - 30,
+          { align: 'center', width: doc.page.width - 100, lineBreak: false }
+        )
+      ;(doc.page.margins as { bottom: number }).bottom = origBottom
+      doc.y = doc.page.margins.top
+    })
+
+    doc.addPage()
 
     // ── Cover header ──────────────────────────────────────────────────────────
     doc.rect(0, 0, doc.page.width, 100).fill(INDIGO)
@@ -379,22 +400,6 @@ export async function GET(req: NextRequest) {
       if (auditLogs.length > 100) {
         doc.moveDown(0.3).fillColor(LABEL).text(`… and ${auditLogs.length - 100} more entries`)
       }
-    }
-
-    // Stamp footers on all buffered pages.
-    // Footer Y must stay inside the printable area (above bottom margin boundary).
-    // With margins.bottom=28, the printable area ends at 792-28=764; writing at 758 is safe.
-    const range = doc.bufferedPageRange()
-    const footerY = doc.page.height - doc.page.margins.bottom - 6
-    for (let i = 0; i < range.count; i++) {
-      doc.switchToPage(range.start + i)
-      doc.fontSize(7.5).fillColor(LABEL)
-        .text(
-          `Page ${i + 1} of ${range.count}  ·  Confidential — InnoSupps HR Platform`,
-          50,
-          footerY,
-          { align: 'center', width: doc.page.width - 100, lineBreak: false }
-        )
     }
 
     doc.end()
