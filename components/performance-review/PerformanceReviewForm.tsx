@@ -2688,10 +2688,6 @@ export function PerformanceReviewForm() {
   const [rmSAData, setRmSAData] = useState<SAData | null>(null)
   const [rmSALoading, setRmSALoading] = useState(false)
   const [rmConfirmLoading, setRmConfirmLoading] = useState(false)
-  const [rmMgrSigLoading, setRmMgrSigLoading] = useState(false)
-  const [rmMgrSigError, setRmMgrSigError] = useState('')
-  const [rmEmpSigLoading, setRmEmpSigLoading] = useState(false)
-  const [rmEmpSigError, setRmEmpSigError] = useState('')
 
   // ── Middle manager "My Performance" state ────────────────────────────────────
   const [myUserId, setMyUserId] = useState<string | null>(null)
@@ -2754,10 +2750,6 @@ export function PerformanceReviewForm() {
         .catch(() => { setRmSAData(null) })
         .finally(() => setRmSALoading(false))
     }
-    setRmMgrSigLoading(false)
-    setRmMgrSigError('')
-    setRmEmpSigLoading(false)
-    setRmEmpSigError('')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rmDetailId, activePage])
 
@@ -3435,27 +3427,6 @@ export function PerformanceReviewForm() {
     const rmConfirmed = !!rmSave.meetingConfirmedAt
     const rmForm = rmSave.form
 
-    async function handleRmMgrSign(result: SignatureResult) {
-      setRmMgrSigLoading(true)
-      setRmMgrSigError('')
-      try {
-        const res = await fetch('/api/reviews/manager-sign', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reviewId: rmSave!.id, managerSignature: encodeSignature(result) }),
-        })
-        const data = await res.json() as { ok?: boolean; signedAt?: string; error?: string }
-        if (!res.ok) throw new Error(data.error ?? 'Failed')
-        const signedAt = data.signedAt ?? new Date().toISOString()
-        setSaves(prev => prev.map(s => s.id === rmSave!.id ? { ...s, managerSignedAt: signedAt, managerSignature: encodeSignature(result) } : s))
-        setRmMgrSigError('')
-      } catch (e) {
-        setRmMgrSigError(String(e))
-      } finally {
-        setRmMgrSigLoading(false)
-      }
-    }
-
     return (
       <div style={{ padding: '28px 32px', maxWidth: 1200, margin: '0 auto' }}>
         <button onClick={() => setRmDetailId(null)} style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: 13, marginBottom: 16, padding: 0 }}>
@@ -3480,10 +3451,16 @@ export function PerformanceReviewForm() {
                 onChange={async () => {
                   if (rmConfirmed) return
                   setRmConfirmLoading(true)
-                  const now = new Date().toISOString()
                   try {
-                    await apiPatchReview(rmSave.id, { meeting_confirmed_at: now })
-                    setSaves(prev => prev.map(s => s.id === rmSave.id ? { ...s, meetingConfirmedAt: now } : s))
+                    const res = await fetch('/api/reviews/confirm-meeting', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ reviewId: rmSave.id }),
+                    })
+                    const data = await res.json() as { ok?: boolean; confirmedAt?: string; error?: string }
+                    if (!res.ok) throw new Error(data.error ?? 'Failed to confirm meeting')
+                    const confirmedAt = data.confirmedAt ?? new Date().toISOString()
+                    setSaves(prev => prev.map(s => s.id === rmSave.id ? { ...s, meetingConfirmedAt: confirmedAt } : s))
                   } finally {
                     setRmConfirmLoading(false)
                   }
@@ -3497,8 +3474,8 @@ export function PerformanceReviewForm() {
               </div>
               <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
                 {rmConfirmed
-                  ? `Confirmed ${new Date(rmSave.meetingConfirmedAt!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} — the employee can now view the side-by-side comparison in their portal.`
-                  : 'Check this box once you have conducted the performance review meeting with this employee. This will unlock the side-by-side view in the employee portal.'}
+                  ? `Confirmed ${new Date(rmSave.meetingConfirmedAt!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} — signing invitations sent to both you and the employee.`
+                  : 'Check this box once you have conducted the performance review meeting. Signing invitation emails will be sent to both you and the employee.'}
               </div>
             </div>
           </label>
@@ -3679,36 +3656,45 @@ export function PerformanceReviewForm() {
                 </div>
               </div>
             </div>
+          ) : rmConfirmed ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Manager</div>
+                  {rmSave.managerSignedAt ? (
+                    <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                      <SignatureDisplay stored={rmSave.managerSignature ?? ''} date={rmSave.managerSignedAt} />
+                    </div>
+                  ) : (
+                    <div style={{ padding: '12px 14px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#f59e0b' }}>Awaiting signature</div>
+                  )}
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Employee</div>
+                  {rmEmpSig?.employee_signed_at ? (
+                    <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                      <SignatureDisplay stored={rmEmpSig.employee_signature ?? ''} date={rmEmpSig.employee_signed_at} />
+                    </div>
+                  ) : (
+                    <div style={{ padding: '12px 14px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#f59e0b' }}>Awaiting signature</div>
+                  )}
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <a
+                  href={`/sign/${rmSave.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 20px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+                >
+                  <ExternalLink size={14} /> Open Signing Page
+                </a>
+                <span style={{ fontSize: 12, color: '#6b7280' }}>Signing invitations were emailed to both parties.</span>
+              </div>
+            </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Manager</div>
-                {rmSave.managerSignedAt ? (
-                  <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
-                    <SignatureDisplay stored={rmSave.managerSignature ?? ''} date={rmSave.managerSignedAt} />
-                  </div>
-                ) : (
-                  <SignaturePad
-                    onSign={handleRmMgrSign}
-                    loading={rmMgrSigLoading}
-                    error={rmMgrSigError}
-                    buttonLabel="✍️ Manager Sign"
-                  />
-                )}
-              </div>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Employee</div>
-                {rmEmpSig?.employee_signed_at ? (
-                  <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
-                    <SignatureDisplay stored={rmEmpSig.employee_signature ?? ''} date={rmEmpSig.employee_signed_at} />
-                  </div>
-                ) : (
-                  <div style={{ padding: '14px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b', marginBottom: 4 }}>Awaiting Employee Signature</div>
-                    <div style={{ fontSize: 11, color: '#6b7280' }}>The employee will sign from their portal after reviewing the performance evaluation.</div>
-                  </div>
-                )}
-              </div>
+            <div style={{ padding: '14px', background: '#13151f', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 12, color: '#6b7280' }}>
+              Confirm the meeting above to send signing invitations to both you and the employee.
             </div>
           )}
         </div>

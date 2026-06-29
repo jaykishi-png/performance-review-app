@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     // Verify review belongs to this manager
     const { data: review, error: fetchError } = await serviceClient
       .from('reviews')
-      .select('id, employee_id')
+      .select('id, employee_id, employee_name')
       .eq('id', reviewId)
       .eq('user_id', user.id)
       .single()
@@ -42,7 +42,9 @@ export async function POST(req: NextRequest) {
     if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
 
     // Try to send notification email to employee
-    const employeeId = (review as { id: string; employee_id: string | null }).employee_id
+    const rv = review as { id: string; employee_id: string | null; employee_name: string | null }
+    const employeeId = rv.employee_id
+    const employeeName = rv.employee_name || 'Employee'
     if (employeeId) {
       const { data: empProfile } = await serviceClient
         .from('profiles')
@@ -89,6 +91,29 @@ export async function POST(req: NextRequest) {
         })
         } catch { /* non-critical */ }
       }
+    }
+
+    // Notify admin
+    const { data: adminProfile } = await serviceClient
+      .from('profiles')
+      .select('id, email')
+      .eq('role', 'admin')
+      .limit(1)
+      .single()
+
+    if (adminProfile) {
+      const admin = adminProfile as { id: string; email: string }
+      const managerDisplayName = (profile as { name: string | null; email: string } | null)?.name ||
+        (profile as { name: string | null; email: string } | null)?.email || 'Manager'
+      try {
+        await serviceClient.from('notifications').insert({
+          user_id: admin.id,
+          type: 'review_signed',
+          title: `Manager signed: ${employeeName}`,
+          body: `${managerDisplayName} has signed the performance review for ${employeeName}.`,
+          reference_id: reviewId,
+        })
+      } catch { /* non-critical */ }
     }
 
     return NextResponse.json({ ok: true, signedAt: now })

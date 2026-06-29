@@ -8,7 +8,7 @@ import {
   ExternalLink, Clock, Bell, Target, User, ChevronDown,
   BarChart2, History, Pencil, Check, Sparkles, Users, Home,
 } from 'lucide-react'
-import { SignaturePad, SignatureDisplay, encodeSignature, decodeSignature, type SignatureResult } from '@/components/SignaturePad'
+import { SignatureDisplay } from '@/components/SignaturePad'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -710,9 +710,6 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
       reviewDate?: string
     }
   }>>([])
-  const [signingId, setSigningId] = useState<string | null>(null)
-  const [signLoading, setSignLoading] = useState(false)
-  const [signError, setSignError] = useState('')
   const [expandedReviewId, setExpandedReviewId] = useState<string | null>(null)
 
   // AI draft state — competency examples: key = `${compIdx}-${exIdx}`
@@ -1071,27 +1068,6 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
       setFeedbackLoading(false)
     }).catch(() => setFeedbackLoading(false))
   }, [page])
-
-  async function handleEmployeeSign(reviewId: string, result: SignatureResult) {
-    setSignLoading(true)
-    setSignError('')
-    try {
-      const encoded = encodeSignature(result)
-      const res = await fetch('/api/reviews/employee-sign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reviewId, employeeSignature: encoded }),
-      })
-      const data = await res.json() as { ok?: boolean; signedAt?: string; error?: string }
-      if (!res.ok) throw new Error(data.error ?? 'Failed')
-      setManagerReviews(prev => prev.map(r => r.id === reviewId ? { ...r, employee_signed_at: data.signedAt ?? new Date().toISOString(), employee_signature: encoded } : r))
-      setSigningId(null)
-    } catch (e) {
-      setSignError(String(e))
-    } finally {
-      setSignLoading(false)
-    }
-  }
 
   async function createGoal() {
     if (!goalForm.title.trim()) return
@@ -1834,9 +1810,13 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Manager</div>
-                  <div style={{ padding: '10px 12px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
-                    <SignatureDisplay stored={mr.manager_signature} date={mr.manager_signed_at} />
-                  </div>
+                  {mr.manager_signed_at ? (
+                    <div style={{ padding: '10px 12px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                      <SignatureDisplay stored={mr.manager_signature} date={mr.manager_signed_at} />
+                    </div>
+                  ) : (
+                    <div style={{ padding: '8px 10px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8, fontSize: 11, fontWeight: 600, color: '#f59e0b' }}>Awaiting signature</div>
+                  )}
                 </div>
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>You</div>
@@ -1845,29 +1825,19 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                       <SignatureDisplay stored={mr.employee_signature ?? ''} date={mr.employee_signed_at} />
                     </div>
                   ) : (
-                    <div style={{ padding: '8px 10px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8, fontSize: 11, fontWeight: 600, color: '#f59e0b' }}>
-                      Awaiting your signature
-                    </div>
+                    <div style={{ padding: '8px 10px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8, fontSize: 11, fontWeight: 600, color: '#f59e0b' }}>Awaiting your signature</div>
                   )}
                 </div>
               </div>
               {!mr.employee_signed_at && (
-                signingId === mr.id ? (
-                  <div style={{ background: '#0a0c14', border: '1px solid #2a2d3a', borderRadius: 10, padding: '16px' }}>
-                    <p style={{ margin: '0 0 12px', fontSize: 13, color: '#9ca3af' }}>By signing, you acknowledge that you have reviewed this performance evaluation and discussed it with your manager.</p>
-                    <SignaturePad
-                      onSign={result => handleEmployeeSign(mr.id, result)}
-                      loading={signLoading}
-                      error={signError}
-                      buttonLabel="✍️ Sign &amp; Acknowledge"
-                      onCancel={() => { setSigningId(null); setSignError('') }}
-                    />
-                  </div>
-                ) : (
-                  <button onClick={() => { setSigningId(mr.id); setSignError('') }} style={{ padding: '8px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start' }}>
-                    ✍️ Sign &amp; Acknowledge
-                  </button>
-                )
+                <a
+                  href={`/sign/${mr.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 20px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: 'none', alignSelf: 'flex-start' }}
+                >
+                  <ExternalLink size={14} /> View &amp; Sign Review
+                </a>
               )}
             </div>
           )}
