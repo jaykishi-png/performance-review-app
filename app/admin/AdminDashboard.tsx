@@ -734,12 +734,11 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     try {
       const res = await fetch(`/api/admin/export-user-data?userId=${userId}`)
       if (!res.ok) { alert('Export failed'); return }
-      const data = await res.json()
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `user-data-export-${(userName || userId).replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.json`
+      a.download = `user-data-export-${(userName || userId).replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`
       a.click()
       URL.revokeObjectURL(url)
     } finally {
