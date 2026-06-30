@@ -53,44 +53,71 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
   const [managerSignedAt, setManagerSignedAt] = useState(review.manager_signed_at)
   const [managerSignature, setManagerSignature] = useState(review.manager_signature)
 
-  function renderMarkdown(text: string) {
-    const lines = text.split('\n')
-    const elements: React.ReactNode[] = []
-    let i = 0
-    while (i < lines.length) {
-      const line = lines[i]
-      if (line.startsWith('## ')) {
-        elements.push(<div key={i} style={{ fontSize: 13, fontWeight: 700, color: '#e5e7eb', marginTop: elements.length ? 20 : 0, marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>{line.slice(3)}</div>)
-      } else if (line.startsWith('# ')) {
-        elements.push(<div key={i} style={{ fontSize: 15, fontWeight: 700, color: '#f0f2fa', marginBottom: 10 }}>{line.slice(2)}</div>)
-      } else if (line.match(/^\d+\.\s/)) {
-        const numMatch = line.match(/^(\d+)/)
-        const content = line.replace(/^\d+\.\s/, '')
-        elements.push(
-          <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#818cf8', flexShrink: 0 }}>{numMatch?.[1]}.</span>
-            <span style={{ fontSize: 13, color: '#d1d5db', lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: content.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#e5e7eb">$1</strong>') }} />
-          </div>
-        )
-      } else if (line.startsWith('- ') || line.startsWith('  - ')) {
-        const indent = line.startsWith('  - ')
-        const content = line.replace(/^\s*-\s/, '')
-        elements.push(
-          <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 4, paddingLeft: indent ? 16 : 0 }}>
-            <span style={{ fontSize: 11, color: '#6b7280', flexShrink: 0, marginTop: 3 }}>–</span>
-            <span style={{ fontSize: 13, color: indent ? '#9ca3af' : '#d1d5db', lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: content.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#e5e7eb">$1</strong>') }} />
-          </div>
-        )
-      } else if (line.trim() === '') {
-        if (elements.length) elements.push(<div key={i} style={{ height: 6 }} />)
-      } else {
-        elements.push(
-          <p key={i} style={{ margin: '0 0 8px', fontSize: 13, color: '#d1d5db', lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#e5e7eb">$1</strong>') }} />
-        )
-      }
-      i++
-    }
-    return elements
+  function renderComparisonReport(text: string) {
+    const renderInline = (s: string) => s.split(/(\*\*[^*]+\*\*)/g).map((part, pi) =>
+      part.startsWith('**') && part.endsWith('**')
+        ? <strong key={pi} style={{ color: '#e0e4f0', fontWeight: 600 }}>{part.slice(2, -2)}</strong>
+        : <span key={pi}>{part}</span>
+    )
+    const sections = text.split(/\n(?=## )/)
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {sections.map((section, idx) => {
+          const lines = section.trim().split('\n')
+          const rawHeading = lines[0]
+          const isHeading = rawHeading.startsWith('## ')
+          const heading = isHeading ? rawHeading.replace(/^##\s*/, '') : ''
+          const bodyLines = isHeading ? lines.slice(1) : lines
+          const hc =
+            heading.includes('AGREE') || heading.includes('ALIGN') ? '#34d399' :
+            heading.includes('DIFFER')                              ? '#fbbf24' :
+            heading.includes('TALKING')                             ? '#60a5fa' :
+            heading.includes('ACTION') || heading.includes('PLAN')  ? '#a78bfa' :
+            heading.includes('GOAL')                                ? '#22d3ee' : '#e5e7eb'
+          const bc =
+            heading.includes('AGREE') || heading.includes('ALIGN') ? 'rgba(52,211,153,0.15)' :
+            heading.includes('DIFFER')                              ? 'rgba(251,191,36,0.15)' :
+            heading.includes('TALKING')                             ? 'rgba(96,165,250,0.15)'  :
+            heading.includes('ACTION') || heading.includes('PLAN')  ? 'rgba(167,139,250,0.15)' :
+            heading.includes('GOAL')                                ? 'rgba(34,211,238,0.15)'  : 'rgba(30,32,48,0.5)'
+          const total = sections.length
+          return (
+            <div key={idx} style={{ padding: '16px 20px', borderTop: idx === 0 ? 'none' : '1px solid #1a1d2e', background: idx % 2 === 0 ? '#0d0f1a' : '#0b0d17', borderRadius: idx === 0 ? '10px 10px 0 0' : idx === total - 1 ? '0 0 10px 10px' : '0' }}>
+              {heading && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <div style={{ width: 3, height: 16, borderRadius: 2, background: hc, flexShrink: 0 }} />
+                  <span style={{ fontSize: 10, fontWeight: 800, color: hc, textTransform: 'uppercase' as const, letterSpacing: '0.12em' }}>{heading}</span>
+                  <div style={{ flex: 1, height: 1, background: bc }} />
+                </div>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {bodyLines.map((line, li) => {
+                  const trimmed = line.trim()
+                  if (!trimmed) return <div key={li} style={{ height: 4 }} />
+                  if (/^[-*]\s/.test(trimmed)) return (
+                    <div key={li} style={{ display: 'flex', gap: 8 }}>
+                      <span style={{ color: '#a78bfa', flexShrink: 0, marginTop: 1 }}>•</span>
+                      <span style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.65 }}>{renderInline(trimmed.replace(/^[-*]\s+/, ''))}</span>
+                    </div>
+                  )
+                  if (/^\d+\.\s/.test(trimmed)) {
+                    const num = trimmed.match(/^(\d+)\./)?.[1] ?? ''
+                    const rest = trimmed.replace(/^\d+\.\s+/, '')
+                    return (
+                      <div key={li} style={{ display: 'flex', gap: 8 }}>
+                        <span style={{ color: '#a78bfa', flexShrink: 0, minWidth: 16, textAlign: 'right' as const, fontSize: 13 }}>{num}.</span>
+                        <span style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.65 }}>{renderInline(rest)}</span>
+                      </div>
+                    )
+                  }
+                  return <p key={li} style={{ margin: 0, fontSize: 13, color: '#9ca3af', lineHeight: 1.65 }}>{renderInline(trimmed)}</p>
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
   }
   const [employeeSignedAt, setEmployeeSignedAt] = useState(review.employee_signed_at)
   const [employeeSignature, setEmployeeSignature] = useState(review.employee_signature)
@@ -324,7 +351,7 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
         {review.comparison_report && (
           <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#f0f2fa', marginBottom: 12 }}>AI Analysis</div>
-            <div>{renderMarkdown(review.comparison_report)}</div>
+            <div>{renderComparisonReport(review.comparison_report)}</div>
           </div>
         )}
 
