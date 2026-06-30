@@ -2577,14 +2577,25 @@ function StepOutput({
         </div>
       </OutputBlock>
 
+      {/* Next-step callout */}
+      <div style={{ marginTop: 24, padding: '14px 18px', background: 'rgba(79,70,229,0.08)', border: '1px solid rgba(79,70,229,0.25)', borderRadius: 12, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <span style={{ fontSize: 18, lineHeight: 1 }}>📅</span>
+        <div>
+          <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 600, color: '#a5b4fc' }}>Ready for the Performance Review Meeting?</p>
+          <p style={{ margin: 0, fontSize: 12, color: '#6b7280', lineHeight: 1.6 }}>
+            After submitting, you&apos;ll be taken to the <strong style={{ color: '#9ca3af' }}>Performance Review Meeting</strong> step where you can generate a side-by-side comparison report and send signing invitation emails to the employee and yourself.
+          </p>
+        </div>
+      </div>
+
       {/* Submit Review button */}
-      <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
         <button
           type="button"
           onClick={onSubmit}
           style={{ padding: '11px 32px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
         >
-          Submit Review →
+          Submit &amp; Proceed to Review Meeting →
         </button>
       </div>
     </div>
@@ -3440,47 +3451,6 @@ export function PerformanceReviewForm() {
           {rmSave.employeePosition}{rmForm?.appraisalPeriod ? ` · ${rmForm.appraisalPeriod}` : ''}
         </p>
 
-        {/* Meeting Confirmation */}
-        <div style={{ background: '#0d1117', border: `1px solid ${rmConfirmed ? '#1a4a35' : '#1e2130'}`, borderRadius: 12, padding: '16px 20px', marginBottom: 24 }}>
-          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 14, cursor: rmConfirmed ? 'default' : 'pointer' }}>
-            <div style={{ position: 'relative', flexShrink: 0, marginTop: 2 }}>
-              <input
-                type="checkbox"
-                checked={rmConfirmed}
-                disabled={rmConfirmed || rmConfirmLoading}
-                onChange={async () => {
-                  if (rmConfirmed) return
-                  setRmConfirmLoading(true)
-                  try {
-                    const res = await fetch('/api/reviews/confirm-meeting', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ reviewId: rmSave.id }),
-                    })
-                    const data = await res.json() as { ok?: boolean; confirmedAt?: string; error?: string }
-                    if (!res.ok) throw new Error(data.error ?? 'Failed to confirm meeting')
-                    const confirmedAt = data.confirmedAt ?? new Date().toISOString()
-                    setSaves(prev => prev.map(s => s.id === rmSave.id ? { ...s, meetingConfirmedAt: confirmedAt } : s))
-                  } finally {
-                    setRmConfirmLoading(false)
-                  }
-                }}
-                style={{ width: 18, height: 18, accentColor: '#34d399', cursor: rmConfirmed ? 'default' : 'pointer' }}
-              />
-            </div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: rmConfirmed ? '#34d399' : '#e5e7eb' }}>
-                {rmConfirmed ? '✓ Meeting took place' : 'Meeting took place'}
-              </div>
-              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
-                {rmConfirmed
-                  ? `Confirmed ${new Date(rmSave.meetingConfirmedAt!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} — signing invitations sent to both you and the employee.`
-                  : 'Check this box once you have conducted the performance review meeting. Signing invitation emails will be sent to both you and the employee.'}
-              </div>
-            </div>
-          </label>
-        </div>
-
         {/* Side-by-side */}
         {rmForm && (
           <>
@@ -3638,9 +3608,55 @@ export function PerformanceReviewForm() {
           </>
         )}
 
-        {/* Signatures */}
-        <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#f0f2fa', marginBottom: 16 }}>Signatures</div>
+        {/* Meeting Confirmation + Signatures */}
+        <div style={{ background: '#0d1117', border: `1px solid ${rmConfirmed ? '#1a4a35' : '#1e2130'}`, borderRadius: 12, padding: '20px 24px' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#f0f2fa', marginBottom: 16 }}>Confirm Meeting &amp; Signatures</div>
+
+          {/* Confirmation button */}
+          {!rmBothSigned && (
+            <div style={{ marginBottom: 20 }}>
+              {rmConfirmed ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'rgba(52,211,153,0.06)', border: '1px solid #1a4a35', borderRadius: 10 }}>
+                  <span style={{ fontSize: 16 }}>✓</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#34d399' }}>Meeting confirmed</div>
+                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 1 }}>
+                      {`Confirmed ${new Date(rmSave.meetingConfirmedAt!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} — signing invitations sent to both you and the employee.`}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <button
+                    type="button"
+                    disabled={rmConfirmLoading}
+                    onClick={async () => {
+                      setRmConfirmLoading(true)
+                      try {
+                        const res = await fetch('/api/reviews/confirm-meeting', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ reviewId: rmSave.id }),
+                        })
+                        const data = await res.json() as { ok?: boolean; confirmedAt?: string; error?: string }
+                        if (!res.ok) throw new Error(data.error ?? 'Failed to confirm meeting')
+                        const confirmedAt = data.confirmedAt ?? new Date().toISOString()
+                        setSaves(prev => prev.map(s => s.id === rmSave.id ? { ...s, meetingConfirmedAt: confirmedAt } : s))
+                      } finally {
+                        setRmConfirmLoading(false)
+                      }
+                    }}
+                    style={{ padding: '10px 24px', background: rmConfirmLoading ? '#1e2130' : 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: rmConfirmLoading ? '#6b7280' : '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: rmConfirmLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    {rmConfirmLoading ? 'Sending invitations…' : 'Confirm Meeting & Send Signing Invitations'}
+                  </button>
+                  <span style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>Sends signing invitation emails to you and the employee.</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Signature display */}
           {rmBothSigned ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
               <div>
@@ -3692,11 +3708,7 @@ export function PerformanceReviewForm() {
                 <span style={{ fontSize: 12, color: '#6b7280' }}>Signing invitations were emailed to both parties.</span>
               </div>
             </div>
-          ) : (
-            <div style={{ padding: '14px', background: '#13151f', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 12, color: '#6b7280' }}>
-              Confirm the meeting above to send signing invitations to both you and the employee.
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
     )
@@ -7330,7 +7342,13 @@ export function PerformanceReviewForm() {
             <StepOutput
               key={currentReviewId}
               form={form}
-              onSubmit={() => { setCurrentReviewId(''); setActivePage('reviews') }}
+              onSubmit={() => {
+                const completedId = currentReviewId
+                setCurrentReviewId('')
+                setSaves(getSaves())
+                setRmDetailId(completedId || null)
+                setActivePage('review-meeting')
+              }}
             />
           )}
         </div>
