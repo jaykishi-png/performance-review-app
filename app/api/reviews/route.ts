@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
         query.eq('user_id', user.id)
       }
       const { data, error } = await query.single()
-      if (error || !data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      if (error || !data) return NextResponse.json({ error: error?.message ?? 'Not found', code: error?.code, hint: error?.hint, role }, { status: 404 })
       if (role === 'dev_admin') {
         return NextResponse.json({ review: { ...(data as Record<string, unknown>), comparison_report: null, drive_url: null, _contentRedacted: true } })
       }

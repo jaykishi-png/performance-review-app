@@ -312,8 +312,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     setReviewFormError(null)
     fetch(`/api/reviews?id=${viewingReview.id}`)
       .then(r => r.json())
-      .then((d: { review?: { form_data?: Record<string,unknown> }; error?: string }) => {
-        if (d.error) setReviewFormError(d.error)
+      .then((d: { review?: { form_data?: Record<string,unknown> }; error?: string; code?: string; role?: string }) => {
+        if (d.error) setReviewFormError(`${d.error}${d.code ? ` (${d.code})` : ''}${d.role ? ` — fetched as role: ${d.role}` : ''}`)
         else setReviewFormData(d.review?.form_data ?? null)
       })
       .catch(() => setReviewFormError('Failed to load review content'))
