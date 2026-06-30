@@ -20,7 +20,7 @@ export default async function SignPage({ params }: { params: Promise<{ reviewId:
   // Fetch review — manager sees if user_id matches, employee sees if employee_id matches, admin sees all
   const query = svc
     .from('reviews')
-    .select('id, user_id, employee_id, employee_name, employee_position, form_data, comparison_report, manager_signed_at, manager_signature, employee_signed_at, employee_signature, meeting_confirmed_at, drive_url')
+    .select('id, user_id, employee_id, employee_name, employee_position, form_data, comparison_report, manager_signed_at, manager_signature, employee_signed_at, employee_signature, drive_url')
     .eq('id', reviewId)
 
   if (p.role !== 'admin' && p.role !== 'dev_admin') {
@@ -42,7 +42,6 @@ export default async function SignPage({ params }: { params: Promise<{ reviewId:
     manager_signature: string | null
     employee_signed_at: string | null
     employee_signature: string | null
-    meeting_confirmed_at: string | null
     drive_url: string | null
   }
 

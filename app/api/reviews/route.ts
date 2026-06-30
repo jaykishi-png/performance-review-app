@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     if (singleId) {
       const query = serviceClient
         .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at')
+        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id')
         .eq('id', singleId)
       if (role === 'middle_manager') {
         // can access reviews they created OR reviews where they are the employee
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (role === 'admin') {
-      const { data, error } = await serviceClient.from('reviews').select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at, meeting_confirmed_at').order('saved_at', { ascending: false })
+      const { data, error } = await serviceClient.from('reviews').select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at').order('saved_at', { ascending: false })
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
       return NextResponse.json({ reviews: data ?? [] })
     }
@@ -62,14 +62,14 @@ export async function GET(req: NextRequest) {
     if (role === 'middle_manager') {
       const { data: mgrData, error: mgrErr } = await serviceClient
         .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at')
+        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id')
         .eq('user_id', user.id)
         .order('saved_at', { ascending: false })
       if (mgrErr) return NextResponse.json({ error: mgrErr.message }, { status: 500 })
 
       const { data: empData, error: empErr } = await serviceClient
         .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at, meeting_confirmed_at')
+        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at')
         .eq('employee_id', user.id)
         .not('manager_signed_at', 'is', null)
         .not('admin_approved_at', 'is', null)
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
     if (role === 'employee') {
       const { data, error } = await serviceClient
         .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at, meeting_confirmed_at')
+        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at')
         .eq('employee_id', user.id)
         .not('manager_signed_at', 'is', null)
         .not('admin_approved_at', 'is', null)
@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
     // Manager: own reviews only
     const { data, error } = await serviceClient
       .from('reviews')
-      .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at')
+      .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id')
       .eq('user_id', user.id)
       .order('saved_at', { ascending: false })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

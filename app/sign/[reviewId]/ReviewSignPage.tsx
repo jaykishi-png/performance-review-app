@@ -14,7 +14,6 @@ interface ReviewData {
   manager_signature: string | null
   employee_signed_at: string | null
   employee_signature: string | null
-  meeting_confirmed_at: string | null
   drive_url: string | null
 }
 
