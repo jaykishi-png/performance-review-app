@@ -37,13 +37,17 @@ function LoginContent() {
   }, [inviteToken])
 
   async function signInWithGoogle() {
+    // Store the post-login destination in a cookie the server callback can read.
+    // We can't pass it as a query param on redirectTo because Supabase's URL
+    // allowlist strips query params during matching.
+    if (next) {
+      document.cookie = `auth_next=${encodeURIComponent(next)};path=/;max-age=600;samesite=lax`
+    }
     const supabase = createClient()
-    const callbackUrl = new URL(`${window.location.origin}/api/auth/callback`)
-    if (next) callbackUrl.searchParams.set('next', next)
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: callbackUrl.toString(),
+        redirectTo: `${window.location.origin}/api/auth/callback`,
       },
     })
   }

@@ -5,15 +5,18 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const rawNext = searchParams.get('next') || ''
+
+  // Read the post-login destination from the cookie set by the login page.
+  // We can't use a query param on redirectTo because Supabase's URL allowlist
+  // strips query params during matching.
+  const cookieStore = await cookies()
+  const rawNext = cookieStore.get('auth_next')?.value ?? ''
   // Only allow relative paths to prevent open-redirect attacks
-  const next = rawNext.startsWith('/') ? rawNext : ''
+  const next = rawNext.startsWith('/') ? decodeURIComponent(rawNext) : ''
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=auth_failed`)
   }
-
-  const cookieStore = await cookies()
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -95,5 +98,6 @@ export async function GET(request: NextRequest) {
 
   const response = NextResponse.redirect(`${origin}${next || '/'}`)
   response.cookies.set('user_role', roleCookieValue, { httpOnly: false, sameSite: 'lax', path: '/' })
+  response.cookies.set('auth_next', '', { maxAge: 0, path: '/' })
   return response
 }
