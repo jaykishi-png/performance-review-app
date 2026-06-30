@@ -45,6 +45,36 @@ const SCORE_LABELS: Record<number, string> = {
   5: 'Outstanding',
 }
 
+function ComparisonReportBlock({ report, renderComparisonReport }: { report: string; renderComparisonReport: (t: string) => React.ReactNode }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <div style={{ borderRadius: 12, border: '1px solid rgba(124,58,237,0.3)', background: 'rgba(88,28,235,0.06)', padding: 20, marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#e9d5ff', display: 'flex', alignItems: 'center', gap: 6 }}>
+            📄 Comparison Report
+          </div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4, lineHeight: 1.5 }}>
+            AI-generated report comparing the self-assessment and performance review — alignment areas, divergence, talking points, and action plan.
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>Comparison Report</span>
+        <button
+          onClick={() => { navigator.clipboard.writeText(report); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, padding: '5px 10px', borderRadius: 8, border: '1px solid #2a2d3a', background: '#0d0f1a', color: copied ? '#34d399' : '#9ca3af', cursor: 'pointer' }}
+        >
+          {copied ? '✓ Copied!' : '⎘ Copy'}
+        </button>
+      </div>
+      <div style={{ background: '#0b0d14', border: '1px solid #1e2030', borderRadius: 12, padding: 20 }}>
+        {renderComparisonReport(report)}
+      </div>
+    </div>
+  )
+}
+
 export default function ReviewSignPage({ review, saData, currentUserRole, currentUserName, isManager, isEmployee }: Props) {
   const [mgrSigLoading, setMgrSigLoading] = useState(false)
   const [mgrSigError, setMgrSigError] = useState('')
@@ -349,10 +379,7 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
 
         {/* Comparison Report */}
         {review.comparison_report && (
-          <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#f0f2fa', marginBottom: 12 }}>AI Analysis</div>
-            <div>{renderComparisonReport(review.comparison_report)}</div>
-          </div>
+          <ComparisonReportBlock report={review.comparison_report} renderComparisonReport={renderComparisonReport} />
         )}
 
         {/* Signatures */}

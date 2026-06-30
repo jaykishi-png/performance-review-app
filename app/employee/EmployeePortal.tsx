@@ -415,6 +415,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   const [signingId, setSigningId] = useState<string | null>(null)
   const [signLoading, setSignLoading] = useState(false)
   const [signError, setSignError] = useState('')
+  const [copiedReport, setCopiedReport] = useState(false)
   const [expandedReviewId, setExpandedReviewId] = useState<string | null>(null)
 
   // AI draft state — competency examples: key = `${compIdx}-${exIdx}`
@@ -1542,11 +1543,40 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                 </div>
               )}
 
-              {/* ── AI Comparison Analysis (rendered, no raw markdown) ── */}
+              {/* ── Comparison Report ── */}
               {r.comparison_report && (
-                <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#f0f2fa', marginBottom: 16 }}>AI Analysis</div>
-                  <div>{renderComparisonReport(r.comparison_report)}</div>
+                <div style={{ borderRadius: 12, border: '1px solid rgba(124,58,237,0.3)', background: 'rgba(88,28,235,0.06)', padding: 20, marginBottom: 24 }}>
+                  {/* Top header row */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#e9d5ff', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        📄 Comparison Report
+                      </div>
+                      <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4, lineHeight: 1.5 }}>
+                        AI-generated report comparing the self-assessment and performance review — alignment areas, divergence, talking points, and action plan.
+                      </div>
+                    </div>
+                  </div>
+                  {/* COMPARISON REPORT sub-header with Edit/Copy */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>Comparison Report</span>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(r.comparison_report!)
+                          setCopiedReport(true)
+                          setTimeout(() => setCopiedReport(false), 2000)
+                        }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, padding: '5px 10px', borderRadius: 8, border: '1px solid #2a2d3a', background: '#0d0f1a', color: copiedReport ? '#34d399' : '#9ca3af', cursor: 'pointer' }}
+                      >
+                        {copiedReport ? '✓ Copied!' : '⎘ Copy'}
+                      </button>
+                    </div>
+                  </div>
+                  {/* Report body */}
+                  <div style={{ background: '#0b0d14', border: '1px solid #1e2030', borderRadius: 12, padding: 20 }}>
+                    {renderComparisonReport(r.comparison_report)}
+                  </div>
                 </div>
               )}
 
