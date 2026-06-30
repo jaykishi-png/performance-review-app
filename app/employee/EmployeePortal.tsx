@@ -3178,6 +3178,47 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           {page === 'self-assessment' && !saLocked && !newCycleAvailable && (
             <div style={{ padding: '24px 32px', maxWidth: 720, margin: '0 auto' }}>
               {renderSAStep()}
+              {isSubmitted && (
+                <div style={{ marginTop: 40, borderTop: '1px solid #1e2130', paddingTop: 28 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                      Self-Assessment History
+                    </div>
+                    {newCycleAvailable && (
+                      <button onClick={startNewSA} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                        <Plus size={12} /> Start New SA
+                      </button>
+                    )}
+                  </div>
+                  {pastSubmittedSAs.length === 0 ? (
+                    <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 10, padding: '14px 18px', fontSize: 12, color: '#4b5563', fontStyle: 'italic' }}>
+                      No past submissions found.
+                    </div>
+                  ) : (
+                    pastSubmittedSAs.map(sa => (
+                      <div key={sa.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 10, padding: '14px 18px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#0d1a13', border: '2px solid #34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <CheckCircle2 size={14} color="#34d399" />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb' }}>
+                            {sa.anniversary_year ? `${sa.anniversary_year} Self-Assessment` : 'Self-Assessment'}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                            Submitted {sa.submitted_at ? new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                          </div>
+                        </div>
+                        {sa.overall_rating != null && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: STAR_LABELS[sa.overall_rating]?.color ?? '#9ca3af' }}>
+                            <Star size={12} fill="currentColor" />
+                            <span style={{ fontSize: 11, fontWeight: 600 }}>{STAR_LABELS[sa.overall_rating]?.label ?? `${sa.overall_rating}★`}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           )}
           {page === 'reviews'  && renderReviewsPage()}
