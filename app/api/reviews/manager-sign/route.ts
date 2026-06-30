@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
         ${managerName} has completed your ${currentYear} performance review and confirmed your 1:1 meeting.
         Please log in to sign and acknowledge your review.
       </p>
-      <a href="${APP_URL}/employee" style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;">
+      <a href="${APP_URL}/employee?page=reviews" style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;">
         View &amp; Sign Your Review
       </a>
       <p style="margin:24px 0 0;font-size:12px;color:#4b5563;line-height:1.5;">
