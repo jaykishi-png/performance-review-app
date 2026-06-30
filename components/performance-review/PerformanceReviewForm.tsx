@@ -3612,17 +3612,25 @@ export function PerformanceReviewForm() {
         <div style={{ background: '#0d1117', border: `1px solid ${rmConfirmed ? '#1a4a35' : '#1e2130'}`, borderRadius: 12, padding: '20px 24px' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#f0f2fa', marginBottom: 16 }}>Confirm Meeting &amp; Signatures</div>
 
-          {/* Confirmation checkbox */}
+          {/* Confirmation button */}
           {!rmBothSigned && (
-            <div style={{ marginBottom: 20, padding: '14px 16px', background: rmConfirmed ? 'rgba(52,211,153,0.06)' : '#13151f', border: `1px solid ${rmConfirmed ? '#1a4a35' : '#2a2d3a'}`, borderRadius: 10 }}>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 14, cursor: rmConfirmed ? 'default' : 'pointer' }}>
-                <div style={{ flexShrink: 0, marginTop: 2 }}>
-                  <input
-                    type="checkbox"
-                    checked={rmConfirmed}
-                    disabled={rmConfirmed || rmConfirmLoading}
-                    onChange={async () => {
-                      if (rmConfirmed) return
+            <div style={{ marginBottom: 20 }}>
+              {rmConfirmed ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'rgba(52,211,153,0.06)', border: '1px solid #1a4a35', borderRadius: 10 }}>
+                  <span style={{ fontSize: 16 }}>✓</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#34d399' }}>Meeting confirmed</div>
+                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 1 }}>
+                      {`Confirmed ${new Date(rmSave.meetingConfirmedAt!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} — signing invitations sent to both you and the employee.`}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <button
+                    type="button"
+                    disabled={rmConfirmLoading}
+                    onClick={async () => {
                       setRmConfirmLoading(true)
                       try {
                         const res = await fetch('/api/reviews/confirm-meeting', {
@@ -3638,20 +3646,13 @@ export function PerformanceReviewForm() {
                         setRmConfirmLoading(false)
                       }
                     }}
-                    style={{ width: 18, height: 18, accentColor: '#34d399', cursor: rmConfirmed ? 'default' : 'pointer' }}
-                  />
+                    style={{ padding: '10px 24px', background: rmConfirmLoading ? '#1e2130' : 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: rmConfirmLoading ? '#6b7280' : '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: rmConfirmLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    {rmConfirmLoading ? 'Sending invitations…' : 'Confirm Meeting & Send Signing Invitations'}
+                  </button>
+                  <span style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>Sends signing invitation emails to you and the employee.</span>
                 </div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: rmConfirmed ? '#34d399' : '#e5e7eb' }}>
-                    {rmConfirmLoading ? 'Confirming…' : rmConfirmed ? '✓ Meeting took place' : 'The performance review meeting took place'}
-                  </div>
-                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
-                    {rmConfirmed
-                      ? `Confirmed ${new Date(rmSave.meetingConfirmedAt!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} — signing invitations sent to both you and the employee.`
-                      : 'Check this box once you have conducted the performance review meeting. Signing invitation emails will be sent to both you and the employee.'}
-                  </div>
-                </div>
-              </label>
+              )}
             </div>
           )}
 
