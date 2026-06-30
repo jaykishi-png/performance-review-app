@@ -15,6 +15,7 @@ function LoginContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
   const inviteToken = searchParams.get('invite')
+  const next = searchParams.get('next') || ''
 
   const [invite, setInvite] = useState<InviteInfo | null>(null)
   const [inviteLoading, setInviteLoading] = useState(!!inviteToken)
@@ -37,10 +38,12 @@ function LoginContent() {
 
   async function signInWithGoogle() {
     const supabase = createClient()
+    const callbackUrl = new URL(`${window.location.origin}/api/auth/callback`)
+    if (next) callbackUrl.searchParams.set('next', next)
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/api/auth/callback`,
+        redirectTo: callbackUrl.toString(),
       },
     })
   }

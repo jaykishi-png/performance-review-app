@@ -5,6 +5,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  const rawNext = searchParams.get('next') || ''
+  // Only allow relative paths to prevent open-redirect attacks
+  const next = rawNext.startsWith('/') ? rawNext : ''
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=auth_failed`)
@@ -90,7 +93,7 @@ export async function GET(request: NextRequest) {
     }
   } catch { /* best-effort */ }
 
-  const response = NextResponse.redirect(`${origin}/`)
+  const response = NextResponse.redirect(`${origin}${next || '/'}`)
   response.cookies.set('user_role', roleCookieValue, { httpOnly: false, sameSite: 'lax', path: '/' })
   return response
 }
