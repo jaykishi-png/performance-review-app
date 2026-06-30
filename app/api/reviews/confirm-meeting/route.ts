@@ -51,43 +51,44 @@ export async function POST(req: NextRequest) {
     const managerName = p?.name || p?.email || 'Manager'
     const employeeName = rv.employee_name || 'Employee'
 
+    // Pre-fetch employee profile before the email block to avoid sequential awaits inside it
+    let empEmail: string | null = null
+    let empName: string | null = null
+    if (rv.employee_id) {
+      const { data: empProfile } = await svc.from('profiles').select('name, email').eq('id', rv.employee_id).single()
+      const emp = empProfile as { name: string | null; email: string } | null
+      empEmail = emp?.email ?? null
+      empName = emp?.name ?? null
+    }
+
     try {
       const { sendEmail } = await import('@/lib/email')
 
-      // Email to manager
+      // Build the list of email promises and send them all in parallel
+      const emailJobs: Promise<unknown>[] = []
+
       const managerEmail = p?.email
       if (managerEmail) {
-        await sendEmail({
+        emailJobs.push(sendEmail({
           to: managerEmail,
           subject: `Please sign ${employeeName}'s performance review`,
-          html: buildSigningEmail({
-            recipientName: managerName,
-            employeeName,
-            managerName,
-            role: 'manager',
-            signUrl,
-          }),
-        })
+          html: buildSigningEmail({ recipientName: managerName, employeeName, managerName, role: 'manager', signUrl }),
+        }))
       }
 
-      // Email to employee
-      if (rv.employee_id) {
-        const { data: empProfile } = await svc.from('profiles').select('name, email').eq('id', rv.employee_id).single()
-        const emp = empProfile as { name: string | null; email: string } | null
-        if (emp?.email) {
-          await sendEmail({
-            to: emp.email,
-            subject: `Your performance review with ${managerName} is ready for your signature`,
-            html: buildSigningEmail({
-              recipientName: emp.name || emp.email,
-              employeeName,
-              managerName,
-              role: 'employee',
-              signUrl,
-            }),
-          })
-        }
+      if (empEmail) {
+        emailJobs.push(sendEmail({
+          to: empEmail,
+          subject: `Your performance review with ${managerName} is ready for your signature`,
+          html: buildSigningEmail({ recipientName: empName || empEmail, employeeName, managerName, role: 'employee', signUrl }),
+        }))
       }
+
+      // Race against a 8-second timeout so we always respond before Vercel's 10s limit
+      await Promise.race([
+        Promise.all(emailJobs),
+        new Promise(resolve => setTimeout(resolve, 8000)),
+      ])
     } catch { /* email is non-critical */ }
 
     return NextResponse.json({ ok: true, confirmedAt: confirmedAt })

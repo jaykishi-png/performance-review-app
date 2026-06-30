@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
         .eq('employee_id', employeeId)
         .order('updated_at', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (callerRole === 'dev_admin' && data) {
         return NextResponse.json({
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
       .eq('employee_id', user.id)
       .order('updated_at', { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
 
     return NextResponse.json({ selfReview: data ?? null })
   } catch {
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
       .from('self_reviews')
       .select('id, status')
       .eq('employee_id', user.id)
-      .single()
+      .maybeSingle()
 
     if (existing && (existing as { status: string }).status === 'submitted' && !body.forceUpdate) {
       return NextResponse.json({ error: 'Submitted review cannot be edited' }, { status: 400 })
@@ -123,10 +123,26 @@ export async function POST(req: NextRequest) {
       updated_at: now,
     }
 
+    let saveError: { code?: string; message: string } | null = null
     if (existing) {
-      await serviceClient.from('self_reviews').update(payload).eq('id', (existing as { id: string }).id)
+      const { error } = await serviceClient.from('self_reviews').update(payload).eq('id', (existing as { id: string }).id)
+      saveError = error
     } else {
-      await serviceClient.from('self_reviews').insert(payload)
+      const { error } = await serviceClient.from('self_reviews').insert(payload)
+      saveError = error
+    }
+
+    // If save failed due to missing columns (migration not applied), retry without new template columns
+    if (saveError && (saveError.code === '42703' || saveError.message?.includes('column'))) {
+      const { competencies: _c, goals_objectives: _g, next_year_goals: _n, ...legacyPayload } = payload as Record<string, unknown>
+      void _c; void _g; void _n
+      const op = existing
+        ? serviceClient.from('self_reviews').update(legacyPayload).eq('id', (existing as { id: string }).id)
+        : serviceClient.from('self_reviews').insert(legacyPayload)
+      const { error: legacyErr } = await op
+      if (legacyErr) return NextResponse.json({ error: legacyErr.message }, { status: 500 })
+    } else if (saveError) {
+      return NextResponse.json({ error: saveError.message }, { status: 500 })
     }
 
     return NextResponse.json({ ok: true })

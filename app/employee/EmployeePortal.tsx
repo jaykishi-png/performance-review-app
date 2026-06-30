@@ -631,6 +631,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [submitConfirm, setSubmitConfirm] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const [driveUrl, setDriveUrl] = useState<string | null>(initialDriveUrl ?? null)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -956,7 +957,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   async function saveDraft() {
     setSaving(true)
     try {
-      await fetch('/api/self-reviews', {
+      const res = await fetch('/api/self-reviews', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           competencies: review.competencies, goalsObjectives: review.goals_objectives,
@@ -964,14 +965,15 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           status: 'draft', strengths: '', growthAreas: '', goalReflections: [], overallComments: '',
         }),
       })
-      setSaved(true); setTimeout(() => setSaved(false), 2000)
+      if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2000) }
     } finally { setSaving(false) }
   }
 
   async function submitReview() {
     setSaving(true)
+    setSubmitError('')
     try {
-      await fetch('/api/self-reviews', {
+      const res = await fetch('/api/self-reviews', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           competencies: review.competencies, goalsObjectives: review.goals_objectives,
@@ -979,6 +981,12 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           status: 'submitted', strengths: '', growthAreas: '', goalReflections: [], overallComments: '',
         }),
       })
+      if (!res.ok) {
+        let errMsg = 'Failed to submit. Please try again.'
+        try { const d = await res.json() as { error?: string }; if (d.error) errMsg = d.error } catch { /* ignore */ }
+        setSubmitError(errMsg)
+        return
+      }
       setReview(r => ({ ...r, status: 'submitted', submitted_at: new Date().toISOString() }))
       setSubmitConfirm(false); router.refresh()
 
@@ -3109,8 +3117,13 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 16, padding: 28, maxWidth: 400, width: '90%' }}>
             <h2 style={{ margin: '0 0 10px', fontSize: 17, color: '#f0f2fa' }}>Submit Self-Assessment?</h2>
             <p style={{ margin: '0 0 22px', color: '#9ca3af', fontSize: 13, lineHeight: 1.6 }}>Once submitted, your self-assessment will be shared with your manager and cannot be edited.</p>
+            {submitError && (
+              <div style={{ padding: '8px 12px', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 8, fontSize: 12, color: '#f87171', marginBottom: 16 }}>
+                {submitError}
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setSubmitConfirm(false)} style={{ flex: 1, padding: '10px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Go Back</button>
+              <button onClick={() => { setSubmitConfirm(false); setSubmitError('') }} style={{ flex: 1, padding: '10px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Go Back</button>
               <button onClick={submitReview} disabled={saving} style={{ flex: 2, padding: '10px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                 {saving ? 'Submitting…' : 'Yes, Submit'}
               </button>

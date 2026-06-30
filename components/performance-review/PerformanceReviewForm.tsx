@@ -2736,8 +2736,9 @@ export function PerformanceReviewForm() {
   useEffect(() => {
     if (activePage !== 'reviews' || !meetingDetailId) return
     const save = saves.find(s => s.id === meetingDetailId)
-    if (save?.employeeId) {
-      loadMeetingSA(save.employeeId)
+    const empId = save?.employeeId || dbTeam.find(m => m.name === save?.employeeName)?.id
+    if (empId) {
+      loadMeetingSA(empId)
     }
     // Reset per-session UI state when opening a detail
     setMeetingEmpSigSuccess(false)
@@ -2753,10 +2754,11 @@ export function PerformanceReviewForm() {
   useEffect(() => {
     if (activePage !== 'review-meeting' || !rmDetailId) return
     const save = saves.find(s => s.id === rmDetailId)
-    if (save?.employeeId) {
+    const empId = save?.employeeId || dbTeam.find(m => m.name === save?.employeeName)?.id
+    if (empId) {
       setRmSALoading(true)
       setRmSAData(null)
-      fetch(`/api/self-reviews?employeeId=${save.employeeId}`)
+      fetch(`/api/self-reviews?employeeId=${empId}`)
         .then(r => r.json())
         .then((data: { selfReview: SAData | null }) => { setRmSAData(data.selfReview ?? null) })
         .catch(() => { setRmSAData(null) })
@@ -3638,8 +3640,9 @@ export function PerformanceReviewForm() {
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ reviewId: rmSave.id, resend: true }),
                           })
-                          const data = await res.json() as { ok?: boolean; confirmedAt?: string; error?: string }
-                          if (!res.ok) throw new Error(data.error ?? 'Failed to resend')
+                          let data: { ok?: boolean; confirmedAt?: string; error?: string } = {}
+                          try { data = await res.json() } catch { /* empty body on timeout */ }
+                          if (!res.ok) throw new Error(data.error ?? `Server error (${res.status})`)
                         } catch (e) {
                           setRmConfirmError(e instanceof Error ? e.message : 'Something went wrong.')
                         } finally {
