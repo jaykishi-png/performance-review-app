@@ -17,17 +17,13 @@ export default async function SignPage({ params }: { params: Promise<{ reviewId:
   const p = profile as { id: string; name: string | null; email: string; role: string } | null
   if (!p || p.role === 'pending') redirect(`/login?next=/sign/${reviewId}`)
 
-  // Fetch review — manager sees if user_id matches, employee sees if employee_id matches, admin sees all
-  const query = svc
+  // Fetch review by ID — service client bypasses RLS, access check done below in code
+  const { data: review } = await svc
     .from('reviews')
     .select('id, user_id, employee_id, employee_name, employee_position, form_data, comparison_report, manager_signed_at, manager_signature, employee_signed_at, employee_signature, drive_url')
     .eq('id', reviewId)
+    .maybeSingle()
 
-  if (p.role !== 'admin' && p.role !== 'dev_admin') {
-    query.or(`user_id.eq.${user.id},employee_id.eq.${user.id}`)
-  }
-
-  const { data: review } = await query.single()
   if (!review) redirect('/')
 
   const rv = review as {
@@ -45,6 +41,13 @@ export default async function SignPage({ params }: { params: Promise<{ reviewId:
     drive_url: string | null
   }
 
+  const isManager = rv.user_id === user.id
+  const isEmployee = rv.employee_id === user.id
+  const isAdmin = p.role === 'admin' || p.role === 'dev_admin'
+
+  // Only the manager, employee, or admin may access this signing page
+  if (!isManager && !isEmployee && !isAdmin) redirect('/')
+
   // Fetch SA data for the employee
   let saData: Record<string, unknown> | null = null
   if (rv.employee_id) {
@@ -57,11 +60,6 @@ export default async function SignPage({ params }: { params: Promise<{ reviewId:
       .maybeSingle()
     if (srRow) saData = srRow as Record<string, unknown>
   }
-
-  // Determine user's relationship to this review
-  const isManager = rv.user_id === user.id
-  const isEmployee = rv.employee_id === user.id
-  const isAdmin = p.role === 'admin'
 
   return (
     <ReviewSignPage
