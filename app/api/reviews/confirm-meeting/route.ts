@@ -44,9 +44,10 @@ export async function POST(req: NextRequest) {
       confirmedAt = now
     }
 
-    // Send signing invitation emails
-    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://performance-review-app-three.vercel.app'
-    const signUrl = `${APP_URL}/sign/${reviewId}`
+    // Send signing invitation emails — use request origin so the link always
+    // points to the same domain the manager is on (avoids cross-domain cookie issues)
+    const origin = new URL(req.url).origin
+    const signUrl = `${origin}/sign/${reviewId}`
     const managerName = p?.name || p?.email || 'Manager'
     const employeeName = rv.employee_name || 'Employee'
 

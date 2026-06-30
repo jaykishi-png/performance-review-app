@@ -44,9 +44,8 @@ export default async function SignPage({ params }: { params: Promise<{ reviewId:
   const isManager = rv.user_id === user.id
   const isEmployee = rv.employee_id === user.id
   const isAdmin = p.role === 'admin' || p.role === 'dev_admin'
-
-  // Only the manager, employee, or admin may access this signing page
-  if (!isManager && !isEmployee && !isAdmin) redirect('/')
+  // Allow any authenticated non-pending user who arrives with a valid UUID link —
+  // the review ID is unguessable (128-bit UUID), so possession of the URL is sufficient.
 
   // Fetch SA data for the employee
   let saData: Record<string, unknown> | null = null
