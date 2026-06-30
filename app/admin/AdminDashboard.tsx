@@ -24,7 +24,8 @@ type ReviewRecord = {
   comparison_report: string | null; saved_at: string; updated_at: string;
   manager_signed_at: string | null; employee_signed_at: string | null;
   manager_signature: string | null; employee_signature: string | null;
-  admin_approved_at: string | null;
+  admin_approved_at: string | null; employee_id?: string | null;
+  meeting_confirmed_at?: string | null;
 }
 type CycleRecord = {
   id: string; name: string; description: string | null; status: 'draft' | 'active' | 'closed'
@@ -288,6 +289,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [viewingComparison, setViewingComparison] = useState<ReviewRecord|null>(null)
   const [reviewFormData, setReviewFormData] = useState<Record<string,unknown>|null>(null)
   const [reviewFormLoading, setReviewFormLoading] = useState(false)
+  const [reviewFormError, setReviewFormError] = useState<string|null>(null)
   const [saLoading, setSALoading] = useState(false)
 
   async function openSA(employeeId: string, employeeName: string, position: string|null) {
@@ -304,13 +306,17 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
   // Fetch full form_data when a review is opened
   useEffect(() => {
-    if (!viewingReview) { setReviewFormData(null); return }
+    if (!viewingReview) { setReviewFormData(null); setReviewFormError(null); return }
     setReviewFormLoading(true)
     setReviewFormData(null)
+    setReviewFormError(null)
     fetch(`/api/reviews?id=${viewingReview.id}`)
       .then(r => r.json())
-      .then((d: { review?: { form_data?: Record<string,unknown> } }) => setReviewFormData(d.review?.form_data ?? null))
-      .catch(() => setReviewFormData(null))
+      .then((d: { review?: { form_data?: Record<string,unknown> }; error?: string; code?: string; role?: string }) => {
+        if (d.error) setReviewFormError(`${d.error}${d.code ? ` (${d.code})` : ''}${d.role ? ` — fetched as role: ${d.role}` : ''}`)
+        else setReviewFormData(d.review?.form_data ?? null)
+      })
+      .catch(() => setReviewFormError('Failed to load review content'))
       .finally(() => setReviewFormLoading(false))
   }, [viewingReview])
 
@@ -1216,7 +1222,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   const status = reviewStatus(r)
                   const sm = STATUS_META[status]
                   const manager = users.find(u => u.id === r.user_id)
-                  const emp = users.find(u => u.name === r.employee_name)
+                  const empId = r.employee_id || users.find(u => u.name === r.employee_name)?.id
                   const isDeleting = deleteConfirm === r.id
                   return (
                     <tr key={r.id} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(13,15,26,0.4)' }}>
@@ -1270,12 +1276,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       </td>
 
                       {/* Self Assessment column */}
-                      <td style={{ ...td, padding: 0, cursor: emp ? 'pointer' : 'default' }}
-                        onClick={() => emp && openSA(emp.id, r.employee_name || '', r.employee_position || null)}
-                        onMouseEnter={e => { if (emp) e.currentTarget.style.background = 'rgba(129,140,248,0.08)' }}
+                      <td style={{ ...td, padding: 0, cursor: empId ? 'pointer' : 'default' }}
+                        onClick={() => empId && openSA(empId, r.employee_name || '', r.employee_position || null)}
+                        onMouseEnter={e => { if (empId) e.currentTarget.style.background = 'rgba(129,140,248,0.08)' }}
                         onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-                        <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, color: emp ? '#818cf8' : '#374151', fontSize: 12, fontWeight: 600 }}>
-                          {emp ? <><span>📋</span><span>View</span></> : <span>—</span>}
+                        <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, color: empId ? '#818cf8' : '#374151', fontSize: 12, fontWeight: 600 }}>
+                          {empId ? <><span>📋</span><span>View</span></> : <span>—</span>}
                         </div>
                       </td>
 
@@ -3086,7 +3092,17 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             {reviewFormLoading && (
               <div style={{ textAlign: 'center', padding: '24px 0', color: '#4b5563', fontSize: 13 }}>Loading review content…</div>
             )}
-            {!reviewFormLoading && reviewFormData && (() => {
+            {!reviewFormLoading && reviewFormError && (
+              <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 8, padding: '12px 16px', color: '#f87171', fontSize: 13 }}>
+                Error loading review: {reviewFormError}
+              </div>
+            )}
+            {!reviewFormLoading && !reviewFormError && !reviewFormData && (
+              <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '20px', textAlign: 'center', color: '#4b5563', fontSize: 13 }}>
+                No form data saved for this review yet.
+              </div>
+            )}
+            {!reviewFormLoading && !reviewFormError && reviewFormData && (() => {
               const fd = reviewFormData as {
                 supervisorName?: string; appraisalPeriod?: string; reviewDate?: string; employeeDivision?: string
                 competencyOne?: {competency:string;examples:string[]}; competencyTwo?: {competency:string;examples:string[]}
@@ -3181,7 +3197,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 </div>
               )
             })()}
-            {!isDevAdmin && !reviewFormLoading && !reviewFormData && viewingReview.drive_url && (
+            {!isDevAdmin && !reviewFormLoading && (!reviewFormData || reviewFormError) && viewingReview.drive_url && (
               <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '14px 18px', marginTop: 4 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Full Review Document</div>
                 <a href={viewingReview.drive_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#34d399', textDecoration: 'none' }}>Open in Google Drive ↗</a>
