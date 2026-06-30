@@ -398,6 +398,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     employee_signed_at: string | null
     employee_signature: string | null
     updated_at: string
+    comparison_report?: string | null
     form_data?: {
       goals?: Array<{ text: string; status: string; explanation?: string }>
       nextGoals?: Array<{ text: string; targetDate?: string }>
@@ -1262,210 +1263,275 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
 
   // ── Page: Performance Reviews ─────────────────────────────────────────────
   function renderReviewsPage() {
+    const sectionLabel: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 6 }
+    const panelCard: React.CSSProperties = { background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '12px 14px', marginBottom: 10 }
+
+    // ── No manager review yet ────────────────────────────────────────────────
+    if (managerReviews.length === 0) {
+      return (
+        <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Performance Review Meeting</h1>
+          <p style={{ margin: '0 0 28px', fontSize: 13, color: '#6b7280' }}>Side-by-side view of your self-assessment and manager review, available once your manager completes their review.</p>
+          {!isSubmitted && (
+            <div style={{ ...card, background: '#0d1117', borderLeft: '3px solid #f59e0b', padding: '16px 20px', marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#f59e0b', marginBottom: 4 }}>Complete your Self-Assessment first</div>
+              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 12 }}>Your self-assessment must be submitted before your manager can write your performance review.</div>
+              <button onClick={() => setPage('self-assessment')} style={{ padding: '7px 16px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Go to Self-Assessment</button>
+            </div>
+          )}
+          <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '48px 32px' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>No performance reviews yet</div>
+            <p style={{ margin: 0, fontSize: 13, color: '#4b5563', lineHeight: 1.6, maxWidth: 400, marginInline: 'auto' }}>Once your manager completes and submits your performance review, this panel will show a side-by-side comparison of your self-assessment and their review.</p>
+          </div>
+        </div>
+      )
+    }
+
+    // ── Meeting view: one review at a time ──────────────────────────────────
     return (
-      <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Performance Review Meeting</h1>
-        <p style={{ margin: '0 0 28px', fontSize: 13, color: '#6b7280' }}>Side-by-side view of your self-assessment and manager review, with signature at the bottom to acknowledge.</p>
-
-        <div style={{ fontWeight: 600, fontSize: 11, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Your Self-Assessments</div>
-        {isSubmitted ? (
-          <div style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 14, color: '#e5e7eb' }}>Self-Assessment</div>
-              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
-                Submitted {review.submitted_at ? new Date(review.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''}
-                {review.overall_rating && <> · <span style={{ color: STAR_LABELS[review.overall_rating].color }}>{'★'.repeat(review.overall_rating)}</span> {STAR_LABELS[review.overall_rating].label}</>}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              {driveUrl && <a href={driveUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}><ExternalLink size={12} /> Drive</a>}
-              <button onClick={() => { setPage('self-assessment'); setStep(8) }} style={{ padding: '6px 12px', background: '#13151f', color: '#9ca3af', border: '1px solid #1e2130', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>View</button>
-            </div>
-          </div>
-        ) : (
-          <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '32px' }}>
-            <div style={{ fontSize: 32, marginBottom: 10 }}>📋</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>No submitted self-assessments yet</div>
-            <button onClick={() => setPage('self-assessment')} style={{ padding: '8px 20px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Start Self-Assessment</button>
-          </div>
-        )}
-
-        <div style={{ fontWeight: 600, fontSize: 11, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '24px 0 10px' }}>Manager Performance Reviews</div>
-        {managerReviews.length === 0 ? (
-          <div style={{ ...card, background: '#0d1117', textAlign: 'center', padding: '32px' }}>
-            <div style={{ fontSize: 32, marginBottom: 10 }}>📄</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>No performance reviews yet</div>
-            <p style={{ margin: 0, fontSize: 12, color: '#4b5563', lineHeight: 1.6 }}>Once your manager completes and submits your performance review, this panel will show a side-by-side comparison of your self-assessment and their review.</p>
-          </div>
-        ) : managerReviews.map(r => {
-          const isExpanded = expandedReviewId === r.id
+      <div style={{ padding: '28px 32px', maxWidth: 1200, margin: '0 auto' }}>
+        {managerReviews.map(r => {
           const fd = r.form_data
           const score = fd?.overallScore ?? r.overall_score ?? 0
-          const competencies = [fd?.competencyOne, fd?.competencyTwo, fd?.competencyThree, fd?.competencyFour, fd?.competencyFive].filter(Boolean) as Array<{ competency: string; examples: string[] }>
+          const mgCompetencies = [fd?.competencyOne, fd?.competencyTwo, fd?.competencyThree, fd?.competencyFour, fd?.competencyFive].filter(Boolean) as Array<{ competency: string; examples: string[] }>
+          const saCompetencies = review.competencies.filter(c => c.term)
+
           return (
-            <div key={r.id} style={{ ...card, marginBottom: 12, padding: 0, overflow: 'hidden' }}>
-              {/* Card header */}
-              <div style={{ padding: '16px 20px' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: '#e5e7eb', marginBottom: 4 }}>{new Date(r.manager_signed_at).getFullYear()} Performance Review</div>
-                    {r.employee_position && <div style={{ fontSize: 12, color: '#6b7280' }}>{r.employee_position}</div>}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
-                    {r.drive_url && <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}><ExternalLink size={12} /> Drive</a>}
-                    <button
-                      onClick={() => setExpandedReviewId(isExpanded ? null : r.id)}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: '#13151f', color: '#818cf8', border: '1px solid #2a2d3a', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      {isExpanded ? '▲ Hide Details' : '▼ View Details'}
-                    </button>
-                  </div>
+            <div key={r.id}>
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' as const }}>
+                <div>
+                  <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Performance Review Meeting</h1>
+                  <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>
+                    {new Date(r.manager_signed_at).getFullYear()} Annual Review
+                    {r.employee_position && <> · {r.employee_position}</>}
+                  </p>
                 </div>
-                {/* Signatures */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: r.employee_signed_at ? 0 : 12 }}>
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Manager</div>
-                    <div style={{ padding: '10px 12px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
-                      <SignatureDisplay stored={r.manager_signature} date={r.manager_signed_at} />
-                    </div>
+                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  {driveUrl && <a href={driveUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', background: '#0d1a13', color: '#34d399', border: '1px solid #1a4a35', borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}><ExternalLink size={12} /> My SA Doc</a>}
+                  {r.drive_url && <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', background: '#0d1a13', color: '#34d399', border: '1px solid #1a4a35', borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}><ExternalLink size={12} /> Review Doc</a>}
+                </div>
+              </div>
+
+              {/* ── Side-by-side panels ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24, alignItems: 'start' }}>
+
+                {/* Left: Self-Assessment */}
+                <div>
+                  <div style={{ padding: '10px 14px', background: '#1a1430', border: '1px solid #4c1d95', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Your Self-Assessment</div>
+                    {review.submitted_at && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Submitted {new Date(review.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
                   </div>
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>You</div>
-                    {r.employee_signed_at ? (
-                      <div style={{ padding: '10px 12px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
-                        <SignatureDisplay stored={r.employee_signature} date={r.employee_signed_at} />
+                  <div style={{ background: '#0d0f1a', border: '1px solid #4c1d95', borderRadius: '0 0 10px 10px', padding: 16 }}>
+                    {/* SA rating */}
+                    {review.overall_rating && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ ...sectionLabel, color: '#a78bfa' }}>Overall Self-Rating</div>
+                        <div style={{ fontSize: 20, letterSpacing: 2, marginBottom: 4 }}>
+                          {Array.from({ length: 5 }, (_, i) => (
+                            <span key={i} style={{ color: i < review.overall_rating! ? STAR_LABELS[review.overall_rating!].color : '#374151' }}>★</span>
+                          ))}
+                          <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 8 }}>{STAR_LABELS[review.overall_rating].label}</span>
+                        </div>
                       </div>
-                    ) : (
-                      <div style={{ padding: '6px 10px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8, fontSize: 11, fontWeight: 600, color: '#f59e0b' }}>
-                        Awaiting your signature
+                    )}
+                    {/* SA competencies */}
+                    {saCompetencies.length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ ...sectionLabel, color: '#a78bfa' }}>Competencies</div>
+                        {saCompetencies.map((c, i) => (
+                          <div key={i} style={panelCard}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#c7d2fe', marginBottom: 6 }}>{c.term}</div>
+                            {c.examples.filter(e => e?.trim()).map((ex, j) => (
+                              <div key={j} style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.5, paddingLeft: 10, borderLeft: '2px solid #4c1d95', marginBottom: 4 }}>{ex}</div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* SA goals */}
+                    {review.goals_objectives.some(g => g.description?.trim()) && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ ...sectionLabel, color: '#a78bfa' }}>Goals &amp; Objectives</div>
+                        {review.goals_objectives.filter(g => g.description?.trim()).map((g, i) => {
+                          const outcomeColor = g.outcome === 'successful' ? '#34d399' : g.outcome === 'unsuccessful' ? '#f87171' : '#f59e0b'
+                          return (
+                            <div key={i} style={panelCard}>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: g.reasoning ? 6 : 0 }}>
+                                <div style={{ fontSize: 12, color: '#e5e7eb', flex: 1 }}>{g.description}</div>
+                                {g.outcome && <span style={{ fontSize: 10, fontWeight: 700, color: outcomeColor, flexShrink: 0, textTransform: 'capitalize' }}>{g.outcome}</span>}
+                              </div>
+                              {g.reasoning && <div style={{ fontSize: 11, color: '#6b7280', fontStyle: 'italic', lineHeight: 1.5 }}>{g.reasoning}</div>}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                    {/* SA next year goals */}
+                    {review.next_year_goals.some(g => g.goal?.trim()) && (
+                      <div>
+                        <div style={{ ...sectionLabel, color: '#a78bfa' }}>Next Year&apos;s Goals</div>
+                        {review.next_year_goals.filter(g => g.goal?.trim()).map((g, i) => (
+                          <div key={i} style={panelCard}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#c7d2fe', marginBottom: g.objective ? 4 : 0 }}>{g.goal}</div>
+                            {g.objective && <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>{g.objective}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {!isSubmitted && (
+                      <div style={{ textAlign: 'center', padding: '24px 16px', color: '#6b7280', fontSize: 12 }}>
+                        <div style={{ fontSize: 24, marginBottom: 8 }}>📋</div>
+                        Self-assessment not yet submitted.
                       </div>
                     )}
                   </div>
                 </div>
-                {!r.employee_signed_at && (
-                  signingId === r.id ? (
-                    <div style={{ background: '#0a0c14', border: '1px solid #2a2d3a', borderRadius: 10, padding: '16px' }}>
-                      <p style={{ margin: '0 0 12px', fontSize: 13, color: '#9ca3af' }}>By signing, you acknowledge that you have reviewed this performance evaluation and discussed it with your manager.</p>
-                      <SignaturePad
-                        onSign={result => handleEmployeeSign(r.id, result)}
-                        loading={signLoading}
-                        error={signError}
-                        buttonLabel="✍️ Sign & Acknowledge"
-                        onCancel={() => { setSigningId(null); setSignError('') }}
-                      />
-                    </div>
-                  ) : (
-                    <button onClick={() => { setSigningId(r.id); setSignError('') }} style={{ padding: '8px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                      ✍️ Sign &amp; Acknowledge
-                    </button>
-                  )
-                )}
-              </div>
 
-              {/* Expanded detail panel */}
-              {isExpanded && fd && (
-                <div style={{ background: '#0d1425', borderTop: '1px solid #1e2130', borderLeft: '3px solid #4f46e5', padding: '20px', borderBottomLeftRadius: 10, borderBottomRightRadius: 10 }}>
-
-                  {/* Overall Score */}
-                  {(score > 0 || fd.overallSummary) && (
-                    <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Overall Score</div>
-                      {score > 0 && (
-                        <div style={{ fontSize: 22, marginBottom: 6, letterSpacing: 2 }}>
-                          {Array.from({ length: 5 }, (_, i) => (
-                            <span key={i} style={{ color: i < score ? '#fbbf24' : '#374151' }}>{i < score ? '★' : '☆'}</span>
-                          ))}
-                          <span style={{ fontSize: 13, color: '#9ca3af', marginLeft: 8 }}>{score} / 5</span>
-                        </div>
-                      )}
-                      {fd.overallSummary && (
-                        <p style={{ margin: 0, fontSize: 13, color: '#d1d5db', lineHeight: 1.6 }}>{fd.overallSummary}</p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Goals */}
-                  {fd.goals && fd.goals.length > 0 && (
-                    <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Goals &amp; Objectives</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {/* Right: Manager Review */}
+                <div>
+                  <div style={{ padding: '10px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Manager&apos;s Review</div>
+                    <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Signed {new Date(r.manager_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                  </div>
+                  <div style={{ background: '#0d0f1a', border: '1px solid #1a4a35', borderRadius: '0 0 10px 10px', padding: 16 }}>
+                    {/* Manager overall score */}
+                    {(score > 0 || fd?.overallSummary) && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ ...sectionLabel, color: '#34d399' }}>Overall Score</div>
+                        {score > 0 && (
+                          <div style={{ fontSize: 20, letterSpacing: 2, marginBottom: 4 }}>
+                            {Array.from({ length: 5 }, (_, i) => (
+                              <span key={i} style={{ color: i < score ? '#fbbf24' : '#374151' }}>★</span>
+                            ))}
+                            <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 8 }}>{score} / 5{score > 0 && STAR_LABELS[score] ? ` · ${STAR_LABELS[score].label}` : ''}</span>
+                          </div>
+                        )}
+                        {fd?.overallSummary && <p style={{ margin: 0, fontSize: 12, color: '#d1d5db', lineHeight: 1.6 }}>{fd.overallSummary}</p>}
+                      </div>
+                    )}
+                    {/* Manager competencies */}
+                    {mgCompetencies.length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ ...sectionLabel, color: '#34d399' }}>Competencies</div>
+                        {mgCompetencies.map((c, i) => {
+                          const validEx = (c.examples || []).filter(e => e?.trim())
+                          return (
+                            <div key={i} style={panelCard}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: '#6ee7b7', marginBottom: validEx.length ? 6 : 0 }}>{c.competency}</div>
+                              {validEx.map((ex, j) => (
+                                <div key={j} style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.5, paddingLeft: 10, borderLeft: '2px solid #1a4a35', marginBottom: 4 }}>{ex}</div>
+                              ))}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                    {/* Manager goals */}
+                    {fd?.goals && fd.goals.length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ ...sectionLabel, color: '#34d399' }}>Goals &amp; Objectives</div>
                         {fd.goals.map((g, i) => {
-                          const statusStyle =
-                            g.status === 'Successful' ? { bg: '#052e16', color: '#34d399', border: '#1a4a35' } :
-                            g.status === 'Unsuccessful' ? { bg: '#1f0a0a', color: '#f87171', border: '#4a1a1a' } :
-                            { bg: '#1f1a0d', color: '#fbbf24', border: '#92400e' }
+                          const sStyle = g.status === 'Successful' ? { color: '#34d399', border: '#1a4a35' } : g.status === 'Unsuccessful' ? { color: '#f87171', border: '#4a1a1a' } : { color: '#fbbf24', border: '#92400e' }
                           return (
-                            <div key={i} style={{ padding: '10px 12px', background: '#0a0c14', border: '1px solid #1e2130', borderRadius: 8 }}>
-                              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-                                <div style={{ fontSize: 13, color: '#e5e7eb', flex: 1 }}>{g.text}</div>
-                                {g.status && (
-                                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', background: statusStyle.bg, color: statusStyle.color, border: `1px solid ${statusStyle.border}`, borderRadius: 4, flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                    {g.status}
-                                  </span>
-                                )}
+                            <div key={i} style={panelCard}>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: g.explanation ? 6 : 0 }}>
+                                <div style={{ fontSize: 12, color: '#e5e7eb', flex: 1 }}>{g.text}</div>
+                                {g.status && <span style={{ fontSize: 10, fontWeight: 700, color: sStyle.color, flexShrink: 0 }}>{g.status}</span>}
                               </div>
-                              {g.explanation && (
-                                <div style={{ marginTop: 6, fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>{g.explanation}</div>
-                              )}
+                              {g.explanation && <div style={{ fontSize: 11, color: '#6b7280', fontStyle: 'italic', lineHeight: 1.5 }}>{g.explanation}</div>}
                             </div>
                           )
                         })}
                       </div>
-                    </div>
-                  )}
-
-                  {/* Competencies */}
-                  {competencies.length > 0 && (
-                    <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Competencies</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {competencies.map((c, i) => {
-                          const validExamples = (c.examples || []).filter(e => e && e.trim()).slice(0, 3)
-                          return (
-                            <div key={i} style={{ padding: '12px 14px', background: '#0a0c14', border: '1px solid #1e2130', borderRadius: 8 }}>
-                              <div style={{ fontSize: 13, fontWeight: 700, color: '#c7d2fe', marginBottom: validExamples.length ? 8 : 0 }}>{c.competency}</div>
-                              {validExamples.length > 0 && (
-                                <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                  {validExamples.map((ex, j) => (
-                                    <li key={j} style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.5 }}>{ex}</li>
-                                  ))}
-                                </ul>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Next Year's Goals */}
-                  {fd.nextGoals && fd.nextGoals.length > 0 && (
-                    <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Next Year&apos;s Goals</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    )}
+                    {/* Manager next year goals */}
+                    {fd?.nextGoals && fd.nextGoals.length > 0 && (
+                      <div>
+                        <div style={{ ...sectionLabel, color: '#34d399' }}>Next Year&apos;s Goals</div>
                         {fd.nextGoals.map((ng, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, padding: '10px 12px', background: '#0a0c14', border: '1px solid #1e2130', borderRadius: 8 }}>
-                            <div style={{ fontSize: 13, color: '#e5e7eb', flex: 1 }}>{ng.text}</div>
-                            {ng.targetDate && (
-                              <span style={{ fontSize: 11, color: '#818cf8', flexShrink: 0 }}>Target: {ng.targetDate}</span>
-                            )}
+                          <div key={i} style={{ ...panelCard, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                            <div style={{ fontSize: 12, color: '#e5e7eb', flex: 1 }}>{ng.text}</div>
+                            {ng.targetDate && <span style={{ fontSize: 11, color: '#34d399', flexShrink: 0 }}>{ng.targetDate}</span>}
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    )}
+                    {!fd && <div style={{ fontSize: 12, color: '#4b5563', textAlign: 'center', padding: '20px 0' }}>Review details not available.</div>}
+                  </div>
+                </div>
+              </div>
 
-                  {/* Drive Document */}
-                  {r.drive_url && (
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Drive Document</div>
-                      <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: 'linear-gradient(135deg,#4f46e5,#6d28d9)', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-                        <ExternalLink size={14} /> Open Google Doc →
-                      </a>
-                    </div>
-                  )}
+              {/* ── Comparison Report ── */}
+              {r.comparison_report && (
+                <div style={{ ...card, marginBottom: 24, borderLeft: '3px solid #818cf8' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Comparison &amp; Analysis</div>
+                  <div style={{ fontSize: 13, color: '#d1d5db', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{r.comparison_report}</div>
                 </div>
               )}
+
+              {/* ── Signature Section ── */}
+              <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, overflow: 'hidden', marginBottom: 32 }}>
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e2130', background: '#0d0f1a' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#f0f2fa' }}>Signatures</div>
+                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Both parties must sign to acknowledge the review has been discussed.</div>
+                </div>
+                <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                  {/* Manager sig */}
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Manager</div>
+                    <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                      <SignatureDisplay stored={r.manager_signature} date={r.manager_signed_at} />
+                    </div>
+                  </div>
+                  {/* Employee sig */}
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Employee</div>
+                    {r.employee_signed_at ? (
+                      <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                        <SignatureDisplay stored={r.employee_signature} date={r.employee_signed_at} />
+                      </div>
+                    ) : (
+                      <div style={{ padding: '10px 12px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8, fontSize: 11, fontWeight: 600, color: '#f59e0b' }}>
+                        ⏳ Awaiting your signature
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {/* Sign button / pad */}
+                {!r.employee_signed_at && (
+                  <div style={{ padding: '0 20px 20px' }}>
+                    {signingId === r.id ? (
+                      <div style={{ background: '#0a0c14', border: '1px solid #2a2d3a', borderRadius: 10, padding: '20px' }}>
+                        <p style={{ margin: '0 0 14px', fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>
+                          By signing, you acknowledge that you have reviewed this performance evaluation and discussed it with your manager.
+                        </p>
+                        <SignaturePad
+                          onSign={result => handleEmployeeSign(r.id, result)}
+                          loading={signLoading}
+                          error={signError}
+                          buttonLabel="✍️ Sign & Acknowledge"
+                          onCancel={() => { setSigningId(null); setSignError('') }}
+                        />
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setSigningId(r.id); setSignError('') }}
+                        style={{ width: '100%', padding: '12px 20px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em' }}
+                      >
+                        ✍️ Sign &amp; Acknowledge Review
+                      </button>
+                    )}
+                  </div>
+                )}
+                {r.employee_signed_at && (
+                  <div style={{ padding: '12px 20px', background: '#052e16', borderTop: '1px solid #1a4a35', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <CheckCircle2 size={16} color="#34d399" />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#34d399' }}>Review acknowledged and signed on {new Date(r.employee_signed_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                  </div>
+                )}
+              </div>
             </div>
           )
         })}
