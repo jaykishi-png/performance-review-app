@@ -1206,7 +1206,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           ) : (
             <table style={{ width: '100%', minWidth: 1100, borderCollapse: 'collapse' }}>
               <thead>
-                <tr>{['Employee', 'Position', 'Manager', 'Progress', 'Status', 'Signatures', 'Self Assessment', 'Performance Review', 'Comparison', 'Last Updated', 'Actions'].map(h => (
+                <tr>{['Employee', 'Position', 'Manager', 'Progress', 'Status', 'Signatures', 'Self Assessment', 'Manager Review', 'Comparison', 'Last Updated', 'Actions'].map(h => (
                   <th key={h} style={th}>{h}</th>
                 ))}</tr>
               </thead>
@@ -1279,7 +1279,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                         </div>
                       </td>
 
-                      {/* Performance Review column */}
+                      {/* Manager Review column */}
                       <td style={{ ...td, padding: 0, cursor: 'pointer' }}
                         onClick={() => setViewingReview(r)}
                         onMouseEnter={e => { e.currentTarget.style.background = 'rgba(96,165,250,0.08)' }}
@@ -3047,6 +3047,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Manager Review</div>
                 <span style={{ fontSize: 17, fontWeight: 700, color: '#f0f2fa' }}>{viewingReview.employee_name}</span>
                 {viewingReview.employee_position && <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 8 }}>· {viewingReview.employee_position}</span>}
               </div>
