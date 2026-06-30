@@ -41,7 +41,7 @@ function LoginContent() {
     // We can't pass it as a query param on redirectTo because Supabase's URL
     // allowlist strips query params during matching.
     if (next) {
-      document.cookie = `auth_next=${encodeURIComponent(next)};path=/;max-age=600;samesite=lax`
+      document.cookie = `auth_next=${next};path=/;max-age=600;samesite=lax`
     }
     const supabase = createClient()
     await supabase.auth.signInWithOAuth({

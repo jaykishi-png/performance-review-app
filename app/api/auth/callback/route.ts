@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const cookieStore = await cookies()
   const rawNext = cookieStore.get('auth_next')?.value ?? ''
   // Only allow relative paths to prevent open-redirect attacks
-  const next = rawNext.startsWith('/') ? decodeURIComponent(rawNext) : ''
+  const next = rawNext.startsWith('/') ? rawNext : ''
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=auth_failed`)
