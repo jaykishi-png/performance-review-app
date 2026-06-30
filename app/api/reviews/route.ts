@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
     if (role === 'middle_manager') {
       const { data: mgrData, error: mgrErr } = await serviceClient
         .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id')
+        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at')
         .eq('user_id', user.id)
         .order('saved_at', { ascending: false })
       if (mgrErr) return NextResponse.json({ error: mgrErr.message }, { status: 500 })
@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
     // Manager: own reviews only
     const { data, error } = await serviceClient
       .from('reviews')
-      .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id')
+      .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at')
       .eq('user_id', user.id)
       .order('saved_at', { ascending: false })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

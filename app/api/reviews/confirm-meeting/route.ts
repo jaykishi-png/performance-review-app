@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     // Verify this review belongs to the calling manager
     const { data: review, error: fetchErr } = await svc
       .from('reviews')
-      .select('id, employee_id, employee_name')
+      .select('id, employee_id, employee_name, meeting_confirmed_at')
       .eq('id', reviewId)
       .eq('user_id', user.id)
       .single()
@@ -30,11 +30,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Review not found or not yours' }, { status: 403 })
     }
 
-    const rv = review as { id: string; employee_id: string | null; employee_name: string | null }
+    const rv = review as { id: string; employee_id: string | null; employee_name: string | null; meeting_confirmed_at: string | null }
+    if (rv.meeting_confirmed_at) {
+      return NextResponse.json({ ok: true, confirmedAt: rv.meeting_confirmed_at })
+    }
 
     const now = new Date().toISOString()
-    // Best-effort update — column may not exist yet if migration hasn't been run
-    await svc.from('reviews').update({ meeting_confirmed_at: now }).eq('id', reviewId)
+    const { error: updateErr } = await svc.from('reviews').update({ meeting_confirmed_at: now }).eq('id', reviewId)
+    if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
 
     // Send signing invitation emails
     const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://performance-review-app-three.vercel.app'
