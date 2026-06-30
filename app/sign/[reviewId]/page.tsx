@@ -15,7 +15,7 @@ export default async function SignPage({ params }: { params: Promise<{ reviewId:
 
   const { data: profile } = await svc.from('profiles').select('id, name, email, role').eq('id', user.id).single()
   const p = profile as { id: string; name: string | null; email: string; role: string } | null
-  if (!p || p.role === 'pending') redirect('/login')
+  if (!p || p.role === 'pending') redirect(`/login?next=/sign/${reviewId}`)
 
   // Fetch review — manager sees if user_id matches, employee sees if employee_id matches, admin sees all
   const query = svc
@@ -28,7 +28,7 @@ export default async function SignPage({ params }: { params: Promise<{ reviewId:
   }
 
   const { data: review } = await query.single()
-  if (!review) redirect('/login')
+  if (!review) redirect('/')
 
   const rv = review as {
     id: string

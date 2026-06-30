@@ -21,6 +21,15 @@ function LoginContent() {
   const [inviteLoading, setInviteLoading] = useState(!!inviteToken)
   const [inviteError, setInviteError] = useState<string | null>(null)
 
+  // If the user already has an active session and there's a destination, skip the login UI
+  useEffect(() => {
+    if (!next || inviteToken) return
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) window.location.replace(next)
+    })
+  }, [next, inviteToken])
+
   useEffect(() => {
     if (!inviteToken) return
     fetch(`/api/admin/invite/lookup?token=${inviteToken}`)
