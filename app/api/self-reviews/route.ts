@@ -62,16 +62,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ selfReview: data ?? null })
     }
 
-    // Employee fetching their own
+    // Employee fetching their own — return all records for history
     const { data } = await serviceClient
       .from('self_reviews')
       .select('*')
       .eq('employee_id', user.id)
       .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
 
-    return NextResponse.json({ selfReview: data ?? null })
+    return NextResponse.json({ selfReview: data?.[0] ?? null, history: data ?? [] })
   } catch {
     return NextResponse.json({ selfReview: null })
   }
@@ -94,11 +92,40 @@ export async function POST(req: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    const { data: existing } = await serviceClient
-      .from('self_reviews')
-      .select('id, status')
-      .eq('employee_id', user.id)
-      .maybeSingle()
+    const anniversaryYear = typeof body.anniversaryYear === 'number' ? body.anniversaryYear : null
+
+    // Find existing record — prefer match by anniversary_year if provided
+    let existing: { id: string; status: string } | null = null
+    if (anniversaryYear) {
+      const { data: yearData, error: yearErr } = await serviceClient
+        .from('self_reviews')
+        .select('id, status')
+        .eq('employee_id', user.id)
+        .eq('anniversary_year', anniversaryYear)
+        .maybeSingle()
+      if (yearErr && (yearErr.code === '42703' || yearErr.message?.includes('column'))) {
+        // anniversary_year column not yet created — fall back to most recent
+        const { data: recent } = await serviceClient
+          .from('self_reviews')
+          .select('id, status')
+          .eq('employee_id', user.id)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        existing = recent
+      } else {
+        existing = yearData
+      }
+    } else {
+      const { data: recent } = await serviceClient
+        .from('self_reviews')
+        .select('id, status')
+        .eq('employee_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      existing = recent
+    }
 
     if (existing && (existing as { status: string }).status === 'submitted' && !body.forceUpdate) {
       return NextResponse.json({ error: 'Submitted review cannot be edited' }, { status: 400 })
@@ -108,6 +135,7 @@ export async function POST(req: NextRequest) {
     const payload = {
       employee_id: user.id,
       manager_id: (profile as { manager_id: string | null } | null)?.manager_id ?? null,
+      anniversary_year: anniversaryYear,
       // New template fields
       competencies: body.competencies ?? [],
       goals_objectives: body.goalsObjectives ?? [],
@@ -134,8 +162,8 @@ export async function POST(req: NextRequest) {
 
     // If save failed due to missing columns (migration not applied), retry without new template columns
     if (saveError && (saveError.code === '42703' || saveError.message?.includes('column'))) {
-      const { competencies: _c, goals_objectives: _g, next_year_goals: _n, ...legacyPayload } = payload as Record<string, unknown>
-      void _c; void _g; void _n
+      const { competencies: _c, goals_objectives: _g, next_year_goals: _n, anniversary_year: _ay, ...legacyPayload } = payload as Record<string, unknown>
+      void _c; void _g; void _n; void _ay
       const op = existing
         ? serviceClient.from('self_reviews').update(legacyPayload).eq('id', (existing as { id: string }).id)
         : serviceClient.from('self_reviews').insert(legacyPayload)

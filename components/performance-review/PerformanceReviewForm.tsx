@@ -2717,6 +2717,28 @@ export function PerformanceReviewForm() {
   const [myReviewEmpSigError, setMyReviewEmpSigError] = useState('')
 
 
+  // ── Completed reviews from DB (for History page) ────────────────────────────
+  const [completedDbReviews, setCompletedDbReviews] = useState<Array<{
+    id: string; employee_name: string; employee_position: string
+    manager_signed_at: string | null; drive_url: string | null
+    form_data?: { overallScore?: number; appraisalPeriod?: string } | null
+    saved_at: string
+  }>>([])
+  const [completedDbLoading, setCompletedDbLoading] = useState(false)
+
+  useEffect(() => {
+    if (activePage !== 'history') return
+    setCompletedDbLoading(true)
+    fetch('/api/reviews')
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { reviews?: Array<{id:string;employee_name:string;employee_position:string;manager_signed_at:string|null;drive_url:string|null;form_data?:Record<string,unknown>|null;saved_at:string}> } | null) => {
+        const completed = (d?.reviews ?? []).filter(r => !!r.manager_signed_at)
+        setCompletedDbReviews(completed as typeof completedDbReviews)
+      })
+      .catch(() => {})
+      .finally(() => setCompletedDbLoading(false))
+  }, [activePage])
+
   // ── Meeting SA auto-load (component level) ─────────────────────────────────
   async function loadMeetingSA(empId: string) {
     if (!empId) return
@@ -6521,15 +6543,76 @@ export function PerformanceReviewForm() {
         {/* ── History page ── */}
         {activePage === 'history' && (
           <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
-            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>History</h1>
-            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>All performance reviews you&apos;ve created, including completed and exported ones.</p>
-            {saves.length === 0 ? (
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+              <div>
+                <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>History</h1>
+                <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>All performance reviews you&apos;ve created, including completed and exported ones.</p>
+              </div>
+              <button onClick={() => setShowEmployeePicker(true)}
+                style={{ padding: '8px 16px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                + New Review
+              </button>
+            </div>
+
+            {/* Completed reviews from DB */}
+            {completedDbLoading && (
+              <div style={{ fontSize: 12, color: '#4b5563', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Loading completed reviews…
+              </div>
+            )}
+            {completedDbReviews.length > 0 && (
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Completed &amp; Signed</div>
+                {completedDbReviews.map(r => {
+                  const score = (r.form_data as {overallScore?: number} | null)?.overallScore
+                  const period = (r.form_data as {appraisalPeriod?: string} | null)?.appraisalPeriod
+                  const scoreColors: Record<number, string> = { 1: '#f87171', 2: '#fb923c', 3: '#fbbf24', 4: '#34d399', 5: '#a78bfa' }
+                  return (
+                    <div key={r.id}
+                      style={{ background: '#0d1a13', border: '1px solid #1a4a35', borderRadius: 12, padding: '16px 20px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#0d2b1f', border: '2px solid #34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <CheckCircle2 size={18} color="#34d399" />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e7eb' }}>{r.employee_name || 'Untitled'}</div>
+                        <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                          {r.employee_position || ''}
+                          {period ? ` · ${period}` : ''}
+                          {r.manager_signed_at ? ` · Signed ${new Date(r.manager_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        {score != null && score > 0 && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Star size={12} fill={scoreColors[score] ?? '#9ca3af'} color={scoreColors[score] ?? '#9ca3af'} />
+                            <span style={{ fontSize: 12, fontWeight: 600, color: scoreColors[score] ?? '#9ca3af' }}>{score}</span>
+                          </div>
+                        )}
+                        {r.drive_url && (
+                          <a href={r.drive_url} target="_blank" rel="noopener noreferrer"
+                            style={{ padding: '4px 10px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <ExternalLink size={11} /> Drive
+                          </a>
+                        )}
+                        <span style={{ fontSize: 10, color: '#34d399', background: '#0d1a13', border: '1px solid #1a4a35', borderRadius: 20, padding: '2px 8px' }}>✓ Complete</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* In-progress / draft reviews from localStorage */}
+            {saves.length === 0 && completedDbReviews.length === 0 ? (
               <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '40px', textAlign: 'center' }}>
                 <div style={{ fontSize: 36, marginBottom: 10 }}>📋</div>
                 <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 16 }}>No reviews yet. Create your first one.</div>
                 <button onClick={() => setShowEmployeePicker(true)} style={{ padding: '9px 20px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ New Review</button>
               </div>
-            ) : saves.map(save => {
+            ) : saves.length > 0 && (
+              <>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>In Progress</div>
+              {saves.map(save => {
               const pct = reviewPct(save)
               const isConfirming = confirmDeleteId === save.id
               return (
@@ -6572,6 +6655,8 @@ export function PerformanceReviewForm() {
                 </div>
               )
             })}
+              </>
+            )}
           </div>
         )}
 
