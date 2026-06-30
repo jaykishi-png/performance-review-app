@@ -2577,14 +2577,25 @@ function StepOutput({
         </div>
       </OutputBlock>
 
+      {/* Next-step callout */}
+      <div style={{ marginTop: 24, padding: '14px 18px', background: 'rgba(79,70,229,0.08)', border: '1px solid rgba(79,70,229,0.25)', borderRadius: 12, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <span style={{ fontSize: 18, lineHeight: 1 }}>📅</span>
+        <div>
+          <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 600, color: '#a5b4fc' }}>Ready for the Performance Review Meeting?</p>
+          <p style={{ margin: 0, fontSize: 12, color: '#6b7280', lineHeight: 1.6 }}>
+            After submitting, you&apos;ll be taken to the <strong style={{ color: '#9ca3af' }}>Performance Review Meeting</strong> step where you can generate a side-by-side comparison report and send signing invitation emails to the employee and yourself.
+          </p>
+        </div>
+      </div>
+
       {/* Submit Review button */}
-      <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
         <button
           type="button"
           onClick={onSubmit}
           style={{ padding: '11px 32px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
         >
-          Submit Review →
+          Submit &amp; Proceed to Review Meeting →
         </button>
       </div>
     </div>
@@ -7330,7 +7341,13 @@ export function PerformanceReviewForm() {
             <StepOutput
               key={currentReviewId}
               form={form}
-              onSubmit={() => { setCurrentReviewId(''); setActivePage('reviews') }}
+              onSubmit={() => {
+                const completedId = currentReviewId
+                setCurrentReviewId('')
+                setSaves(getSaves())
+                setRmDetailId(completedId || null)
+                setActivePage('review-meeting')
+              }}
             />
           )}
         </div>
