@@ -42,7 +42,24 @@ export async function GET() {
       selfAssessments = data ?? []
     }
 
-    return NextResponse.json({ reports: reports ?? [], selfAssessments })
+    // Fetch active review cycles for all direct reports
+    type ActiveCycle = {
+      employee_id: string; id: string; phase: string; anniversary_year: number
+      sa_open_at: string; sa_close_at: string
+      review_open_at: string; review_close_at: string
+      meeting_open_at: string; meeting_close_at: string
+    }
+    let activeCycles: ActiveCycle[] = []
+    if (reportIds.length > 0) {
+      const { data } = await serviceClient
+        .from('employee_review_cycles')
+        .select('employee_id, id, phase, anniversary_year, sa_open_at, sa_close_at, review_open_at, review_close_at, meeting_open_at, meeting_close_at')
+        .in('employee_id', reportIds)
+        .not('phase', 'eq', 'complete')
+      activeCycles = (data ?? []) as ActiveCycle[]
+    }
+
+    return NextResponse.json({ reports: reports ?? [], selfAssessments, activeCycles })
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }
