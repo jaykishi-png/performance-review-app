@@ -85,7 +85,6 @@ export async function GET(req: NextRequest) {
         .from('reviews')
         .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at')
         .eq('employee_id', user.id)
-        .not('manager_signed_at', 'is', null)
         .order('updated_at', { ascending: false })
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
       return NextResponse.json({ reviews: data ?? [] })
