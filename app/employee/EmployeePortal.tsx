@@ -198,6 +198,7 @@ type Props = {
   selfReviewId?: string | null
   activeCycle?: ActiveCycle
   unreadCount?: number
+  initialPage?: string
 }
 
 // ── PIP / Coaching Plan (must be top-level to use hooks) ─────────────────────
@@ -327,9 +328,9 @@ function EmployeePipPanel() {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function EmployeePortal({ profile, position, manager, initialSelfReview, initialDriveUrl, selfReviewId, activeCycle = null, unreadCount = 0 }: Props) {
+export default function EmployeePortal({ profile, position, manager, initialSelfReview, initialDriveUrl, selfReviewId, activeCycle = null, unreadCount = 0, initialPage }: Props) {
   const router = useRouter()
-  const [page, setPage] = useState<Page>('self-assessment')
+  const [page, setPage] = useState<Page>((initialPage as Page) ?? 'self-assessment')
   const [collapsed, setCollapsed] = useState(false)
   const [step, setStep] = useState(0)
   const [review, setReview] = useState<SelfReview>(() => mergeReview(initialSelfReview))
