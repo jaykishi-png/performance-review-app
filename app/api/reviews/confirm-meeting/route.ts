@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const { reviewId } = await req.json() as { reviewId: string }
+    const { reviewId, resend } = await req.json() as { reviewId: string; resend?: boolean }
     if (!reviewId) return NextResponse.json({ error: 'Missing reviewId' }, { status: 400 })
 
     // Verify this review belongs to the calling manager
@@ -31,13 +31,18 @@ export async function POST(req: NextRequest) {
     }
 
     const rv = review as { id: string; employee_id: string | null; employee_name: string | null; meeting_confirmed_at: string | null }
-    if (rv.meeting_confirmed_at) {
+    // If already confirmed and not a resend request, return early (idempotent)
+    if (rv.meeting_confirmed_at && !resend) {
       return NextResponse.json({ ok: true, confirmedAt: rv.meeting_confirmed_at })
     }
 
-    const now = new Date().toISOString()
-    const { error: updateErr } = await svc.from('reviews').update({ meeting_confirmed_at: now }).eq('id', reviewId)
-    if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
+    let confirmedAt = rv.meeting_confirmed_at
+    if (!confirmedAt) {
+      const now = new Date().toISOString()
+      const { error: updateErr } = await svc.from('reviews').update({ meeting_confirmed_at: now }).eq('id', reviewId)
+      if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
+      confirmedAt = now
+    }
 
     // Send signing invitation emails
     const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://performance-review-app-three.vercel.app'
@@ -84,7 +89,7 @@ export async function POST(req: NextRequest) {
       }
     } catch { /* email is non-critical */ }
 
-    return NextResponse.json({ ok: true, confirmedAt: now })
+    return NextResponse.json({ ok: true, confirmedAt: confirmedAt })
   } catch {
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }

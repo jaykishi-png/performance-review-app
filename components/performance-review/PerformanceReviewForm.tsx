@@ -3617,14 +3617,45 @@ export function PerformanceReviewForm() {
           {!rmBothSigned && (
             <div style={{ marginBottom: 20 }}>
               {rmConfirmed ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'rgba(52,211,153,0.06)', border: '1px solid #1a4a35', borderRadius: 10 }}>
-                  <span style={{ fontSize: 16 }}>✓</span>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#34d399' }}>Meeting confirmed</div>
-                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 1 }}>
-                      {`Confirmed ${new Date(rmSave.meetingConfirmedAt!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} — signing invitations sent to both you and the employee.`}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'rgba(52,211,153,0.06)', border: '1px solid #1a4a35', borderRadius: 10 }}>
+                    <span style={{ fontSize: 16 }}>✓</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#34d399' }}>Meeting confirmed</div>
+                      <div style={{ fontSize: 12, color: '#6b7280', marginTop: 1 }}>
+                        {`Confirmed ${new Date(rmSave.meetingConfirmedAt!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} — signing invitations sent.`}
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      disabled={rmConfirmLoading}
+                      onClick={async () => {
+                        setRmConfirmLoading(true)
+                        setRmConfirmError('')
+                        try {
+                          const res = await fetch('/api/reviews/confirm-meeting', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ reviewId: rmSave.id, resend: true }),
+                          })
+                          const data = await res.json() as { ok?: boolean; confirmedAt?: string; error?: string }
+                          if (!res.ok) throw new Error(data.error ?? 'Failed to resend')
+                        } catch (e) {
+                          setRmConfirmError(e instanceof Error ? e.message : 'Something went wrong.')
+                        } finally {
+                          setRmConfirmLoading(false)
+                        }
+                      }}
+                      style={{ padding: '7px 14px', background: '#1e2130', color: rmConfirmLoading ? '#6b7280' : '#a5b4fc', border: '1px solid #2d3148', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: rmConfirmLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                    >
+                      {rmConfirmLoading ? 'Sending…' : 'Resend Invitations'}
+                    </button>
                   </div>
+                  {rmConfirmError && (
+                    <div style={{ padding: '8px 12px', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 8, fontSize: 12, color: '#f87171' }}>
+                      {rmConfirmError}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
