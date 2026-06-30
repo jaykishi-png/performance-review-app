@@ -2699,6 +2699,7 @@ export function PerformanceReviewForm() {
   const [rmSAData, setRmSAData] = useState<SAData | null>(null)
   const [rmSALoading, setRmSALoading] = useState(false)
   const [rmConfirmLoading, setRmConfirmLoading] = useState(false)
+  const [rmConfirmError, setRmConfirmError] = useState('')
 
   // ── Middle manager "My Performance" state ────────────────────────────────────
   const [myUserId, setMyUserId] = useState<string | null>(null)
@@ -3626,31 +3627,41 @@ export function PerformanceReviewForm() {
                   </div>
                 </div>
               ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <button
-                    type="button"
-                    disabled={rmConfirmLoading}
-                    onClick={async () => {
-                      setRmConfirmLoading(true)
-                      try {
-                        const res = await fetch('/api/reviews/confirm-meeting', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ reviewId: rmSave.id }),
-                        })
-                        const data = await res.json() as { ok?: boolean; confirmedAt?: string; error?: string }
-                        if (!res.ok) throw new Error(data.error ?? 'Failed to confirm meeting')
-                        const confirmedAt = data.confirmedAt ?? new Date().toISOString()
-                        setSaves(prev => prev.map(s => s.id === rmSave.id ? { ...s, meetingConfirmedAt: confirmedAt } : s))
-                      } finally {
-                        setRmConfirmLoading(false)
-                      }
-                    }}
-                    style={{ padding: '10px 24px', background: rmConfirmLoading ? '#1e2130' : 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: rmConfirmLoading ? '#6b7280' : '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: rmConfirmLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
-                  >
-                    {rmConfirmLoading ? 'Sending invitations…' : 'Confirm Meeting & Send Signing Invitations'}
-                  </button>
-                  <span style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>Sends signing invitation emails to you and the employee.</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <button
+                      type="button"
+                      disabled={rmConfirmLoading}
+                      onClick={async () => {
+                        setRmConfirmLoading(true)
+                        setRmConfirmError('')
+                        try {
+                          const res = await fetch('/api/reviews/confirm-meeting', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ reviewId: rmSave.id }),
+                          })
+                          const data = await res.json() as { ok?: boolean; confirmedAt?: string; error?: string }
+                          if (!res.ok) throw new Error(data.error ?? 'Failed to confirm meeting')
+                          const confirmedAt = data.confirmedAt ?? new Date().toISOString()
+                          setSaves(prev => prev.map(s => s.id === rmSave.id ? { ...s, meetingConfirmedAt: confirmedAt } : s))
+                        } catch (e) {
+                          setRmConfirmError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
+                        } finally {
+                          setRmConfirmLoading(false)
+                        }
+                      }}
+                      style={{ padding: '10px 24px', background: rmConfirmLoading ? '#1e2130' : 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: rmConfirmLoading ? '#6b7280' : '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: rmConfirmLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      {rmConfirmLoading ? 'Sending invitations…' : 'Confirm Meeting & Send Signing Invitations'}
+                    </button>
+                    <span style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>Sends signing invitation emails to you and the employee.</span>
+                  </div>
+                  {rmConfirmError && (
+                    <div style={{ padding: '8px 12px', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 8, fontSize: 12, color: '#f87171' }}>
+                      {rmConfirmError}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
