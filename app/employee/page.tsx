@@ -4,7 +4,10 @@ import EmployeePortal from './EmployeePortal'
 
 export const dynamic = 'force-dynamic'
 
-export default async function EmployeePage() {
+export default async function EmployeePage({ searchParams }: { searchParams?: Promise<Record<string, string>> }) {
+  const params = await (searchParams ?? Promise.resolve({}))
+  const initialPage = params['page'] ?? undefined
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -102,6 +105,7 @@ export default async function EmployeePage() {
       initialDriveUrl={r?.drive_url as string ?? null}
       activeCycle={activeCycle}
       unreadCount={unreadCount ?? 0}
+      initialPage={initialPage}
     />
   )
 }

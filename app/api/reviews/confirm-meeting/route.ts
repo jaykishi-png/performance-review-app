@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
     // points to the same domain the manager is on (avoids cross-domain cookie issues)
     const origin = new URL(req.url).origin
     const signUrl = `${origin}/sign/${reviewId}`
+    const employeePortalUrl = `${origin}/employee?page=reviews`
     const managerName = p?.name || p?.email || 'Manager'
     const employeeName = rv.employee_name || 'Employee'
 
@@ -80,7 +81,7 @@ export async function POST(req: NextRequest) {
         emailJobs.push(sendEmail({
           to: empEmail,
           subject: `Your performance review with ${managerName} is ready for your signature`,
-          html: buildSigningEmail({ recipientName: empName || empEmail, employeeName, managerName, role: 'employee', signUrl }),
+          html: buildSigningEmail({ recipientName: empName || empEmail, employeeName, managerName, role: 'employee', signUrl: employeePortalUrl }),
         }))
       }
 
