@@ -718,6 +718,21 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   }>>([])
   const [expandedReviewId, setExpandedReviewId] = useState<string | null>(null)
 
+  // SA history (all submitted records for this employee)
+  const [saHistory, setSaHistory] = useState<Array<{
+    id: string; status: string; submitted_at: string | null
+    overall_rating: number | null; anniversary_year: number | null
+  }>>([])
+
+  useEffect(() => {
+    fetch('/api/self-reviews')
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { history?: Array<{ id: string; status: string; submitted_at: string | null; overall_rating: number | null; anniversary_year: number | null }> } | null) => {
+        if (d?.history) setSaHistory(d.history)
+      })
+      .catch(() => {})
+  }, [])
+
   // AI draft state — competency examples: key = `${compIdx}-${exIdx}`
   type CompAIState = { showPrompt: boolean; context: string; loading: boolean; error: string }
   const [compAI, setCompAI] = useState<Record<string, CompAIState>>({})
@@ -799,6 +814,20 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   const isSubmitted = review.status === 'submitted'
   const saWindowOpen = activeCycle?.phase === 'sa_open'
   const saLocked = !isSubmitted && !saWindowOpen
+
+  // Detect if a new cycle year is available but the loaded SA is from a prior year
+  const currentSAYear = review.submitted_at ? new Date(review.submitted_at).getFullYear() : null
+  const newCycleAvailable = saWindowOpen && isSubmitted && activeCycle?.anniversary_year != null &&
+    (currentSAYear == null || currentSAYear < activeCycle.anniversary_year)
+
+  // Past submitted SAs (all records, ordered by year desc, excluding the current in-progress one)
+  const pastSubmittedSAs = saHistory.filter(h => h.status === 'submitted')
+
+  function startNewSA() {
+    setReview(makeDefault())
+    setStep(0)
+    setDriveUrl(null)
+  }
 
   // Derive effective review stage from actual data rather than just activeCycle.phase
   const managerReviewComplete = managerReviews.length > 0
@@ -950,7 +979,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   // Auto-save debounce
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   useEffect(() => {
-    if (isSubmitted || saLocked) return
+    if (isSubmitted || saLocked || newCycleAvailable) return
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => saveDraft(), 1800)
     return () => clearTimeout(saveTimer.current)
@@ -968,6 +997,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           competencies: review.competencies, goalsObjectives: review.goals_objectives,
           nextYearGoals: review.next_year_goals, overallRating: review.overall_rating,
           status: 'draft', strengths: '', growthAreas: '', goalReflections: [], overallComments: '',
+          anniversaryYear: activeCycle?.anniversary_year ?? new Date().getFullYear(),
         }),
       })
       if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2000) }
@@ -984,6 +1014,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           competencies: review.competencies, goalsObjectives: review.goals_objectives,
           nextYearGoals: review.next_year_goals, overallRating: review.overall_rating,
           status: 'submitted', strengths: '', growthAreas: '', goalReflections: [], overallComments: '',
+          anniversaryYear: activeCycle?.anniversary_year ?? new Date().getFullYear(),
         }),
       })
       if (!res.ok) {
@@ -992,7 +1023,15 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         setSubmitError(errMsg)
         return
       }
-      setReview(r => ({ ...r, status: 'submitted', submitted_at: new Date().toISOString() }))
+      const now = new Date().toISOString()
+      setReview(r => ({ ...r, status: 'submitted', submitted_at: now }))
+      setSaHistory(prev => {
+        const year = activeCycle?.anniversary_year ?? new Date().getFullYear()
+        const updated = { id: selfReviewId ?? '', status: 'submitted', submitted_at: now, overall_rating: review.overall_rating, anniversary_year: year }
+        const idx = prev.findIndex(h => h.anniversary_year === year)
+        if (idx >= 0) { const next = [...prev]; next[idx] = updated; return next }
+        return [updated, ...prev]
+      })
       setSubmitConfirm(false); router.refresh()
 
       // Notify admin if overall rating is 2 stars or below
@@ -2979,8 +3018,22 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                 <NotificationBell />
               </div>
             </div>
-            {!saLocked && renderStepTabs()}
-            {!saLocked && (
+            {newCycleAvailable && (
+              <div style={{ background: 'linear-gradient(90deg, #1a1f3a, #0d1a2e)', borderBottom: '1px solid #2d3a6e', padding: '10px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 13 }}>🎉</span>
+                  <span style={{ fontSize: 12, color: '#93c5fd' }}>
+                    Your <strong style={{ color: '#bfdbfe' }}>{activeCycle!.anniversary_year}</strong> review cycle is open — start your new self-assessment.
+                  </span>
+                </div>
+                <button onClick={startNewSA}
+                  style={{ padding: '5px 14px', background: 'linear-gradient(135deg, #3b4fd4, #6d28d9)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                  Start {activeCycle!.anniversary_year} SA →
+                </button>
+              </div>
+            )}
+            {!saLocked && !newCycleAvailable && renderStepTabs()}
+            {!saLocked && !newCycleAvailable && (
               <div style={{ height: 3, background: '#1e2130', flexShrink: 0 }}>
                 <div style={{ height: '100%', background: 'linear-gradient(90deg, #4f46e5, #7c3aed)', width: `${(step / (SA_STEPS.length - 1)) * 100}%`, transition: 'width 0.3s ease' }} />
               </div>
@@ -3050,10 +3103,79 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                   No active review cycle found. Your manager or admin will be notified when your anniversary is approaching.
                 </div>
               )}
+
+              {/* Past self-assessments history */}
+              {pastSubmittedSAs.length > 0 && (
+                <div style={{ maxWidth: 560, margin: '32px auto 0', textAlign: 'left' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>Past Self-Assessments</div>
+                  {pastSubmittedSAs.map(sa => (
+                    <div key={sa.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 10, padding: '14px 18px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#0d1a13', border: '2px solid #34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <CheckCircle2 size={14} color="#34d399" />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb' }}>
+                          {sa.anniversary_year ? `${sa.anniversary_year} Self-Assessment` : 'Self-Assessment'}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                          Submitted {sa.submitted_at ? new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                        </div>
+                      </div>
+                      {sa.overall_rating != null && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: STAR_LABELS[sa.overall_rating]?.color ?? '#9ca3af' }}>
+                          <Star size={12} fill="currentColor" />
+                          <span style={{ fontSize: 11, fontWeight: 600 }}>{STAR_LABELS[sa.overall_rating]?.label ?? `${sa.overall_rating}★`}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
-          {page === 'self-assessment' && !saLocked && (
+          {page === 'self-assessment' && newCycleAvailable && (
+            <div style={{ padding: '48px 32px', maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
+              <div style={{ fontSize: 40, marginBottom: 16 }}>📋</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#f0f2fa', marginBottom: 8 }}>
+                {activeCycle!.anniversary_year} Review Cycle is Open
+              </div>
+              <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.7, marginBottom: 28, maxWidth: 420, margin: '0 auto 28px' }}>
+                Your {activeCycle!.anniversary_year} review cycle has started. Click below to begin your self-assessment for this cycle.
+              </p>
+              <button onClick={startNewSA}
+                style={{ padding: '11px 28px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', marginBottom: 40 }}>
+                Start {activeCycle!.anniversary_year} Self-Assessment →
+              </button>
+              {pastSubmittedSAs.length > 0 && (
+                <div style={{ maxWidth: 560, margin: '0 auto', textAlign: 'left' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>Past Self-Assessments</div>
+                  {pastSubmittedSAs.map(sa => (
+                    <div key={sa.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 10, padding: '14px 18px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#0d1a13', border: '2px solid #34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <CheckCircle2 size={14} color="#34d399" />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb' }}>
+                          {sa.anniversary_year ? `${sa.anniversary_year} Self-Assessment` : 'Self-Assessment'}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                          Submitted {sa.submitted_at ? new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                        </div>
+                      </div>
+                      {sa.overall_rating != null && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: STAR_LABELS[sa.overall_rating]?.color ?? '#9ca3af' }}>
+                          <Star size={12} fill="currentColor" />
+                          <span style={{ fontSize: 11, fontWeight: 600 }}>{STAR_LABELS[sa.overall_rating]?.label ?? `${sa.overall_rating}★`}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {page === 'self-assessment' && !saLocked && !newCycleAvailable && (
             <div style={{ padding: '24px 32px', maxWidth: 720, margin: '0 auto' }}>
               {renderSAStep()}
             </div>
@@ -3069,7 +3191,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         </div>
 
         {/* Self Assessment bottom nav */}
-        {page === 'self-assessment' && !saLocked && (
+        {page === 'self-assessment' && !saLocked && !newCycleAvailable && (
           <div style={{ height: 60, background: '#0d0f1a', borderTop: '1px solid #1e2130', padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
             <button onClick={() => goStep(step - 1)} disabled={step === 0}
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', background: 'transparent', color: step > 0 ? '#9ca3af' : '#374151', border: `1px solid ${step > 0 ? '#2a2d3a' : '#1e2130'}`, borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: step > 0 ? 'pointer' : 'default' }}>

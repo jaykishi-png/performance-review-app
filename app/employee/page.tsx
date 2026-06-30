@@ -5,7 +5,7 @@ import EmployeePortal from './EmployeePortal'
 export const dynamic = 'force-dynamic'
 
 export default async function EmployeePage({ searchParams }: { searchParams?: Promise<Record<string, string>> }) {
-  const params = await (searchParams ?? Promise.resolve({}))
+  const params = await (searchParams ?? Promise.resolve({} as Record<string, string>))
   const initialPage = params['page'] ?? undefined
 
   const supabase = await createClient()
