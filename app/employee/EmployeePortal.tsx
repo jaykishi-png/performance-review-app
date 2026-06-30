@@ -46,6 +46,7 @@ type SelfReview = {
   overall_rating: number | null
   status: 'draft' | 'submitted'
   submitted_at?: string | null
+  anniversary_year?: number | null
   strengths?: string
   growth_areas?: string
   overall_comments?: string
@@ -815,8 +816,10 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   const saWindowOpen = activeCycle?.phase === 'sa_open'
   const saLocked = !isSubmitted && !saWindowOpen
 
-  // Detect if a new cycle year is available but the loaded SA is from a prior year
-  const currentSAYear = review.submitted_at ? new Date(review.submitted_at).getFullYear() : null
+  // Detect if a new cycle year is available but the loaded SA is from a prior year.
+  // Use anniversary_year from the SA record (not submitted_at calendar year) to avoid
+  // false negatives when a prior cycle's SA was submitted in the same calendar year.
+  const currentSAYear = review.anniversary_year ?? (review.submitted_at ? new Date(review.submitted_at).getFullYear() : null)
   const newCycleAvailable = saWindowOpen && isSubmitted && activeCycle?.anniversary_year != null &&
     (currentSAYear == null || currentSAYear < activeCycle.anniversary_year)
 

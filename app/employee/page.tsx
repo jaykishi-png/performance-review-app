@@ -70,7 +70,7 @@ export default async function EmployeePage({ searchParams }: { searchParams?: Pr
   // Fetch existing self-review
   const { data: srRow } = await serviceClient
     .from('self_reviews')
-    .select('id, competencies, goals_objectives, next_year_goals, overall_rating, status, submitted_at, drive_url, drive_doc_id, strengths, growth_areas, overall_comments')
+    .select('id, competencies, goals_objectives, next_year_goals, overall_rating, status, submitted_at, anniversary_year, drive_url, drive_doc_id, strengths, growth_areas, overall_comments')
     .eq('employee_id', user.id)
     .order('updated_at', { ascending: false })
     .limit(1)
@@ -89,6 +89,7 @@ export default async function EmployeePage({ searchParams }: { searchParams?: Pr
     overall_rating: r.overall_rating as number | null,
     status: r.status as 'draft' | 'submitted',
     submitted_at: r.submitted_at as string | null,
+    anniversary_year: r.anniversary_year as number | null,
     // Legacy
     strengths: r.strengths as string ?? '',
     growth_areas: r.growth_areas as string ?? '',
