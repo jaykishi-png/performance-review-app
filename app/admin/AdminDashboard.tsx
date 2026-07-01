@@ -3063,6 +3063,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
               {(() => { const status = reviewStatus(viewingReview); const sm = STATUS_META[status]; return <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>{sm.label}</span> })()}
               <span style={{ fontSize: 12, color: '#6b7280' }}>Step {Math.min(viewingReview.max_step, TOTAL_CONTENT_STEPS)}/{TOTAL_CONTENT_STEPS}</span>
+              <a href={`/sign/${viewingReview.id}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', background: '#0d1523', color: '#60a5fa', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1e3a5f' }}>
+                View Full Review ↗
+              </a>
               {!isDevAdmin && viewingReview.drive_url && (
                 <a href={viewingReview.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', background: '#0d1a13', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #1a4a35' }}>
                   Open in Drive ↗
