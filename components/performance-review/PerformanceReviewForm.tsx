@@ -2658,8 +2658,6 @@ export function PerformanceReviewForm() {
   type DbTeamMember = { id: string; name: string | null; email: string; role: string; is_active: boolean; start_date: string | null; position: string | null; division: string | null; pronouns: string | null; potential_rating?: number | null }
   const [dbTeam, setDbTeam] = useState<DbTeamMember[]>([])
   const [dbTeamSaMap, setDbTeamSaMap] = useState<Record<string, { employee_id: string; status: string; submitted_at: string | null }>>({})
-  type ActiveCycle = { employee_id: string; id: string; phase: string; anniversary_year: number; sa_open_at: string; sa_close_at: string; review_open_at: string; review_close_at: string; meeting_open_at: string; meeting_close_at: string }
-  const [activeCyclesMap, setActiveCyclesMap] = useState<Record<string, ActiveCycle>>({})
   const [teamGoals, setTeamGoals] = useState<Record<string, { total: number; complete: number; inProgress: number }>>({})
   const [teamGoalsLoaded, setTeamGoalsLoaded] = useState(false)
   const [managerGlossarySearch, setManagerGlossarySearch] = useState('')
@@ -2894,9 +2892,7 @@ export function PerformanceReviewForm() {
           const { data: profile } = await supabase.from('profiles').select('name, role').eq('id', user.id).single()
           if (profile) {
             setProfileName((profile as {name:string,role:string}).name ?? '')
-            const role = (profile as {name:string,role:string}).role ?? ''
-            setProfileRole(role)
-            if (role === 'middle_manager') setActivePage('my-sa')
+            setProfileRole((profile as {name:string,role:string}).role ?? '')
           }
         }
       } catch { /* Supabase not configured */ }
@@ -2973,15 +2969,11 @@ export function PerformanceReviewForm() {
           const teamData = await teamRes.json() as {
             reports?: { id: string; name: string | null; email: string; role: string; is_active: boolean; start_date: string | null; position: string | null; division: string | null; pronouns: string | null }[]
             selfAssessments?: { employee_id: string; status: string; submitted_at: string | null }[]
-            activeCycles?: { employee_id: string; id: string; phase: string; anniversary_year: number; sa_open_at: string; sa_close_at: string; review_open_at: string; review_close_at: string; meeting_open_at: string; meeting_close_at: string }[]
           }
           if (teamData.reports) setDbTeam(teamData.reports)
           if (teamData.selfAssessments) {
             setSelfAssessments(teamData.selfAssessments)
             setDbTeamSaMap(Object.fromEntries(teamData.selfAssessments.map(s => [s.employee_id, s])))
-          }
-          if (teamData.activeCycles) {
-            setActiveCyclesMap(Object.fromEntries(teamData.activeCycles.map(c => [c.employee_id, c])))
           }
         }
       } catch { /* non-critical */ }
@@ -6008,7 +6000,7 @@ export function PerformanceReviewForm() {
         </div>
 
         {/* New Review button */}
-        {profileRole !== 'middle_manager' && <div style={{ padding: sidebarCollapsed ? '12px 8px' : '12px 12px', flexShrink: 0 }}>
+        <div style={{ padding: sidebarCollapsed ? '12px 8px' : '12px 12px', flexShrink: 0 }}>
           <button onClick={() => setShowEmployeePicker(true)} style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
             gap: 8, padding: sidebarCollapsed ? '8px' : '8px 12px',
@@ -6018,14 +6010,14 @@ export function PerformanceReviewForm() {
             <Plus size={14} />
             {!sidebarCollapsed && 'New Review'}
           </button>
-        </div>}
+        </div>
 
         {/* ── Nav items ── */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
           {!sidebarCollapsed && <div style={{ fontSize: 10, fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '4px 8px 6px' }}>Menu</div>}
 
-          {/* Dashboard — hidden for middle_manager */}
-          {profileRole !== 'middle_manager' && (() => {
+          {/* Dashboard */}
+          {(() => {
             const active = activePage === 'dashboard'
             return (
               <button onClick={() => setActivePage('dashboard')} title={sidebarCollapsed ? 'Dashboard' : undefined}
@@ -6122,8 +6114,8 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* Performance Review Meeting — hidden for middle_manager */}
-          {profileRole !== 'middle_manager' && (() => {
+          {/* Performance Review Meeting */}
+          {(() => {
             const active = activePage === 'review-meeting'
             const confirmedCount = saves.filter(s => s.meetingConfirmedAt).length
             return (
@@ -6140,8 +6132,8 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* History — hidden for middle_manager */}
-          {profileRole !== 'middle_manager' && (() => {
+          {/* History */}
+          {(() => {
             const active = activePage === 'history'
             return (
               <button onClick={() => setActivePage('history')} title={sidebarCollapsed ? 'History' : undefined}
@@ -6154,8 +6146,8 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* Team — hidden for middle_manager */}
-          {profileRole !== 'middle_manager' && (() => {
+          {/* Team */}
+          {(() => {
             const active = activePage === 'team'
             const pending = dbTeam.filter(r => dbTeamSaMap[r.id]?.status === 'submitted').length
             return (
@@ -6171,8 +6163,8 @@ export function PerformanceReviewForm() {
           })()}
 
 
-          {/* 1:1 Meetings — hidden for middle_manager */}
-          {profileRole !== 'middle_manager' && (() => {
+          {/* 1:1 Meetings */}
+          {(() => {
             const active = activePage === 'notes'
             return (
               <button onClick={() => setActivePage('notes')} title={sidebarCollapsed ? '1:1 Meetings' : undefined}
@@ -6185,8 +6177,8 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* Check-ins — hidden for middle_manager */}
-          {profileRole !== 'middle_manager' && (() => {
+          {/* Check-ins */}
+          {(() => {
             const active = activePage === 'checkins'
             return (
               <button onClick={() => setActivePage('checkins')} title={sidebarCollapsed ? 'Check-ins' : undefined}
@@ -6199,8 +6191,8 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* Peer Reviews — hidden for middle_manager */}
-          {profileRole !== 'middle_manager' && (() => {
+          {/* Peer Reviews */}
+          {(() => {
             const active = activePage === 'peer-feedback'
             return (
               <button onClick={() => setActivePage('peer-feedback')} title={sidebarCollapsed ? 'Peer Reviews' : undefined}
@@ -6213,8 +6205,8 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* PIPs — hidden for middle_manager */}
-          {profileRole !== 'middle_manager' && (() => {
+          {/* PIPs */}
+          {(() => {
             const active = activePage === 'pip'
             const activePips = pipPlans.filter(p => p.status === 'active').length
             return (
@@ -6229,8 +6221,8 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* Nine-Box Grid — hidden for middle_manager */}
-          {profileRole !== 'middle_manager' && (() => {
+          {/* Nine-Box Grid */}
+          {(() => {
             const active = activePage === 'nine-box'
             return (
               <button onClick={() => setActivePage('nine-box')} title={sidebarCollapsed ? 'Nine-Box Grid' : undefined}
@@ -6261,11 +6253,25 @@ export function PerformanceReviewForm() {
                   </button>
                 )
               })()}
+              {(() => {
+                const active = activePage === 'my-review'
+                const confirmedCount = myReviews.filter(r => r.meeting_confirmed_at).length
+                return (
+                  <button onClick={() => setActivePage('my-review')} title={sidebarCollapsed ? 'My Performance Review' : undefined}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #a78bfa' : '3px solid transparent', border: active ? '1px solid rgba(167,139,250,0.3)' : '1px solid transparent', background: active ? '#1a1330' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                    onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
+                    onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1a1330' : 'transparent' }}>
+                    <BarChart2 size={15} color={active ? '#a78bfa' : '#6b7280'} />
+                    {!sidebarCollapsed && 'My Performance Review'}
+                    {confirmedCount > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: '#10b981', color: '#0d1a13', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{confirmedCount}</span>}
+                  </button>
+                )
+              })()}
             </>
           )}
 
-          {/* Manager Guide — hidden for middle_manager */}
-          {profileRole !== 'middle_manager' && (() => {
+          {/* Manager Guide */}
+          {(() => {
             const active = activePage === 'guide'
             return (
               <button onClick={() => setActivePage('guide')} title={sidebarCollapsed ? 'Manager Guide' : undefined}
@@ -6278,8 +6284,8 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* Competency Glossary — hidden for middle_manager */}
-          {profileRole !== 'middle_manager' && (() => {
+          {/* Competency Glossary */}
+          {(() => {
             const active = activePage === 'glossary'
             return (
               <button onClick={() => setActivePage('glossary')} title={sidebarCollapsed ? 'Competency Glossary' : undefined}
@@ -7304,103 +7310,6 @@ export function PerformanceReviewForm() {
               </div>
               <button onClick={() => setShowEmployeePicker(true)} style={{ padding: '9px 18px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>+ New Review</button>
             </div>
-            {/* ── Active Review Cycles panel ── */}
-            {(() => {
-              const now = new Date()
-              const activeCycleEmployees = dbTeam.filter(r => {
-                const cycle = activeCyclesMap[r.id]
-                if (!cycle) return false
-                return cycle.phase !== 'complete'
-              })
-              if (activeCycleEmployees.length === 0) return null
-              return (
-                <div style={{ marginBottom: 28, background: '#0f1220', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 12, overflow: 'hidden' }}>
-                  <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(99,102,241,0.2)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#818cf8', boxShadow: '0 0 6px #818cf8' }} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#a5b4fc', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Active Review Cycles</span>
-                    <span style={{ marginLeft: 'auto', fontSize: 11, color: '#4b5563' }}>{activeCycleEmployees.length} open</span>
-                  </div>
-                  <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {activeCycleEmployees.map(r => {
-                      const cycle = activeCyclesMap[r.id]!
-                      const displayName = r.name || r.email
-                      const sa = dbTeamSaMap[r.id]
-                      const save = saves.find(s => s.employeeId === r.id) ?? saves.find(s => s.employeeName === displayName)
-
-                      let phaseLabel: string, phaseColor: string, phaseBg: string, action: { label: string; fn: () => void; primary: boolean } | null = null
-
-                      if (cycle.phase === 'sa_open') {
-                        const saClose = new Date(cycle.sa_close_at)
-                        const daysLeft = Math.max(0, Math.ceil((saClose.getTime() - now.getTime()) / 86400000))
-                        phaseLabel = `SA Open · ${daysLeft}d left`; phaseColor = '#fbbf24'; phaseBg = '#1f1600'
-                        if (sa?.status === 'submitted') {
-                          action = { label: 'SA Submitted ✓', fn: () => {}, primary: false }
-                        } else {
-                          action = { label: 'Waiting on SA', fn: () => {}, primary: false }
-                        }
-                      } else if (cycle.phase === 'review_open') {
-                        phaseLabel = 'Review Open'; phaseColor = '#818cf8'; phaseBg = '#1a1b35'
-                        const pct = save ? reviewPct(save) : -1
-                        if (pct > 0) {
-                          action = { label: 'Continue Review', fn: () => handleLoad(save!), primary: true }
-                        } else {
-                          action = {
-                            label: '✨ Start Review', primary: true,
-                            fn: () => {
-                              handleNewReview()
-                              update({ employeeName: displayName, employeePosition: r.position || '', employeeDivision: r.division || '', employeePronouns: r.pronouns || '', supervisorName: profileName || profileEmail || '', appraisalPeriod: r.start_date ? computeAppraisalPeriod(r.start_date) : '', reviewDate: r.start_date ? computeReviewDate(r.start_date) : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) })
-                              setCurrentEmployeeId(r.id)
-                            }
-                          }
-                        }
-                      } else if (cycle.phase === 'meeting') {
-                        phaseLabel = 'Meeting Phase'; phaseColor = '#34d399'; phaseBg = '#0d2b1f'
-                        const pct = save ? reviewPct(save) : -1
-                        if (pct === 100 || save?.managerSignedAt) {
-                          action = { label: 'Conduct Meeting →', fn: () => save && setMeetingDetailId(save.id), primary: true }
-                        } else {
-                          action = {
-                            label: save ? 'Finish Review First' : '✨ Start Review', primary: !save,
-                            fn: () => {
-                              if (!save) {
-                                handleNewReview()
-                                update({ employeeName: displayName, employeePosition: r.position || '', employeeDivision: r.division || '', employeePronouns: r.pronouns || '', supervisorName: profileName || profileEmail || '', appraisalPeriod: r.start_date ? computeAppraisalPeriod(r.start_date) : '', reviewDate: r.start_date ? computeReviewDate(r.start_date) : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) })
-                                setCurrentEmployeeId(r.id)
-                              } else {
-                                handleLoad(save)
-                              }
-                            }
-                          }
-                        }
-                      } else {
-                        phaseLabel = cycle.phase; phaseColor = '#6b7280'; phaseBg = '#13151f'
-                      }
-
-                      return (
-                        <div key={r.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
-                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'white', flexShrink: 0 }}>
-                            {displayName.charAt(0).toUpperCase()}
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb' }}>{displayName}</div>
-                            <div style={{ fontSize: 11, color: '#6b7280' }}>{r.position || 'No position'} · Year {cycle.anniversary_year}</div>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: phaseBg, color: phaseColor, border: `1px solid ${phaseColor}40`, whiteSpace: 'nowrap' }}>{phaseLabel}</span>
-                            {action && (
-                              <button onClick={action.fn} style={{ padding: '6px 12px', background: action.primary ? 'linear-gradient(135deg,#4f46e5,#7c3aed)' : '#1e2130', color: action.primary ? '#fff' : '#9ca3af', border: action.primary ? 'none' : '1px solid #2d3148', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: action.primary ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>
-                                {action.label}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })()}
-
             {dbTeam.length === 0 ? (
               <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: 40, textAlign: 'center' }}>
                 <div style={{ fontSize: 36, marginBottom: 10 }}>📋</div>
