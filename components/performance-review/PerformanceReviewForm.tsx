@@ -2894,7 +2894,9 @@ export function PerformanceReviewForm() {
           const { data: profile } = await supabase.from('profiles').select('name, role').eq('id', user.id).single()
           if (profile) {
             setProfileName((profile as {name:string,role:string}).name ?? '')
-            setProfileRole((profile as {name:string,role:string}).role ?? '')
+            const role = (profile as {name:string,role:string}).role ?? ''
+            setProfileRole(role)
+            if (role === 'middle_manager') setActivePage('my-sa')
           }
         }
       } catch { /* Supabase not configured */ }
@@ -6006,7 +6008,7 @@ export function PerformanceReviewForm() {
         </div>
 
         {/* New Review button */}
-        <div style={{ padding: sidebarCollapsed ? '12px 8px' : '12px 12px', flexShrink: 0 }}>
+        {profileRole !== 'middle_manager' && <div style={{ padding: sidebarCollapsed ? '12px 8px' : '12px 12px', flexShrink: 0 }}>
           <button onClick={() => setShowEmployeePicker(true)} style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
             gap: 8, padding: sidebarCollapsed ? '8px' : '8px 12px',
@@ -6016,14 +6018,14 @@ export function PerformanceReviewForm() {
             <Plus size={14} />
             {!sidebarCollapsed && 'New Review'}
           </button>
-        </div>
+        </div>}
 
         {/* ── Nav items ── */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
           {!sidebarCollapsed && <div style={{ fontSize: 10, fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '4px 8px 6px' }}>Menu</div>}
 
-          {/* Dashboard */}
-          {(() => {
+          {/* Dashboard — hidden for middle_manager */}
+          {profileRole !== 'middle_manager' && (() => {
             const active = activePage === 'dashboard'
             return (
               <button onClick={() => setActivePage('dashboard')} title={sidebarCollapsed ? 'Dashboard' : undefined}
@@ -6120,8 +6122,8 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* Performance Review Meeting */}
-          {(() => {
+          {/* Performance Review Meeting — hidden for middle_manager */}
+          {profileRole !== 'middle_manager' && (() => {
             const active = activePage === 'review-meeting'
             const confirmedCount = saves.filter(s => s.meetingConfirmedAt).length
             return (
@@ -6138,8 +6140,8 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* History */}
-          {(() => {
+          {/* History — hidden for middle_manager */}
+          {profileRole !== 'middle_manager' && (() => {
             const active = activePage === 'history'
             return (
               <button onClick={() => setActivePage('history')} title={sidebarCollapsed ? 'History' : undefined}
@@ -6152,8 +6154,8 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* Team */}
-          {(() => {
+          {/* Team — hidden for middle_manager */}
+          {profileRole !== 'middle_manager' && (() => {
             const active = activePage === 'team'
             const pending = dbTeam.filter(r => dbTeamSaMap[r.id]?.status === 'submitted').length
             return (
@@ -6169,8 +6171,8 @@ export function PerformanceReviewForm() {
           })()}
 
 
-          {/* 1:1 Meetings */}
-          {(() => {
+          {/* 1:1 Meetings — hidden for middle_manager */}
+          {profileRole !== 'middle_manager' && (() => {
             const active = activePage === 'notes'
             return (
               <button onClick={() => setActivePage('notes')} title={sidebarCollapsed ? '1:1 Meetings' : undefined}
@@ -6183,8 +6185,8 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* Check-ins */}
-          {(() => {
+          {/* Check-ins — hidden for middle_manager */}
+          {profileRole !== 'middle_manager' && (() => {
             const active = activePage === 'checkins'
             return (
               <button onClick={() => setActivePage('checkins')} title={sidebarCollapsed ? 'Check-ins' : undefined}
@@ -6197,8 +6199,8 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* Peer Reviews */}
-          {(() => {
+          {/* Peer Reviews — hidden for middle_manager */}
+          {profileRole !== 'middle_manager' && (() => {
             const active = activePage === 'peer-feedback'
             return (
               <button onClick={() => setActivePage('peer-feedback')} title={sidebarCollapsed ? 'Peer Reviews' : undefined}
@@ -6211,8 +6213,8 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* PIPs */}
-          {(() => {
+          {/* PIPs — hidden for middle_manager */}
+          {profileRole !== 'middle_manager' && (() => {
             const active = activePage === 'pip'
             const activePips = pipPlans.filter(p => p.status === 'active').length
             return (
@@ -6227,8 +6229,8 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* Nine-Box Grid */}
-          {(() => {
+          {/* Nine-Box Grid — hidden for middle_manager */}
+          {profileRole !== 'middle_manager' && (() => {
             const active = activePage === 'nine-box'
             return (
               <button onClick={() => setActivePage('nine-box')} title={sidebarCollapsed ? 'Nine-Box Grid' : undefined}
@@ -6259,25 +6261,11 @@ export function PerformanceReviewForm() {
                   </button>
                 )
               })()}
-              {(() => {
-                const active = activePage === 'my-review'
-                const confirmedCount = myReviews.filter(r => r.meeting_confirmed_at).length
-                return (
-                  <button onClick={() => setActivePage('my-review')} title={sidebarCollapsed ? 'My Performance Review' : undefined}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #a78bfa' : '3px solid transparent', border: active ? '1px solid rgba(167,139,250,0.3)' : '1px solid transparent', background: active ? '#1a1330' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
-                    onMouseOver={e => { if (!active) e.currentTarget.style.background = '#13151f' }}
-                    onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#1a1330' : 'transparent' }}>
-                    <BarChart2 size={15} color={active ? '#a78bfa' : '#6b7280'} />
-                    {!sidebarCollapsed && 'My Performance Review'}
-                    {confirmedCount > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: '#10b981', color: '#0d1a13', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{confirmedCount}</span>}
-                  </button>
-                )
-              })()}
             </>
           )}
 
-          {/* Manager Guide */}
-          {(() => {
+          {/* Manager Guide — hidden for middle_manager */}
+          {profileRole !== 'middle_manager' && (() => {
             const active = activePage === 'guide'
             return (
               <button onClick={() => setActivePage('guide')} title={sidebarCollapsed ? 'Manager Guide' : undefined}
@@ -6290,8 +6278,8 @@ export function PerformanceReviewForm() {
             )
           })()}
 
-          {/* Competency Glossary */}
-          {(() => {
+          {/* Competency Glossary — hidden for middle_manager */}
+          {profileRole !== 'middle_manager' && (() => {
             const active = activePage === 'glossary'
             return (
               <button onClick={() => setActivePage('glossary')} title={sidebarCollapsed ? 'Competency Glossary' : undefined}
