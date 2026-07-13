@@ -27,6 +27,7 @@ export default async function EmployeePage({ searchParams }: { searchParams?: Pr
   if (p.role === 'pending') redirect('/pending')
   if (p.role === 'admin') redirect('/admin')
   if (p.role === 'manager') redirect('/performance-review')
+  if (p.role === 'middle_manager') redirect('/performance-review')
   if (p.role === 'dev_admin') redirect('/admin')
 
   // Fetch manager info via separate query (no FK constraint for join)
