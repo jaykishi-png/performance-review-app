@@ -6241,7 +6241,7 @@ export function PerformanceReviewForm() {
               {!sidebarCollapsed && <div style={{ fontSize: 10, fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '10px 8px 4px', marginTop: 4 }}>My Performance</div>}
               {(() => {
                 const active = activePage === 'my-sa'
-                const submitted = !!mySAData
+                const submitted = mySAData?.status === 'submitted'
                 return (
                   <button onClick={() => setActivePage('my-sa')} title={sidebarCollapsed ? 'My Self-Assessment' : undefined}
                     style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 8, borderLeft: active ? '3px solid #a78bfa' : '3px solid transparent', border: active ? '1px solid rgba(167,139,250,0.3)' : '1px solid transparent', background: active ? '#1a1330' : 'transparent', color: active ? '#e0e7ff' : '#9ca3af', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}

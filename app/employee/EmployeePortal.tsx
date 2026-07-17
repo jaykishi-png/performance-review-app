@@ -2717,7 +2717,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                 <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', textAlign: 'left', maxWidth: 420, margin: '0 auto 20px' }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Your {activeCycle.anniversary_year} Review Cycle</div>
                   {[
-                    { label: 'Self-Assessment', open: activeCycle.sa_open_at, close: activeCycle.sa_close_at, phase: 'sa_open', isDone: true },
+                    { label: 'Self-Assessment', open: activeCycle.sa_open_at, close: activeCycle.sa_close_at, phase: 'sa_open', isDone: isSubmitted },
                     { label: 'Manager Review', open: activeCycle.review_open_at, close: activeCycle.review_close_at, phase: 'review_open', isDone: managerReviewComplete },
                     { label: '1-on-1 Meeting', open: activeCycle.meeting_open_at, close: activeCycle.meeting_close_at, phase: 'meeting', isDone: bothSigned },
                     { label: 'Signatures', open: activeCycle.meeting_open_at, close: activeCycle.meeting_close_at, phase: 'complete', isDone: bothSigned },
