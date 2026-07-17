@@ -24,14 +24,51 @@ export async function GET() {
   return NextResponse.json({ cycles: cycles ?? [] })
 }
 
-// Admin confirms a cycle complete
 export async function PATCH(req: NextRequest) {
   const auth = await requireAdmin()
   if (!auth) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { id } = await req.json()
+  const body = await req.json()
+  const { id, phase } = body as { id: string; phase?: string }
   if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 })
 
+  const VALID_PHASES = ['pending', 'sa_open', 'review_open', 'meeting', 'signed', 'complete']
+
+  // Phase change request
+  if (phase !== undefined) {
+    if (!VALID_PHASES.includes(phase)) return NextResponse.json({ error: 'Invalid phase' }, { status: 400 })
+
+    const updates: Record<string, string> = { phase, updated_at: new Date().toISOString() }
+
+    // When reopening the SA window, push sa_close_at 14 days out if it's in the past
+    if (phase === 'sa_open') {
+      const { data: existing } = await auth.svc
+        .from('employee_review_cycles')
+        .select('sa_open_at, sa_close_at')
+        .eq('id', id)
+        .single()
+      const ec = existing as { sa_open_at: string | null; sa_close_at: string | null } | null
+      const closeAt = ec?.sa_close_at ? new Date(ec.sa_close_at) : null
+      if (!closeAt || closeAt < new Date()) {
+        const newClose = new Date()
+        newClose.setDate(newClose.getDate() + 14)
+        updates.sa_close_at = newClose.toISOString().slice(0, 10)
+        if (!ec?.sa_open_at) updates.sa_open_at = new Date().toISOString().slice(0, 10)
+      }
+    }
+
+    const { data: cycle, error } = await auth.svc
+      .from('employee_review_cycles')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ cycle })
+  }
+
+  // Admin confirms a cycle complete (legacy — no phase field)
   const { data: cycle, error } = await auth.svc
     .from('employee_review_cycles')
     .update({

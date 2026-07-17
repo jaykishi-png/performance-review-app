@@ -334,6 +334,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
   const [cyclesTab, setCyclesTab] = useState<'manual' | 'employee'>('manual')
   const [confirmingCycle, setConfirmingCycle] = useState<string | null>(null)
+  const [editingCyclePhase, setEditingCyclePhase] = useState<string | null>(null)
   const [showTriggerModal, setShowTriggerModal] = useState(false)
   const [triggerEmployeeId, setTriggerEmployeeId] = useState('')
   const [triggerSaDays, setTriggerSaDays] = useState(14)
@@ -486,6 +487,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   async function confirmEmployeeCycleComplete(id: string) {
     await fetch('/api/admin/employee-cycles', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
     setConfirmingCycle(null)
+    router.refresh()
+  }
+
+  async function changeEmployeeCyclePhase(id: string, phase: string) {
+    setEditingCyclePhase(null)
+    await fetch('/api/admin/employee-cycles', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, phase }) })
     router.refresh()
   }
 
@@ -1699,14 +1706,38 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                             <div style={{ fontSize: 10, color: '#4b5563', marginTop: 2 }}>Year {ec.anniversary_year - new Date(emp?.start_date ?? ec.trigger_date).getFullYear()}</div>
                           </td>
                           <td style={td}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                              <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: pm.bg, color: pm.color, border: `1px solid ${pm.border}`, width: 'fit-content' }}>{pm.label}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, position: 'relative' }}>
+                              <button
+                                onClick={() => setEditingCyclePhase(editingCyclePhase === ec.id ? null : ec.id)}
+                                title="Click to change phase"
+                                style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: pm.bg, color: pm.color, border: `1px solid ${pm.border}`, width: 'fit-content', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                {pm.label} <span style={{ fontSize: 8, opacity: 0.7 }}>▼</span>
+                              </button>
                               {/* Mini step dots */}
                               <div style={{ display: 'flex', gap: 3, marginTop: 2 }}>
                                 {PHASES.slice(1).map((p, pi) => (
                                   <div key={p} style={{ width: 6, height: 6, borderRadius: '50%', background: pi < stepIdx ? '#34d399' : pi === stepIdx - 1 ? pm.color : '#2a2d3a' }} />
                                 ))}
                               </div>
+                              {/* Phase dropdown */}
+                              {editingCyclePhase === ec.id && (
+                                <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 50, background: '#1a1c2e', border: '1px solid #2a2d3e', borderRadius: 8, overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', marginTop: 4, minWidth: 140 }}>
+                                  {PHASES.map(p => {
+                                    const meta = EMP_PHASE_META[p] ?? EMP_PHASE_META.pending
+                                    const isCurrent = p === ec.phase
+                                    return (
+                                      <button key={p} onClick={() => changeEmployeeCyclePhase(ec.id, p)}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', background: isCurrent ? '#0d0f1a' : 'transparent', border: 'none', cursor: 'pointer', fontSize: 12, color: meta.color, fontWeight: isCurrent ? 700 : 400, textAlign: 'left' }}
+                                        onMouseOver={e => { if (!isCurrent) e.currentTarget.style.background = '#13151f' }}
+                                        onMouseOut={e => { if (!isCurrent) e.currentTarget.style.background = 'transparent' }}>
+                                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: meta.color, flexShrink: 0 }} />
+                                        {meta.label}
+                                        {isCurrent && <span style={{ marginLeft: 'auto', fontSize: 9, color: '#4b5563' }}>current</span>}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td style={td}>
