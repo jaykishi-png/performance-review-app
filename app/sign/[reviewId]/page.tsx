@@ -20,7 +20,7 @@ export default async function SignPage({ params }: { params: Promise<{ reviewId:
   // Fetch review by ID — service client bypasses RLS, access check done below in code
   const { data: review } = await svc
     .from('reviews')
-    .select('id, user_id, employee_id, employee_name, employee_position, form_data, comparison_report, manager_signed_at, manager_signature, employee_signed_at, employee_signature, drive_url')
+    .select('id, user_id, employee_id, employee_name, employee_position, form_data, comparison_report, manager_signed_at, manager_signature, employee_signed_at, employee_signature, drive_url, meeting_confirmed_at')
     .eq('id', reviewId)
     .maybeSingle()
 
@@ -39,11 +39,19 @@ export default async function SignPage({ params }: { params: Promise<{ reviewId:
     employee_signed_at: string | null
     employee_signature: string | null
     drive_url: string | null
+    meeting_confirmed_at: string | null
   }
 
   const isManager = rv.user_id === user.id
   const isEmployee = rv.employee_id === user.id
   const isAdmin = p.role === 'admin' || p.role === 'dev_admin'
+
+  // An employee must not reach their own performance review before the manager
+  // has confirmed the review meeting happened. Managers and admins are exempt —
+  // the manager needs this page to sign before confirming.
+  if (isEmployee && !isManager && !isAdmin && !rv.meeting_confirmed_at) {
+    redirect('/employee?page=reviews')
+  }
   // Allow any authenticated non-pending user who arrives with a valid UUID link —
   // the review ID is unguessable (128-bit UUID), so possession of the URL is sufficient.
 

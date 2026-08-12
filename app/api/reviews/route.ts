@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     if (singleId) {
       const query = serviceClient
         .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id')
+        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at')
         .eq('id', singleId)
       if (role === 'middle_manager') {
         // can access reviews they created OR reviews where they are the employee
@@ -34,6 +34,14 @@ export async function GET(req: NextRequest) {
       }
       const { data, error } = await query.single()
       if (error || !data) return NextResponse.json({ error: error?.message ?? 'Not found', code: error?.code, hint: error?.hint, role }, { status: 404 })
+      // Reached as the employee rather than the author (middle_manager viewing their
+      // own review): withhold until the manager has confirmed the review meeting.
+      const single = data as { user_id: string; employee_id: string | null; meeting_confirmed_at: string | null }
+      if (role !== 'admin' && role !== 'dev_admin'
+          && single.employee_id === user.id && single.user_id !== user.id
+          && !single.meeting_confirmed_at) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
       if (role === 'dev_admin') {
         return NextResponse.json({ review: { ...(data as Record<string, unknown>), comparison_report: null, drive_url: null, _contentRedacted: true } })
       }
@@ -67,24 +75,29 @@ export async function GET(req: NextRequest) {
         .order('saved_at', { ascending: false })
       if (mgrErr) return NextResponse.json({ error: mgrErr.message }, { status: 500 })
 
+      // Reviews where the middle_manager is the employee — same meeting-confirmed
+      // gate as the plain employee branch below, so the same person sees the same
+      // data in either capacity.
       const { data: empData, error: empErr } = await serviceClient
         .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at')
+        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at, meeting_confirmed_at')
         .eq('employee_id', user.id)
-        .not('manager_signed_at', 'is', null)
-        .not('admin_approved_at', 'is', null)
+        .not('meeting_confirmed_at', 'is', null)
         .order('updated_at', { ascending: false })
       if (empErr) return NextResponse.json({ error: empErr.message }, { status: 500 })
 
       return NextResponse.json({ reviews: mgrData ?? [], myReviews: empData ?? [] })
     }
 
-    // Employee: fetch reviews where employee_id = user.id AND admin has approved
+    // Employee: fetch reviews where employee_id = user.id AND the manager has
+    // confirmed the review meeting took place. Employees must not see their
+    // performance review before that meeting — gate server-side, not in the UI.
     if (role === 'employee') {
       const { data, error } = await serviceClient
         .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at')
+        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at, meeting_confirmed_at')
         .eq('employee_id', user.id)
+        .not('meeting_confirmed_at', 'is', null)
         .order('updated_at', { ascending: false })
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
       return NextResponse.json({ reviews: data ?? [] })
