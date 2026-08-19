@@ -44,7 +44,15 @@ export default async function SignPage({ params }: { params: Promise<{ reviewId:
 
   const isManager = rv.user_id === user.id
   const isEmployee = rv.employee_id === user.id
-  const isAdmin = p.role === 'admin' || p.role === 'dev_admin'
+  const isAdmin = p.role === 'admin'
+
+  // A review and its self-assessment are visible to exactly three parties: the
+  // employee it is about, the manager who wrote it, and an admin. Possession of
+  // the URL is NOT sufficient — links get forwarded, and dev_admin is excluded
+  // here for the same reason it gets content-redacted in /api/reviews.
+  if (!isManager && !isEmployee && !isAdmin) {
+    redirect('/')
+  }
 
   // An employee must not reach their own performance review before the manager
   // has confirmed the review meeting happened. Managers and admins are exempt —
@@ -52,8 +60,6 @@ export default async function SignPage({ params }: { params: Promise<{ reviewId:
   if (isEmployee && !isManager && !isAdmin && !rv.meeting_confirmed_at) {
     redirect('/employee?page=reviews')
   }
-  // Allow any authenticated non-pending user who arrives with a valid UUID link —
-  // the review ID is unguessable (128-bit UUID), so possession of the URL is sufficient.
 
   // Fetch SA data for the employee
   let saData: Record<string, unknown> | null = null
