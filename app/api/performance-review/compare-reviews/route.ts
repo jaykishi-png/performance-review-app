@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
+import { googleClientId, googleClientSecret, googleRefreshToken } from '@/lib/google-credentials'
 
 export const maxDuration = 60
 
@@ -10,9 +11,9 @@ async function getGoogleAccessToken(): Promise<string> {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id:     (process.env.GOOGLE_CLIENT_ID     ?? '').trim(),
-      client_secret: (process.env.GOOGLE_CLIENT_SECRET ?? '').trim(),
-      refresh_token: (process.env.GOOGLE_DRIVE_REFRESH_TOKEN ?? '').trim(),
+      client_id:     googleClientId(),
+      client_secret: googleClientSecret(),
+      refresh_token: googleRefreshToken(),
       grant_type:    'refresh_token',
     }),
   })

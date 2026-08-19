@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { google, docs_v1 } from 'googleapis'
 import { createServiceClient } from '@/lib/supabase/server'
+import { googleClientId, googleClientSecret, googleRefreshToken } from '@/lib/google-credentials'
 
 export const maxDuration = 60
 export const dynamic = 'force-dynamic'
@@ -29,9 +30,9 @@ async function getTargetFolder(callerFolderId?: string): Promise<string> {
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 async function getAccessToken(): Promise<string> {
-  const clientId     = (process.env.GOOGLE_CLIENT_ID     ?? '').trim()
-  const clientSecret = (process.env.GOOGLE_CLIENT_SECRET ?? '').trim()
-  const refreshToken = (process.env.GOOGLE_DRIVE_REFRESH_TOKEN ?? '').trim()
+  const clientId     = googleClientId()
+  const clientSecret = googleClientSecret()
+  const refreshToken = googleRefreshToken()
 
   console.log('[send-to-drive] client_id prefix    :', clientId.slice(0, 20))
   console.log('[send-to-drive] client_secret prefix:', clientSecret.slice(0, 6))

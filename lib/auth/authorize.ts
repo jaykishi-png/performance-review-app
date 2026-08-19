@@ -1,4 +1,4 @@
-import { createServiceClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { hasPermission, canReadDocContent, type Role, type Permission } from '@/lib/permissions'
 import { NextResponse } from 'next/server'
 
@@ -17,6 +17,22 @@ export function requirePermission(role: Role, permission: Permission): void {
 
 export function forbiddenResponse(message = 'Forbidden'): NextResponse {
   return NextResponse.json({ error: message }, { status: 403 })
+}
+
+/**
+ * Resolve the calling user and confirm they hold an admin role. Returns null
+ * when there is no session or the caller is not an admin, so callers can reply
+ * with forbiddenResponse() without distinguishing the two cases.
+ */
+export async function requireAdminActor(): Promise<{ userId: string; role: Role } | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const serviceClient = createServiceClient()
+  const { data } = await serviceClient.from('profiles').select('role').eq('id', user.id).single()
+  const role = (data as { role: Role } | null)?.role
+  if (role !== 'admin' && role !== 'dev_admin') return null
+  return { userId: user.id, role }
 }
 
 export async function assertTeamRelationship(managerId: string, employeeId: string): Promise<void> {

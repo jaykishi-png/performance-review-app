@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server'
 import { google } from 'googleapis'
+import { googleClientId, googleClientSecret, googleRefreshToken } from '@/lib/google-credentials'
+import { requireAdminActor, forbiddenResponse } from '@/lib/auth/authorize'
 
 export async function GET() {
+  // Diagnostic endpoint: reports credential prefixes and raw Google API
+  // responses, so it must not be reachable by non-admins.
+  if (!await requireAdminActor()) return forbiddenResponse()
   const vars = {
     GOOGLE_CLIENT_ID:          !!process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET:      !!process.env.GOOGLE_CLIENT_SECRET,
@@ -9,9 +14,9 @@ export async function GET() {
     GOOGLE_DRIVE_REFRESH_TOKEN: !!process.env.GOOGLE_DRIVE_REFRESH_TOKEN,
   }
 
-  const clientId     = (process.env.GOOGLE_CLIENT_ID ?? '').trim()
-  const clientSecret = (process.env.GOOGLE_CLIENT_SECRET ?? '').trim()
-  const refreshToken = (process.env.GOOGLE_DRIVE_REFRESH_TOKEN ?? '').trim()
+  const clientId     = googleClientId()
+  const clientSecret = googleClientSecret()
+  const refreshToken = googleRefreshToken()
 
   // Attempt manual token refresh
   try {

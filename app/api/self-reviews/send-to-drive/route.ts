@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { google, docs_v1 } from 'googleapis'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { googleClientId, googleClientSecret, googleRefreshToken } from '@/lib/google-credentials'
 
 export const maxDuration = 60
 export const dynamic = 'force-dynamic'
@@ -39,9 +40,9 @@ async function getAccessToken(): Promise<string> {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id:     (process.env.GOOGLE_CLIENT_ID     ?? '').trim(),
-      client_secret: (process.env.GOOGLE_CLIENT_SECRET ?? '').trim(),
-      refresh_token: (process.env.GOOGLE_DRIVE_REFRESH_TOKEN ?? '').trim(),
+      client_id:     googleClientId(),
+      client_secret: googleClientSecret(),
+      refresh_token: googleRefreshToken(),
       grant_type:    'refresh_token',
     }),
   })

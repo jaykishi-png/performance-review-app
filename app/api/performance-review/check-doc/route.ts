@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { googleClientId, googleClientSecret, googleRefreshToken } from '@/lib/google-credentials'
+import { requireAdminActor, forbiddenResponse } from '@/lib/auth/authorize'
 
 export const maxDuration = 10
 
 export async function GET(req: NextRequest) {
+  // Diagnostic endpoint: reports credential prefixes and raw Google API
+  // responses, so it must not be reachable by non-admins.
+  if (!await requireAdminActor()) return forbiddenResponse()
   const docId = req.nextUrl.searchParams.get('id')
   if (!docId) return NextResponse.json({ ok: false, reason: 'no id' })
 
@@ -12,9 +17,9 @@ export async function GET(req: NextRequest) {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        client_id:     (process.env.GOOGLE_CLIENT_ID     ?? '').trim(),
-        client_secret: (process.env.GOOGLE_CLIENT_SECRET ?? '').trim(),
-        refresh_token: (process.env.GOOGLE_DRIVE_REFRESH_TOKEN ?? '').trim(),
+        client_id:     googleClientId(),
+        client_secret: googleClientSecret(),
+        refresh_token: googleRefreshToken(),
         grant_type:    'refresh_token',
       }),
     })
