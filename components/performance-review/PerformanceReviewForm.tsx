@@ -4851,6 +4851,12 @@ export function PerformanceReviewForm() {
   const [pipSelectedId, setPipSelectedId] = useState<string | null>(null)
   const [pipCheckInNote, setPipCheckInNote] = useState('')
   const [pipSaving, setPipSaving] = useState(false)
+  const [pipEditing, setPipEditing] = useState(false)
+  const [pipEditTitle, setPipEditTitle] = useState('')
+  const [pipEditReason, setPipEditReason] = useState('')
+  const [pipEditStartDate, setPipEditStartDate] = useState('')
+  const [pipEditTargetDate, setPipEditTargetDate] = useState('')
+  const [pipEditMilestones, setPipEditMilestones] = useState<{text: string; due_date: string; completed: boolean}[]>([])
 
   const fetchCheckin = async (empId: string, quarter: number) => {
     if (!empId) return
@@ -5091,6 +5097,7 @@ export function PerformanceReviewForm() {
 
   const updatePip = async (id: string, updates: any) => {
     setPipSaving(true)
+    setPipError('')
     try {
       const res = await fetch('/api/pip-plans', {
         method: 'PATCH',
@@ -5098,11 +5105,42 @@ export function PerformanceReviewForm() {
         body: JSON.stringify({ id, ...updates }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
+      if (!res.ok) throw new Error(data.error || 'Update failed')
       setPipPlans(prev => prev.map(p => p.id === id ? data.data : p))
-    } catch { /* ignore */ } finally {
+      return true
+    } catch (e: any) {
+      setPipError(e.message || 'Failed to update PIP')
+      return false
+    } finally {
       setPipSaving(false)
     }
+  }
+
+  const startPipEdit = (pip: any) => {
+    setPipEditTitle(pip.title || '')
+    setPipEditReason(pip.reason || '')
+    setPipEditStartDate((pip.start_date || '').slice(0, 10))
+    setPipEditTargetDate((pip.target_date || '').slice(0, 10))
+    setPipEditMilestones(((pip.milestones as any[]) || []).map(m => ({
+      text: m.text || '', due_date: m.due_date || '', completed: !!m.completed,
+    })))
+    setPipError('')
+    setPipEditing(true)
+  }
+
+  const savePipEdit = async (id: string) => {
+    if (!pipEditTitle || !pipEditStartDate || !pipEditTargetDate) {
+      setPipError('Title, start date and target date are required.')
+      return
+    }
+    const ok = await updatePip(id, {
+      title: pipEditTitle,
+      reason: pipEditReason || null,
+      start_date: pipEditStartDate,
+      target_date: pipEditTargetDate,
+      milestones: pipEditMilestones.filter(m => m.text),
+    })
+    if (ok) setPipEditing(false)
   }
 
   const renderPip = () => {
@@ -5213,7 +5251,7 @@ export function PerformanceReviewForm() {
                 const emp = pip.employee as { name: string | null; email: string } | null
                 const isSelected = pip.id === pipSelectedId
                 return (
-                  <div key={pip.id} onClick={() => setPipSelectedId(pip.id)}
+                  <div key={pip.id} onClick={() => { setPipSelectedId(pip.id); setPipEditing(false); setPipError('') }}
                     style={{ ...sCard, cursor: 'pointer', border: isSelected ? '1px solid rgba(79,70,229,0.5)' : '1px solid #1e2130', background: isSelected ? '#1a1c2e' : '#13151f', marginBottom: 8 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#f0f2fa', marginBottom: 4 }}>{pip.title}</div>
                     <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>{emp?.name || emp?.email}</div>
@@ -5241,7 +5279,13 @@ export function PerformanceReviewForm() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    {selectedPip.status === 'active' && (
+                    {!pipEditing && (
+                      <button onClick={() => startPipEdit(selectedPip)}
+                        style={{ padding: '5px 12px', background: '#13151f', color: '#9ca3af', border: '1px solid #1e2130', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                        ✎ Edit
+                      </button>
+                    )}
+                    {selectedPip.status === 'active' && !pipEditing && (
                       <>
                         <button onClick={() => updatePip(selectedPip.id, { status: 'completed', outcome: 'Goals met' })}
                           style={{ padding: '5px 12px', background: '#0d2b1f', color: '#34d399', border: '1px solid #1a4a35', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
@@ -5256,14 +5300,72 @@ export function PerformanceReviewForm() {
                   </div>
                 </div>
 
-                {selectedPip.reason && (
-                  <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 14px', marginBottom: 16, fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>
-                    {selectedPip.reason}
+                {pipError && (
+                  <div style={{ background: '#2b0d0d', border: '1px solid #5c2020', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 12, color: '#f87171' }}>
+                    {pipError}
                   </div>
                 )}
 
+                {/* Edit form — managers can revise the plan after it is created */}
+                {pipEditing ? (
+                  <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '16px 18px', marginBottom: 16 }}>
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={lbl2}>Title</label>
+                      <input value={pipEditTitle} onChange={e => setPipEditTitle(e.target.value)} style={inp2} />
+                    </div>
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={lbl2}>Reason</label>
+                      <textarea value={pipEditReason} onChange={e => setPipEditReason(e.target.value)}
+                        rows={3} style={{ ...inp2, resize: 'vertical', fontFamily: 'inherit' }} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                      <div>
+                        <label style={lbl2}>Start Date</label>
+                        <input type="date" value={pipEditStartDate} onChange={e => setPipEditStartDate(e.target.value)} style={inp2} />
+                      </div>
+                      <div>
+                        <label style={lbl2}>Target Date</label>
+                        <input type="date" value={pipEditTargetDate} onChange={e => setPipEditTargetDate(e.target.value)} style={inp2} />
+                      </div>
+                    </div>
+                    <label style={lbl2}>Milestones</label>
+                    {pipEditMilestones.map((m, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                        <input value={m.text} placeholder="Milestone…"
+                          onChange={e => setPipEditMilestones(prev => prev.map((x, j) => j === i ? { ...x, text: e.target.value } : x))}
+                          style={{ ...inp2, flex: 1 }} />
+                        <input type="date" value={m.due_date}
+                          onChange={e => setPipEditMilestones(prev => prev.map((x, j) => j === i ? { ...x, due_date: e.target.value } : x))}
+                          style={{ ...inp2, width: 150 }} />
+                        <button onClick={() => setPipEditMilestones(prev => prev.filter((_, j) => j !== i))}
+                          style={{ padding: '6px 10px', background: '#2b0d0d', color: '#f87171', border: '1px solid #5c2020', borderRadius: 6, fontSize: 11, cursor: 'pointer', flexShrink: 0 }}>
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <button onClick={() => setPipEditMilestones(prev => [...prev, { text: '', due_date: '', completed: false }])}
+                      style={{ padding: '6px 12px', background: '#13151f', color: '#9ca3af', border: '1px solid #1e2130', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', marginBottom: 16 }}>
+                      + Add Milestone
+                    </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => savePipEdit(selectedPip.id)} disabled={pipSaving}
+                        style={{ padding: '8px 20px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: pipSaving ? 0.6 : 1 }}>
+                        {pipSaving ? 'Saving…' : 'Save Changes'}
+                      </button>
+                      <button onClick={() => { setPipEditing(false); setPipError('') }}
+                        style={{ padding: '8px 20px', background: '#13151f', color: '#9ca3af', border: '1px solid #1e2130', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : selectedPip.reason ? (
+                  <div style={{ background: '#0d0f1a', borderRadius: 8, padding: '12px 14px', marginBottom: 16, fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>
+                    {selectedPip.reason}
+                  </div>
+                ) : null}
+
                 {/* Milestones */}
-                <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 16, display: pipEditing ? 'none' : 'block' }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Milestones</div>
                   {(selectedPip.milestones as any[]).length === 0 ? (
                     <div style={{ fontSize: 13, color: '#4b5563' }}>No milestones set.</div>
