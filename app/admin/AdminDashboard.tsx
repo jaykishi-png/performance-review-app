@@ -150,7 +150,8 @@ const TOTAL_CONTENT_STEPS = 8
 const PROGRESS_WEIGHTS = {
   saContent:        15, // pro-rated across the self-assessment's own fields
   saSubmitted:      10,
-  managerReview:    35, // pro-rated across the 8 content steps
+  managerReview:    25, // pro-rated across the 8 content steps
+  managerSubmitted: 10,
   meetingConfirmed: 10,
   managerSigned:    15,
   employeeSigned:   15,
@@ -163,6 +164,9 @@ function reviewProgress(r: ReviewRecord): number {
   pct += clamp(r.sa_progress ?? 0) * w.saContent
   if (r.sa_submitted_at) pct += w.saSubmitted
   pct += clamp(r.max_step / TOTAL_CONTENT_STEPS) * w.managerReview
+  // `reviews` has no submitted timestamp; reaching the output step past all 8
+  // content steps is the available signal that the manager has finished.
+  if (r.max_step >= TOTAL_CONTENT_STEPS) pct += w.managerSubmitted
   if (r.meeting_confirmed_at) pct += w.meetingConfirmed
   if (r.manager_signed_at) pct += w.managerSigned
   if (r.employee_signed_at) pct += w.employeeSigned
@@ -180,7 +184,7 @@ function reviewStage(r: ReviewRecord): string {
   if (r.manager_signed_at) return 'Mgr signed'
   if (r.employee_signed_at) return 'Emp signed'
   if (r.meeting_confirmed_at) return 'Meeting confirmed'
-  if (r.max_step >= TOTAL_CONTENT_STEPS) return 'Review complete'
+  if (r.max_step >= TOTAL_CONTENT_STEPS) return 'Review submitted'
   if (r.max_step > 0) return `Review step ${r.max_step}/${TOTAL_CONTENT_STEPS}`
   if (r.sa_submitted_at) return 'SA submitted'
   if (r.sa_status) return `SA ${Math.round(clampUnit(r.sa_progress ?? 0) * 100)}% filled`
