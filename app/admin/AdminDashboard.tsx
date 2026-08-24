@@ -26,6 +26,10 @@ type ReviewRecord = {
   manager_signature: string | null; employee_signature: string | null;
   admin_approved_at: string | null; employee_id?: string | null;
   meeting_confirmed_at?: string | null;
+  // 'self_assessment' rows are placeholders synthesised in app/admin/page.tsx for
+  // employees who have started a self-assessment but whose manager has not created
+  // the review yet. They have no `reviews` record behind them.
+  source?: 'review' | 'self_assessment'; sa_status?: string | null; sa_submitted_at?: string | null;
 }
 type CycleRecord = {
   id: string; name: string; description: string | null; status: 'draft' | 'active' | 'closed'
@@ -137,7 +141,12 @@ function reviewProgress(r: ReviewRecord): number {
   return Math.min(100, Math.round((r.max_step / TOTAL_CONTENT_STEPS) * 100))
 }
 
-function reviewStatus(r: ReviewRecord): 'exported' | 'complete' | 'in_progress' | 'not_started' {
+type ReviewStatus = 'exported' | 'complete' | 'in_progress' | 'not_started' | 'sa_submitted' | 'sa_draft'
+
+function reviewStatus(r: ReviewRecord): ReviewStatus {
+  // Placeholder rows sit before the manager review exists, so they get their own
+  // two stages rather than collapsing into 'not_started'.
+  if (r.source === 'self_assessment') return r.sa_submitted_at ? 'sa_submitted' : 'sa_draft'
   if (r.drive_url) return 'exported'
   if (r.max_step >= TOTAL_CONTENT_STEPS) return 'complete'
   if (r.max_step > 0) return 'in_progress'
@@ -145,6 +154,8 @@ function reviewStatus(r: ReviewRecord): 'exported' | 'complete' | 'in_progress' 
 }
 
 const STATUS_META = {
+  sa_draft:     { label: 'Self-Assessment',  color: '#38bdf8', bg: '#0c1a24', border: '#0e4b63' },
+  sa_submitted: { label: 'Awaiting Manager', color: '#fb7185', bg: '#1f0d13', border: '#7f1d3a' },
   exported:    { label: 'Exported',    color: '#34d399', bg: '#0d1a13', border: '#1a4a35' },
   complete:    { label: 'Complete',    color: '#818cf8', bg: '#13151f', border: 'rgba(129,140,248,0.3)' },
   in_progress: { label: 'In Progress', color: '#f59e0b', bg: '#1f1a0d', border: '#92400e' },
@@ -611,7 +622,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
   // Reviews page state
   const [reviewSearch, setReviewSearch] = useState('')
-  const [reviewStatusFilter, setReviewStatusFilter] = useState<'all' | 'exported' | 'complete' | 'in_progress' | 'not_started'>('all')
+  const [reviewStatusFilter, setReviewStatusFilter] = useState<'all' | ReviewStatus>('all')
   const [reviewManagerFilter, setReviewManagerFilter] = useState<string>('all')
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -1100,11 +1111,13 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
       .filter(Boolean) as UserRecord[]
 
     const counts = {
-      total:       reviews.length,
-      exported:    reviews.filter(r => reviewStatus(r) === 'exported').length,
-      complete:    reviews.filter(r => reviewStatus(r) === 'complete').length,
-      in_progress: reviews.filter(r => reviewStatus(r) === 'in_progress').length,
-      not_started: reviews.filter(r => reviewStatus(r) === 'not_started').length,
+      total:        reviews.length,
+      sa_draft:     reviews.filter(r => reviewStatus(r) === 'sa_draft').length,
+      sa_submitted: reviews.filter(r => reviewStatus(r) === 'sa_submitted').length,
+      exported:     reviews.filter(r => reviewStatus(r) === 'exported').length,
+      complete:     reviews.filter(r => reviewStatus(r) === 'complete').length,
+      in_progress:  reviews.filter(r => reviewStatus(r) === 'in_progress').length,
+      not_started:  reviews.filter(r => reviewStatus(r) === 'not_started').length,
     }
 
     return (
@@ -1113,18 +1126,21 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>All manager performance reviews across the organization.</p>
 
         {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 24 }}>
+        {/* Pipeline order: employee's first action through to exported. */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 10, marginBottom: 24 }}>
           {[
-            { label: 'Total',       value: counts.total,       color: '#f0f2fa', bg: '#13151f', border: '#1e2130',  filter: 'all'         },
-            { label: 'Exported',    value: counts.exported,    color: STATUS_META.exported.color,    bg: STATUS_META.exported.bg,    border: STATUS_META.exported.border,    filter: 'exported'    },
-            { label: 'Complete',    value: counts.complete,    color: STATUS_META.complete.color,    bg: STATUS_META.complete.bg,    border: STATUS_META.complete.border,    filter: 'complete'    },
-            { label: 'In Progress', value: counts.in_progress, color: STATUS_META.in_progress.color, bg: STATUS_META.in_progress.bg, border: STATUS_META.in_progress.border, filter: 'in_progress' },
-            { label: 'Not Started', value: counts.not_started, color: '#6b7280',                    bg: '#13151f',                  border: '#1e2130',                      filter: 'not_started' },
+            { label: 'Total',          value: counts.total,        color: '#f0f2fa', bg: '#13151f', border: '#1e2130',  filter: 'all'          },
+            { label: 'Self-Assessment',value: counts.sa_draft,     color: STATUS_META.sa_draft.color,     bg: STATUS_META.sa_draft.bg,     border: STATUS_META.sa_draft.border,     filter: 'sa_draft'     },
+            { label: 'Awaiting Mgr',   value: counts.sa_submitted, color: STATUS_META.sa_submitted.color, bg: STATUS_META.sa_submitted.bg, border: STATUS_META.sa_submitted.border, filter: 'sa_submitted' },
+            { label: 'Not Started',    value: counts.not_started,  color: '#6b7280',                     bg: '#13151f',                   border: '#1e2130',                       filter: 'not_started'  },
+            { label: 'In Progress',    value: counts.in_progress,  color: STATUS_META.in_progress.color,  bg: STATUS_META.in_progress.bg,  border: STATUS_META.in_progress.border,  filter: 'in_progress'  },
+            { label: 'Complete',       value: counts.complete,     color: STATUS_META.complete.color,     bg: STATUS_META.complete.bg,     border: STATUS_META.complete.border,     filter: 'complete'     },
+            { label: 'Exported',       value: counts.exported,     color: STATUS_META.exported.color,     bg: STATUS_META.exported.bg,     border: STATUS_META.exported.border,     filter: 'exported'     },
           ].map(s => (
             <div key={s.label} onClick={() => setReviewStatusFilter(s.filter as typeof reviewStatusFilter)}
-              style={{ background: s.bg, border: `1px solid ${reviewStatusFilter === s.filter ? s.color + '60' : s.border}`, borderRadius: 12, padding: '16px 18px', cursor: 'pointer', transition: 'all 0.15s', outline: reviewStatusFilter === s.filter ? `1px solid ${s.color}40` : 'none' }}>
-              <div style={{ fontSize: 26, fontWeight: 700, color: s.color, marginBottom: 3 }}>{s.value}</div>
-              <div style={{ fontSize: 11, color: '#6b7280' }}>{s.label}</div>
+              style={{ background: s.bg, border: `1px solid ${reviewStatusFilter === s.filter ? s.color + '60' : s.border}`, borderRadius: 12, padding: '14px 14px', cursor: 'pointer', transition: 'all 0.15s', outline: reviewStatusFilter === s.filter ? `1px solid ${s.color}40` : 'none' }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: s.color, marginBottom: 3 }}>{s.value}</div>
+              <div style={{ fontSize: 10.5, color: '#6b7280', whiteSpace: 'nowrap' }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -1231,6 +1247,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   const manager = users.find(u => u.id === r.user_id)
                   const empId = r.employee_id || users.find(u => u.name === r.employee_name)?.id
                   const isDeleting = deleteConfirm === r.id
+                  // No `reviews` record behind this row yet, so anything that reads or
+                  // mutates one (manager review, comparison, delete) has nothing to act on.
+                  const isPlaceholder = r.source === 'self_assessment'
                   return (
                     <tr key={r.id} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(13,15,26,0.4)' }}>
 
@@ -1260,7 +1279,11 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                           </div>
                           <span style={{ fontSize: 11, color: '#6b7280', minWidth: 28 }}>{pct}%</span>
                         </div>
-                        <div style={{ fontSize: 10, color: '#374151', marginTop: 3 }}>Step {Math.min(r.max_step, TOTAL_CONTENT_STEPS)}/{TOTAL_CONTENT_STEPS}</div>
+                        <div style={{ fontSize: 10, color: '#374151', marginTop: 3, whiteSpace: 'nowrap' }}>
+                          {isPlaceholder
+                            ? (r.sa_submitted_at ? 'SA submitted' : 'SA in progress')
+                            : `Step ${Math.min(r.max_step, TOTAL_CONTENT_STEPS)}/${TOTAL_CONTENT_STEPS}`}
+                        </div>
                       </td>
 
                       {/* Status badge */}
@@ -1272,6 +1295,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
                       {/* Signatures */}
                       <td style={td}>
+                        {isPlaceholder ? (
+                          <span style={{ fontSize: 11, color: '#374151' }}>—</span>
+                        ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           <span style={{ fontSize: 11, color: r.manager_signed_at ? '#34d399' : '#4b5563', whiteSpace: 'nowrap' }}>
                             {r.manager_signed_at ? `✓ Mgr ${new Date(r.manager_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : '— Manager'}
@@ -1280,6 +1306,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                             {r.employee_signed_at ? `✓ Emp ${new Date(r.employee_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : '— Employee'}
                           </span>
                         </div>
+                        )}
                       </td>
 
                       {/* Self Assessment column */}
@@ -1293,12 +1320,14 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       </td>
 
                       {/* Manager Review column */}
-                      <td style={{ ...td, padding: 0, cursor: 'pointer' }}
-                        onClick={() => setViewingReview(r)}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(96,165,250,0.08)' }}
+                      <td style={{ ...td, padding: 0, cursor: isPlaceholder ? 'default' : 'pointer' }}
+                        onClick={() => { if (!isPlaceholder) setViewingReview(r) }}
+                        onMouseEnter={e => { if (!isPlaceholder) e.currentTarget.style.background = 'rgba(96,165,250,0.08)' }}
                         onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-                        <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, color: '#60a5fa', fontSize: 12, fontWeight: 600 }}>
-                          <span>📄</span><span>View</span>
+                        <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, color: isPlaceholder ? '#374151' : '#60a5fa', fontSize: 12, fontWeight: 600 }}>
+                          {isPlaceholder
+                            ? <span style={{ fontSize: 11 }}>Not started</span>
+                            : <><span>📄</span><span>View</span></>}
                         </div>
                       </td>
 
@@ -1331,7 +1360,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                               No
                             </button>
                           </div>
-                        ) : !isDevAdmin ? (
+                        ) : !isDevAdmin && !isPlaceholder ? (
                           <button onClick={() => setDeleteConfirm(r.id)}
                             style={{ padding: '4px 9px', fontSize: 11, background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 5, cursor: 'pointer' }}>
                             Delete
