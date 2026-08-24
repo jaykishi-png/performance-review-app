@@ -26,10 +26,12 @@ type ReviewRecord = {
   manager_signature: string | null; employee_signature: string | null;
   admin_approved_at: string | null; employee_id?: string | null;
   meeting_confirmed_at?: string | null;
-  // 'self_assessment' rows are placeholders synthesised in app/admin/page.tsx for
-  // employees who have started a self-assessment but whose manager has not created
-  // the review yet. They have no `reviews` record behind them.
-  source?: 'review' | 'self_assessment'; sa_status?: string | null; sa_submitted_at?: string | null;
+  // Rows whose source is not 'review' are placeholders synthesised in
+  // app/admin/page.tsx and have no `reviews` record behind them:
+  // 'self_assessment' — employee has started one, manager has not created the review
+  // 'cycle'           — review period has opened, nobody has started anything
+  source?: 'review' | 'self_assessment' | 'cycle'; sa_status?: string | null; sa_submitted_at?: string | null;
+  sa_progress?: number;
 }
 type CycleRecord = {
   id: string; name: string; description: string | null; status: 'draft' | 'active' | 'closed'
@@ -137,46 +139,51 @@ function upcomingAnniversaryNumber(startDate: string): number {
 // 8 content steps (0–7), step 8 = output. Complete when max_step >= 8.
 const TOTAL_CONTENT_STEPS = 8
 
-// Progress spans the whole review lifecycle, not just the manager's 8 form steps:
-// the employee's self-assessment comes before it and export/signatures/approval
-// come after, so a bar measuring only the form reads 0% for half the process.
-// Weights sum to 100 and are additive — a milestone counts once reached, even if
-// an earlier one was skipped (reviews signed without a Drive export, for example).
+// Progress spans the whole review lifecycle. 0% is a review period that has
+// opened with nothing started; 100% is both parties signed with the review meeting
+// confirmed. The Drive export and admin approval sit outside that span and so
+// carry no weight — a review can be finished without either.
+// Weights sum to 100 and are additive: a milestone counts once reached, even if an
+// earlier one was skipped. The two long-running stages — the self-assessment and
+// the manager review — are pro-rated over their own fields and steps, so the bar
+// moves on every action rather than jumping between milestones.
 const PROGRESS_WEIGHTS = {
-  saStarted:      10,
-  saSubmitted:    15,
-  managerReview:  30, // pro-rated across the 8 content steps
-  exported:       15,
-  managerSigned:  10,
-  employeeSigned: 10,
-  adminApproved:  10,
+  saContent:        15, // pro-rated across the self-assessment's own fields
+  saSubmitted:      10,
+  managerReview:    35, // pro-rated across the 8 content steps
+  meetingConfirmed: 10,
+  managerSigned:    15,
+  employeeSigned:   15,
 }
 
 function reviewProgress(r: ReviewRecord): number {
   const w = PROGRESS_WEIGHTS
+  const clamp = (n: number) => Math.min(1, Math.max(0, n))
   let pct = 0
-  if (r.sa_status) pct += w.saStarted
+  pct += clamp(r.sa_progress ?? 0) * w.saContent
   if (r.sa_submitted_at) pct += w.saSubmitted
-  pct += Math.min(1, Math.max(0, r.max_step / TOTAL_CONTENT_STEPS)) * w.managerReview
-  if (r.drive_url) pct += w.exported
+  pct += clamp(r.max_step / TOTAL_CONTENT_STEPS) * w.managerReview
+  if (r.meeting_confirmed_at) pct += w.meetingConfirmed
   if (r.manager_signed_at) pct += w.managerSigned
   if (r.employee_signed_at) pct += w.employeeSigned
-  if (r.admin_approved_at) pct += w.adminApproved
   return Math.min(100, Math.round(pct))
 }
 
 // Furthest milestone reached, shown under the bar so a partial percentage is
 // self-explanatory.
+const clampUnit = (n: number) => Math.min(1, Math.max(0, n))
+
 function reviewStage(r: ReviewRecord): string {
-  if (r.admin_approved_at) return 'Approved'
-  if (r.manager_signed_at && r.employee_signed_at) return 'Fully signed'
+  const bothSigned = r.manager_signed_at && r.employee_signed_at
+  if (bothSigned && r.meeting_confirmed_at) return 'Complete'
+  if (bothSigned) return 'Awaiting confirm'
   if (r.manager_signed_at) return 'Mgr signed'
   if (r.employee_signed_at) return 'Emp signed'
-  if (r.drive_url) return 'Exported'
+  if (r.meeting_confirmed_at) return 'Meeting confirmed'
   if (r.max_step >= TOTAL_CONTENT_STEPS) return 'Review complete'
   if (r.max_step > 0) return `Review step ${r.max_step}/${TOTAL_CONTENT_STEPS}`
   if (r.sa_submitted_at) return 'SA submitted'
-  if (r.sa_status) return 'SA in progress'
+  if (r.sa_status) return `SA ${Math.round(clampUnit(r.sa_progress ?? 0) * 100)}% filled`
   return 'Not started'
 }
 
@@ -186,6 +193,7 @@ function reviewStatus(r: ReviewRecord): ReviewStatus {
   // Placeholder rows sit before the manager review exists, so they get their own
   // two stages rather than collapsing into 'not_started'.
   if (r.source === 'self_assessment') return r.sa_submitted_at ? 'sa_submitted' : 'sa_draft'
+  if (r.source === 'cycle') return 'not_started'
   if (r.drive_url) return 'exported'
   if (r.max_step >= TOTAL_CONTENT_STEPS) return 'complete'
   if (r.max_step > 0) return 'in_progress'
@@ -1288,7 +1296,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   const isDeleting = deleteConfirm === r.id
                   // No `reviews` record behind this row yet, so anything that reads or
                   // mutates one (manager review, comparison, delete) has nothing to act on.
-                  const isPlaceholder = r.source === 'self_assessment'
+                  const isPlaceholder = r.source === 'self_assessment' || r.source === 'cycle'
                   return (
                     <tr key={r.id} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(13,15,26,0.4)' }}>
 
