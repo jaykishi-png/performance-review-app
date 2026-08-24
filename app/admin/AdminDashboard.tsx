@@ -177,6 +177,15 @@ function reviewProgress(r: ReviewRecord): number {
 // self-explanatory.
 const clampUnit = (n: number) => Math.min(1, Math.max(0, n))
 
+// <input type="date"> yields a local YYYY-MM-DD. Comparing that against a raw ISO
+// timestamp would be off by a day for rows near midnight, so reduce the timestamp
+// to its local calendar day first.
+function localDay(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return `${d.getFullYear()}-${`${d.getMonth() + 1}`.padStart(2, '0')}-${`${d.getDate()}`.padStart(2, '0')}`
+}
+
 function reviewStage(r: ReviewRecord): string {
   const bothSigned = r.manager_signed_at && r.employee_signed_at
   if (bothSigned && r.meeting_confirmed_at) return 'Complete'
@@ -675,6 +684,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [reviewSearch, setReviewSearch] = useState('')
   const [reviewStatusFilter, setReviewStatusFilter] = useState<'all' | ReviewStatus>('all')
   const [reviewManagerFilter, setReviewManagerFilter] = useState<string>('all')
+  const [reviewDateFrom, setReviewDateFrom] = useState('')
+  const [reviewDateTo, setReviewDateTo] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
@@ -711,8 +722,11 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     if (reviewSearch) result = result.filter(r => r.employee_name.toLowerCase().includes(reviewSearch.toLowerCase()) || r.employee_position.toLowerCase().includes(reviewSearch.toLowerCase()))
     if (reviewStatusFilter !== 'all') result = result.filter(r => reviewStatus(r) === reviewStatusFilter)
     if (reviewManagerFilter !== 'all') result = result.filter(r => r.user_id === reviewManagerFilter)
+    // Inclusive on both ends, and either end works on its own as an open range.
+    if (reviewDateFrom) result = result.filter(r => localDay(r.updated_at) >= reviewDateFrom)
+    if (reviewDateTo)   result = result.filter(r => localDay(r.updated_at) <= reviewDateTo)
     return result
-  }, [reviews, reviewSearch, reviewStatusFilter, reviewManagerFilter])
+  }, [reviews, reviewSearch, reviewStatusFilter, reviewManagerFilter, reviewDateFrom, reviewDateTo])
 
   async function deleteReview(id: string) {
     setDeleting(true)
@@ -1264,8 +1278,19 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <option value="all">All managers</option>
             {reviewManagers.map(m => <option key={m.id} value={m.id}>{m.name || m.email}</option>)}
           </select>
-          {(reviewSearch || reviewStatusFilter !== 'all' || reviewManagerFilter !== 'all') && (
-            <button onClick={() => { setReviewSearch(''); setReviewStatusFilter('all'); setReviewManagerFilter('all') }}
+          {/* Last-updated range. colorScheme keeps the native picker legible on dark. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 11, color: '#6b7280', whiteSpace: 'nowrap' }}>Updated</span>
+            <input type="date" aria-label="Updated from" value={reviewDateFrom} max={reviewDateTo || undefined}
+              onChange={e => setReviewDateFrom(e.target.value)}
+              style={{ ...inp, width: 148, colorScheme: 'dark' }} />
+            <span style={{ fontSize: 11, color: '#4b5563' }}>→</span>
+            <input type="date" aria-label="Updated to" value={reviewDateTo} min={reviewDateFrom || undefined}
+              onChange={e => setReviewDateTo(e.target.value)}
+              style={{ ...inp, width: 148, colorScheme: 'dark' }} />
+          </div>
+          {(reviewSearch || reviewStatusFilter !== 'all' || reviewManagerFilter !== 'all' || reviewDateFrom || reviewDateTo) && (
+            <button onClick={() => { setReviewSearch(''); setReviewStatusFilter('all'); setReviewManagerFilter('all'); setReviewDateFrom(''); setReviewDateTo('') }}
               style={{ padding: '8px 14px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 12, cursor: 'pointer' }}>
               Clear filters
             </button>
