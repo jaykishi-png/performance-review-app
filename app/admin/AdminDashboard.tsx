@@ -137,8 +137,47 @@ function upcomingAnniversaryNumber(startDate: string): number {
 // 8 content steps (0–7), step 8 = output. Complete when max_step >= 8.
 const TOTAL_CONTENT_STEPS = 8
 
+// Progress spans the whole review lifecycle, not just the manager's 8 form steps:
+// the employee's self-assessment comes before it and export/signatures/approval
+// come after, so a bar measuring only the form reads 0% for half the process.
+// Weights sum to 100 and are additive — a milestone counts once reached, even if
+// an earlier one was skipped (reviews signed without a Drive export, for example).
+const PROGRESS_WEIGHTS = {
+  saStarted:      10,
+  saSubmitted:    15,
+  managerReview:  30, // pro-rated across the 8 content steps
+  exported:       15,
+  managerSigned:  10,
+  employeeSigned: 10,
+  adminApproved:  10,
+}
+
 function reviewProgress(r: ReviewRecord): number {
-  return Math.min(100, Math.round((r.max_step / TOTAL_CONTENT_STEPS) * 100))
+  const w = PROGRESS_WEIGHTS
+  let pct = 0
+  if (r.sa_status) pct += w.saStarted
+  if (r.sa_submitted_at) pct += w.saSubmitted
+  pct += Math.min(1, Math.max(0, r.max_step / TOTAL_CONTENT_STEPS)) * w.managerReview
+  if (r.drive_url) pct += w.exported
+  if (r.manager_signed_at) pct += w.managerSigned
+  if (r.employee_signed_at) pct += w.employeeSigned
+  if (r.admin_approved_at) pct += w.adminApproved
+  return Math.min(100, Math.round(pct))
+}
+
+// Furthest milestone reached, shown under the bar so a partial percentage is
+// self-explanatory.
+function reviewStage(r: ReviewRecord): string {
+  if (r.admin_approved_at) return 'Approved'
+  if (r.manager_signed_at && r.employee_signed_at) return 'Fully signed'
+  if (r.manager_signed_at) return 'Mgr signed'
+  if (r.employee_signed_at) return 'Emp signed'
+  if (r.drive_url) return 'Exported'
+  if (r.max_step >= TOTAL_CONTENT_STEPS) return 'Review complete'
+  if (r.max_step > 0) return `Review step ${r.max_step}/${TOTAL_CONTENT_STEPS}`
+  if (r.sa_submitted_at) return 'SA submitted'
+  if (r.sa_status) return 'SA in progress'
+  return 'Not started'
 }
 
 type ReviewStatus = 'exported' | 'complete' | 'in_progress' | 'not_started' | 'sa_submitted' | 'sa_draft'
@@ -1280,9 +1319,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                           <span style={{ fontSize: 11, color: '#6b7280', minWidth: 28 }}>{pct}%</span>
                         </div>
                         <div style={{ fontSize: 10, color: '#374151', marginTop: 3, whiteSpace: 'nowrap' }}>
-                          {isPlaceholder
-                            ? (r.sa_submitted_at ? 'SA submitted' : 'SA in progress')
-                            : `Step ${Math.min(r.max_step, TOTAL_CONTENT_STEPS)}/${TOTAL_CONTENT_STEPS}`}
+                          {reviewStage(r)}
                         </div>
                       </td>
 

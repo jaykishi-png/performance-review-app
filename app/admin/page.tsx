@@ -74,18 +74,18 @@ export default async function AdminPage() {
     reviews.map(r => r.employee_id).filter(Boolean) as string[],
   )
 
-  const seenEmployee = new Set<string>()
-  const selfAssessmentRows = ((selfAssessments ?? []) as SelfAssessmentRow[])
+  // Latest self-assessment per employee. Attached to every row, not just the
+  // placeholders, so the progress bar can span the whole lifecycle — the
+  // self-assessment stages included — for manager-authored reviews too.
+  const saByEmployee = new Map<string, SelfAssessmentRow>()
+  for (const sa of ((selfAssessments ?? []) as SelfAssessmentRow[])
     .slice()
-    // Most recent first, so an employee with more than one self-assessment
-    // contributes only their latest.
-    .sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''))
-    .filter(sa => {
-      if (!sa.employee_id || employeesWithReview.has(sa.employee_id)) return false
-      if (seenEmployee.has(sa.employee_id)) return false
-      seenEmployee.add(sa.employee_id)
-      return true
-    })
+    .sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''))) {
+    if (sa.employee_id && !saByEmployee.has(sa.employee_id)) saByEmployee.set(sa.employee_id, sa)
+  }
+
+  const selfAssessmentRows = [...saByEmployee.values()]
+    .filter(sa => !employeesWithReview.has(sa.employee_id))
     .map(sa => {
       const emp = usersById.get(sa.employee_id)
       return {
@@ -116,7 +116,15 @@ export default async function AdminPage() {
     })
 
   const allReviews = [
-    ...reviews.map(r => ({ ...r, source: 'review' as const, sa_status: null, sa_submitted_at: null })),
+    ...reviews.map(r => {
+      const sa = r.employee_id ? saByEmployee.get(r.employee_id) : undefined
+      return {
+        ...r,
+        source: 'review' as const,
+        sa_status: sa?.status ?? null,
+        sa_submitted_at: sa?.submitted_at ?? null,
+      }
+    }),
     ...selfAssessmentRows,
   ].sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''))
 
