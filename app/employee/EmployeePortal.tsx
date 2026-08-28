@@ -14,6 +14,11 @@ import { SignaturePad, SignatureDisplay, encodeSignature, decodeSignature, type 
 
 type Page = 'self-assessment' | 'reviews' | 'timeline' | 'goals' | 'checkins' | 'feedback' | 'guide' | 'glossary' | 'pip'
 
+// Features hidden from every portal. The pages and their logic are left intact —
+// flip a flag to true to bring one back.
+const SHOW_CHECKINS = false
+const SHOW_ONE_ON_ONES = false
+
 type KeyResult = {
   id: string
   title: string
@@ -131,7 +136,7 @@ const NAV_ITEMS: { id: Page; label: string; icon: React.FC<{ size: number; color
   { id: 'reviews',         label: 'Performance Review Meeting', icon: BarChart2  },
   { id: 'timeline',        label: 'Review Timeline',      icon: History    },
   { id: 'goals',           label: 'Goals Tracker',        icon: Target     },
-  { id: 'checkins',        label: 'Quarterly Check-ins',  icon: Sparkles   },
+  ...(SHOW_CHECKINS ? [{ id: 'checkins' as Page, label: 'Quarterly Check-ins', icon: Sparkles }] : []),
   { id: 'feedback',        label: '360 Feedback',         icon: Users      },
   { id: 'pip',             label: 'Coaching Plan',        icon: BarChart2  },
   { id: 'guide',           label: 'Employee Guide',       icon: BookOpen   },
@@ -2173,7 +2178,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         )}
 
         {/* Shared 1:1 Notes from Manager */}
-        {(sharedNotesLoading || sharedNotes.length > 0) && (
+        {SHOW_ONE_ON_ONES && (sharedNotesLoading || sharedNotes.length > 0) && (
           <div style={{ marginTop: 32 }}>
             <h2 style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 700, color: '#f0f2fa' }}>Notes from Your Manager</h2>
             {sharedNotesLoading ? (
@@ -2760,7 +2765,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           {page === 'reviews'  && renderReviewsPage()}
           {page === 'timeline' && renderTimelinePage()}
           {page === 'goals'     && renderGoalsPage()}
-          {page === 'checkins'  && renderCheckins()}
+          {SHOW_CHECKINS && page === 'checkins'  && renderCheckins()}
           {page === 'feedback'  && renderFeedback()}
           {page === 'pip'       && renderPipPage()}
           {page === 'guide'     && renderGuidePage()}

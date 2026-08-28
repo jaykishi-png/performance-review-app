@@ -155,9 +155,11 @@ interface DirectReport {
   pronouns: string   // e.g. "he/him", "she/her", "they/them", or custom
 }
 
-// Nine-Box Grid is hidden from every portal. The page and its potential-rating
-// logic are left intact — flip this to true to bring it back.
+// Features hidden from every portal. The pages and their logic are left intact —
+// flip a flag to true to bring one back.
 const SHOW_NINE_BOX = false
+const SHOW_CHECKINS = false
+const SHOW_ONE_ON_ONES = false
 
 const REPORTS_KEY = 'manager-direct-reports'
 
@@ -6270,7 +6272,7 @@ export function PerformanceReviewForm() {
 
 
           {/* 1:1 Meetings */}
-          {(() => {
+          {SHOW_ONE_ON_ONES && (() => {
             const active = activePage === 'notes'
             return (
               <button onClick={() => setActivePage('notes')} title={sidebarCollapsed ? '1:1 Meetings' : undefined}
@@ -6284,7 +6286,7 @@ export function PerformanceReviewForm() {
           })()}
 
           {/* Check-ins */}
-          {(() => {
+          {SHOW_CHECKINS && (() => {
             const active = activePage === 'checkins'
             return (
               <button onClick={() => setActivePage('checkins')} title={sidebarCollapsed ? 'Check-ins' : undefined}
@@ -6638,9 +6640,11 @@ export function PerformanceReviewForm() {
                 <button onClick={() => setActivePage('team')} style={{ padding: '9px 18px', background: '#13151f', color: '#9ca3af', border: '1px solid #1e2130', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                   View Team
                 </button>
-                <button onClick={() => { setActivePage('checkins') }} style={{ padding: '9px 18px', background: '#13151f', color: '#9ca3af', border: '1px solid #1e2130', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                  Check-ins
-                </button>
+                {SHOW_CHECKINS && (
+                  <button onClick={() => { setActivePage('checkins') }} style={{ padding: '9px 18px', background: '#13151f', color: '#9ca3af', border: '1px solid #1e2130', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    Check-ins
+                  </button>
+                )}
               </div>
             </div>
           )
@@ -7426,10 +7430,10 @@ export function PerformanceReviewForm() {
         {activePage === 'my-review' && renderMyReview()}
 
         {/* ── 1:1 Meetings page ── */}
-        {activePage === 'notes' && renderNotes()}
+        {SHOW_ONE_ON_ONES && activePage === 'notes' && renderNotes()}
 
         {/* ── Check-ins page ── */}
-        {activePage === 'checkins' && renderCheckins()}
+        {SHOW_CHECKINS && activePage === 'checkins' && renderCheckins()}
 
         {/* ── Peer Reviews (360°) page ── */}
         {activePage === 'peer-feedback' && renderPeerFeedback()}
