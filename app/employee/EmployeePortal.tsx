@@ -18,6 +18,8 @@ type Page = 'self-assessment' | 'reviews' | 'timeline' | 'goals' | 'checkins' | 
 // flip a flag to true to bring one back.
 const SHOW_CHECKINS = false
 const SHOW_ONE_ON_ONES = false
+// Peer Reviews (360°) are managed by managers only — employees don't see them.
+const SHOW_PEER_REVIEWS = false
 
 type KeyResult = {
   id: string
@@ -137,7 +139,7 @@ const NAV_ITEMS: { id: Page; label: string; icon: React.FC<{ size: number; color
   { id: 'timeline',        label: 'Review Timeline',      icon: History    },
   { id: 'goals',           label: 'Goals Tracker',        icon: Target     },
   ...(SHOW_CHECKINS ? [{ id: 'checkins' as Page, label: 'Quarterly Check-ins', icon: Sparkles }] : []),
-  { id: 'feedback',        label: '360 Feedback',         icon: Users      },
+  ...(SHOW_PEER_REVIEWS ? [{ id: 'feedback' as Page, label: '360 Feedback', icon: Users }] : []),
   { id: 'pip',             label: 'Coaching Plan',        icon: BarChart2  },
   { id: 'guide',           label: 'Employee Guide',       icon: BookOpen   },
   { id: 'glossary',        label: 'Competency Glossary',  icon: BookMarked },
@@ -2766,7 +2768,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           {page === 'timeline' && renderTimelinePage()}
           {page === 'goals'     && renderGoalsPage()}
           {SHOW_CHECKINS && page === 'checkins'  && renderCheckins()}
-          {page === 'feedback'  && renderFeedback()}
+          {SHOW_PEER_REVIEWS && page === 'feedback'  && renderFeedback()}
           {page === 'pip'       && renderPipPage()}
           {page === 'guide'     && renderGuidePage()}
           {page === 'glossary'  && renderGlossaryPage()}

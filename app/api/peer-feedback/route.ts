@@ -6,12 +6,14 @@ export const dynamic = 'force-dynamic'
 // ---------------------------------------------------------------------------
 // GET — get peer feedback
 //
+// Peer feedback is manager-managed — the employee it is about cannot read it.
+//
 // ?request_id=UUID
 //   - If caller is the reviewer: returns their own submission
-//   - If caller is requestor / manager of requestor / admin: returns all
-//     feedback for that request (anonymised if is_anonymous)
+//   - If caller is manager of requestor / admin: returns all feedback for that
+//     request (historical anonymous reviewers stay hidden from the requestor)
 //
-// ?requestor_id=UUID  (manager/admin) — all feedback for an employee
+// ?requestor_id=UUID  (manager/admin only) — all feedback for an employee
 // ---------------------------------------------------------------------------
 export async function GET(req: NextRequest) {
   const supabase = await createClient()
@@ -63,12 +65,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ feedback: feedback ?? null })
     }
 
-    // Determine if caller is requestor, manager of requestor, or admin
-    const isRequestor = r.requestor_id === user.id
+    // Determine if caller is manager of requestor, or admin. Peer feedback is
+    // manager-managed: the employee it is about cannot read it.
     const isAdmin = callerRole === 'admin'
 
     let isManager = false
-    if (!isRequestor && !isAdmin) {
+    if (!isAdmin) {
       const { data: requestorProfile } = await svc
         .from('profiles')
         .select('manager_id')
@@ -77,7 +79,7 @@ export async function GET(req: NextRequest) {
       isManager = (requestorProfile as { manager_id: string | null } | null)?.manager_id === user.id
     }
 
-    if (!isRequestor && !isManager && !isAdmin) {
+    if (!isManager && !isAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -86,9 +88,10 @@ export async function GET(req: NextRequest) {
       .select('id, request_id, reviewer_id, q1_strengths, q2_improvements, q3_collab_rating, q3_collab_text, additional_comments, created_at')
       .eq('request_id', requestId)
 
-    // Anonymise if needed (requestor cannot see who gave anonymous feedback)
+    // New requests are never anonymous, but historical ones may be — never
+    // reveal those reviewers to the person the feedback is about.
     const sanitised = (feedbackList ?? []).map(f => {
-      if (r.is_anonymous && isRequestor) {
+      if (r.is_anonymous && r.requestor_id === user.id) {
         const { reviewer_id: _rid, ...rest } = f as typeof f & { reviewer_id: string }
         return rest
       }
@@ -112,7 +115,8 @@ export async function GET(req: NextRequest) {
       isManager = (targetProfile as { manager_id: string | null } | null)?.manager_id === user.id
     }
 
-    if (!isAdmin && !isManager && user.id !== requestorId) {
+    // Peer feedback is manager-managed: the employee it is about cannot read it.
+    if (!isAdmin && !isManager) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

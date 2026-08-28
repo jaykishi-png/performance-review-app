@@ -4832,11 +4832,22 @@ export function PerformanceReviewForm() {
   const [pf360SendOpen, setPf360SendOpen] = useState(false)
   const [pf360SendForId, setPf360SendForId] = useState('')
   const [pf360SendReviewerId, setPf360SendReviewerId] = useState('')
-  const [pf360SendAnon, setPf360SendAnon] = useState(true)
   const [pf360SendMsg, setPf360SendMsg] = useState('')
+  // Any active account can be asked for feedback, not just the manager's own reports
+  const [pf360AllUsers, setPf360AllUsers] = useState<{ id: string; name: string | null; email: string; position: string | null }[]>([])
   const [pf360Sending, setPf360Sending] = useState(false)
   const [pf360SentLink, setPf360SentLink] = useState<string | null>(null)
   const [pf360SentCopied, setPf360SentCopied] = useState(false)
+
+  // Load every active account when Peer Reviews opens — a reviewer can be any
+  // colleague, not only one of the manager's direct reports.
+  useEffect(() => {
+    if (activePage !== 'peer-feedback' || pf360AllUsers.length > 0) return
+    fetch('/api/users').then(r => r.ok ? r.json() : null).then(d => {
+      if (d?.users) setPf360AllUsers(d.users)
+    }).catch(() => null)
+  }, [activePage, pf360AllUsers.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Note templates
   const [showNoteTemplates, setShowNoteTemplates] = useState(false)
   // Nine-box
@@ -5434,7 +5445,10 @@ export function PerformanceReviewForm() {
       : null
 
     const sendForEmp = activeEmployees.find(r => r.id === pf360SendForId)
-    const reviewerOptions = activeEmployees.filter(r => r.id !== pf360SendForId)
+    // Any active account can review, excluding the person being reviewed.
+    const reviewerOptions = pf360AllUsers
+      .filter(u => u.id !== pf360SendForId)
+      .map(u => ({ id: u.id, label: u.name || u.email }))
 
     async function handleSendRequest() {
       if (!pf360SendForId || !pf360SendReviewerId) return
@@ -5448,7 +5462,7 @@ export function PerformanceReviewForm() {
             requestor_id: pf360SendForId,
             reviewer_id: pf360SendReviewerId,
             year: new Date().getFullYear(),
-            is_anonymous: pf360SendAnon,
+            is_anonymous: false,
             message: pf360SendMsg.trim() || undefined,
           }),
         })
@@ -5510,8 +5524,8 @@ export function PerformanceReviewForm() {
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Reviewer (gives feedback)</label>
                       <select value={pf360SendReviewerId} onChange={e => setPf360SendReviewerId(e.target.value)}
                         style={{ width: '100%', padding: '8px 10px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, color: pf360SendReviewerId ? '#e0e7ff' : '#6b7280', fontSize: 13 }}>
-                        <option value=''>— Select reviewer —</option>
-                        {reviewerOptions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                        <option value=''>{pf360AllUsers.length === 0 ? 'Loading…' : '— Select reviewer —'}</option>
+                        {reviewerOptions.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
                       </select>
                     </div>
                   </div>
@@ -5523,16 +5537,7 @@ export function PerformanceReviewForm() {
                       rows={2} style={{ width: '100%', padding: '8px 10px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, color: '#e0e7ff', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                      <button type="button" onClick={() => setPf360SendAnon(v => !v)}
-                        style={{ position: 'relative', width: 36, height: 20, background: pf360SendAnon ? '#059669' : '#374151', border: 'none', borderRadius: 10, cursor: 'pointer', flexShrink: 0 }}>
-                        <span style={{ position: 'absolute', top: 2, left: pf360SendAnon ? 18 : 2, width: 16, height: 16, background: '#fff', borderRadius: '50%', transition: 'left 0.2s', display: 'block' }} />
-                      </button>
-                      <span style={{ fontSize: 12, color: pf360SendAnon ? '#34d399' : '#9ca3af' }}>
-                        {pf360SendAnon ? '🔒 Anonymous (reviewer identity hidden)' : '👁 Non-anonymous (name shown)'}
-                      </span>
-                    </label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                     <button onClick={handleSendRequest} disabled={!pf360SendForId || !pf360SendReviewerId || pf360Sending}
                       style={{ padding: '8px 20px', background: !pf360SendForId || !pf360SendReviewerId ? '#1e2130' : 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: !pf360SendForId || !pf360SendReviewerId ? '#4b5563' : 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: !pf360SendForId || !pf360SendReviewerId ? 'not-allowed' : 'pointer' }}>
                       {pf360Sending ? 'Sending…' : 'Send Request →'}
