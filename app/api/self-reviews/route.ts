@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { cycleAnniversaryYear } from '@/lib/review-cycle'
 
 // GET — employee gets their own; manager gets a direct report's by employeeId query param
 export async function GET(req: NextRequest) {
@@ -92,9 +93,39 @@ export async function POST(req: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    const anniversaryYear = typeof body.anniversaryYear === 'number' ? body.anniversaryYear : null
+    // Resolve the anniversary year server-side. Clients don't send it, so
+    // trusting the request body alone leaves the column null and unlinks the
+    // self-assessment from its review cycle. The employee's own cycle is the
+    // source of truth; fall back to date math only when they have no cycle yet.
+    let anniversaryYear: number | null =
+      typeof body.anniversaryYear === 'number' ? body.anniversaryYear : null
 
-    // Find existing record — prefer match by anniversary_year if provided
+    if (anniversaryYear === null) {
+      const { data: cycles } = await serviceClient
+        .from('employee_review_cycles')
+        .select('anniversary_year, phase')
+        .eq('employee_id', user.id)
+        .order('anniversary_year', { ascending: false })
+
+      const list = (cycles ?? []) as { anniversary_year: number; phase: string }[]
+      // Prefer the open cycle — that's the one this assessment belongs to.
+      const target = list.find(c => c.phase !== 'complete') ?? list[0]
+      if (target) {
+        anniversaryYear = target.anniversary_year
+      } else {
+        const { data: prof } = await serviceClient
+          .from('profiles')
+          .select('start_date')
+          .eq('id', user.id)
+          .single()
+        const startDate = (prof as { start_date?: string | null } | null)?.start_date
+        anniversaryYear = startDate
+          ? cycleAnniversaryYear(startDate, new Date())
+          : new Date().getFullYear()
+      }
+    }
+
+    // Find existing record — prefer match by anniversary_year
     let existing: { id: string; status: string } | null = null
     if (anniversaryYear) {
       const { data: yearData, error: yearErr } = await serviceClient
@@ -115,6 +146,20 @@ export async function POST(req: NextRequest) {
         existing = recent
       } else {
         existing = yearData
+      }
+
+      // Legacy rows predate this column. Adopt an unlabelled row rather than
+      // inserting a second assessment alongside it; the update stamps the year.
+      if (!existing) {
+        const { data: unlabelled } = await serviceClient
+          .from('self_reviews')
+          .select('id, status')
+          .eq('employee_id', user.id)
+          .is('anniversary_year', null)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        existing = unlabelled
       }
     } else {
       const { data: recent } = await serviceClient

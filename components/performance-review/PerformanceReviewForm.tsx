@@ -155,6 +155,10 @@ interface DirectReport {
   pronouns: string   // e.g. "he/him", "she/her", "they/them", or custom
 }
 
+// Nine-Box Grid is hidden from every portal. The page and its potential-rating
+// logic are left intact — flip this to true to bring it back.
+const SHOW_NINE_BOX = false
+
 const REPORTS_KEY = 'manager-direct-reports'
 
 function getReports(): DirectReport[] {
@@ -6324,7 +6328,7 @@ export function PerformanceReviewForm() {
           })()}
 
           {/* Nine-Box Grid */}
-          {(() => {
+          {SHOW_NINE_BOX && (() => {
             const active = activePage === 'nine-box'
             return (
               <button onClick={() => setActivePage('nine-box')} title={sidebarCollapsed ? 'Nine-Box Grid' : undefined}
@@ -7434,7 +7438,7 @@ export function PerformanceReviewForm() {
         {activePage === 'pip' && renderPip()}
 
         {/* ── Nine-Box Grid page ── */}
-        {activePage === 'nine-box' && renderNineBox()}
+        {SHOW_NINE_BOX && activePage === 'nine-box' && renderNineBox()}
 
         {/* ── Annual Reviews — pipeline list + form editor ── */}
         {activePage === 'reviews' && !meetingDetailId && (!currentReviewId ? (

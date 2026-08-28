@@ -248,7 +248,10 @@ export async function GET(req: NextRequest) {
 
     if (!targetAnn) continue
 
-    // Fetch or create the cycle
+    // One cycle per employee per anniversary year. Scoping the lookup to this
+    // year means a manually triggered cycle for this year is found and reused
+    // (never duplicated), while a cycle from a prior year — even an unfinished
+    // one — does not block this year's cycle from being created.
     const { data: existing } = await svc
       .from('employee_review_cycles')
       .select('*')
@@ -307,6 +310,8 @@ export async function GET(req: NextRequest) {
     }
 
     if (!cycle || cycle.phase === 'complete') continue
+
+    const cycleYear = cycle.anniversary_year
 
     // Get manager
     let manager: { id: string; name: string | null; email: string } | null = null
@@ -376,7 +381,7 @@ export async function GET(req: NextRequest) {
         const due = fmtD(c.sa_close_at)
         await notify(emp.id, 'sa_open', 'Your self-assessment is open', `Complete your self-assessment by ${due}.`, cycle.id)
         if (manager) await notify(manager.id, 'sa_open', `${empName}'s self-assessment period has started`, `They have until ${due} to complete it.`, cycle.id)
-        await sendEmail(emp.email, `Your ${annYear} Self-Assessment is now open`, saOpenEmail(empName, due))
+        await sendEmail(emp.email, `Your ${cycleYear} Self-Assessment is now open`, saOpenEmail(empName, due))
         if (manager?.email) await sendEmail(manager.email, `${empName}'s self-assessment period is now open`, managerSAOpenEmail(empName, empPos, due))
       }
     }
@@ -449,10 +454,10 @@ export async function GET(req: NextRequest) {
     if (c.phase === 'signed' && c.admin_confirmed_at && !c.notif_complete_sent_at) {
       updates.phase = 'complete'; advanced++
       updates.notif_complete_sent_at = now.toISOString()
-      await notify(emp.id, 'complete', `Your ${annYear} review is complete`, 'Your annual performance review cycle has been confirmed.', cycle.id)
-      if (manager) await notify(manager.id, 'complete', `${empName}'s ${annYear} review is complete`, `The cycle has been confirmed by admin.`, cycle.id)
-      await sendEmail(emp.email, `Your ${annYear} performance review is complete`, completeEmail(empName, annYear))
-      if (manager?.email) await sendEmail(manager.email, `${empName}'s ${annYear} review is complete`, managerCompleteEmail(empName, empPos, annYear))
+      await notify(emp.id, 'complete', `Your ${cycleYear} review is complete`, 'Your annual performance review cycle has been confirmed.', cycle.id)
+      if (manager) await notify(manager.id, 'complete', `${empName}'s ${cycleYear} review is complete`, `The cycle has been confirmed by admin.`, cycle.id)
+      await sendEmail(emp.email, `Your ${cycleYear} performance review is complete`, completeEmail(empName, cycleYear))
+      if (manager?.email) await sendEmail(manager.email, `${empName}'s ${cycleYear} review is complete`, managerCompleteEmail(empName, empPos, cycleYear))
     }
 
     // ── Deadline reminders ────────────────────────────────────────────────────

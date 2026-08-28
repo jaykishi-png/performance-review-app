@@ -1,4 +1,5 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { cycleAnniversaryYear } from '@/lib/review-cycle'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
@@ -21,24 +22,29 @@ export async function POST(req: NextRequest) {
     .single()
   if (!emp) return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
 
-  // Block if an active cycle already exists
-  const { data: existing } = await svc
-    .from('employee_review_cycles')
-    .select('id, phase')
-    .eq('employee_id', employee_id)
-    .not('phase', 'eq', 'complete')
-    .maybeSingle()
-  if (existing) return NextResponse.json({ error: 'Employee already has an active review cycle' }, { status: 409 })
-
   const now = new Date()
 
-  // Determine anniversary_year — use the year of the most recent or upcoming anniversary
-  let anniversaryYear = now.getFullYear()
-  if ((emp as { start_date?: string | null }).start_date) {
-    const sd = new Date((emp as { start_date: string }).start_date + 'T00:00:00')
-    const thisYearAnn = new Date(now.getFullYear(), sd.getMonth(), sd.getDate())
-    // If anniversary already passed this year, we're in this cycle year
-    anniversaryYear = thisYearAnn <= now ? now.getFullYear() : now.getFullYear() - 1
+  // Use the same anniversary-year math as the scheduled cron so both paths agree
+  // on which annual period is current.
+  const startDate = (emp as { start_date?: string | null }).start_date
+  const anniversaryYear = startDate
+    ? cycleAnniversaryYear(startDate, now)
+    : now.getFullYear()
+
+  // One cycle per employee per anniversary year. Block if this year's cycle
+  // already exists at all — including a completed one, so a finished year can't
+  // be re-triggered, and including one the cron already created.
+  const { data: existing } = await svc
+    .from('employee_review_cycles')
+    .select('id')
+    .eq('employee_id', employee_id)
+    .eq('anniversary_year', anniversaryYear)
+    .maybeSingle()
+  if (existing) {
+    return NextResponse.json(
+      { error: `Employee already has a ${anniversaryYear} review cycle` },
+      { status: 409 }
+    )
   }
 
   // Build windows anchored at now
@@ -66,6 +72,16 @@ export async function POST(req: NextRequest) {
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    // 23505 = unique_violation — the cron created this year's cycle in the gap
+    // between the check above and this insert.
+    if ((error as { code?: string }).code === '23505') {
+      return NextResponse.json(
+        { error: `Employee already has a ${anniversaryYear} review cycle` },
+        { status: 409 }
+      )
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
   return NextResponse.json({ cycle })
 }
