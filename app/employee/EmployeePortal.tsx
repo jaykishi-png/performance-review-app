@@ -8,6 +8,7 @@ import {
   ExternalLink, Bell, Target, User, ChevronDown,
   BarChart2, History, Pencil, Check, Sparkles,
 } from 'lucide-react'
+import { useCompetencies } from '@/lib/use-competencies'
 import { SignaturePad, SignatureDisplay, encodeSignature, decodeSignature, type SignatureResult } from '@/components/SignaturePad'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -56,47 +57,6 @@ type Manager = { name: string | null; email: string } | null
 
 // ── Static data ───────────────────────────────────────────────────────────────
 
-const COMPETENCY_TERMS: { term: string; definition: string }[] = [
-  { term: 'Accountability and Dependability', definition: 'Takes personal responsibility for the quality and timeliness of work; achieves qualitative results with little oversight.' },
-  { term: 'Adaptability and Flexibility', definition: 'Adapts to changing business needs, conditions, and work responsibilities; works with a variety of situations, individuals, groups, and varying types of needs in a productive manner.' },
-  { term: 'Analysis/Reasoning', definition: 'Examines data to comprehend and grasp issues, draw conclusions, and solve problems.' },
-  { term: 'Attention to Detail', definition: 'Diligently attends to details and pursues quality in accomplishing tasks.' },
-  { term: 'Business Alignment', definition: 'Work performed and produced aligns with the direction, products, services, and performance of the business with the rest of the organizational objectives.' },
-  { term: 'Coaching and Mentoring', definition: 'Enables colleagues to grow and succeed through feedback, instruction, and encouragement.' },
-  { term: 'Communication', definition: 'Listens to others and communicates in an effective manner.' },
-  { term: 'Confidence', definition: 'Matured and justified self-belief in one\'s ability to do the job in a successful and productive manner.' },
-  { term: 'Creative and Innovative Thinking', definition: 'Develops fresh ideas that provide solutions to all types of workplace challenges.' },
-  { term: 'Customer Focused', definition: 'Builds and maintains customer satisfaction with the products offered by the organization and provides excellent customer service to internal and external customers.' },
-  { term: 'Decision Making and Judgement', definition: 'Makes timely, informed decisions that take into account the facts, goals, constraints, and risks.' },
-  { term: 'Developing Others', definition: 'Willingness to delegate responsibility when applicable, work with others, and coach to develop others\' capabilities.' },
-  { term: 'Development and Continuous Learning', definition: 'Displays an ongoing commitment to learning and self-improvement; has the desire and makes the effort to acquire new knowledge or skills for work.' },
-  { term: 'Empowering Others', definition: 'Conveying confidence in employees\' ability to be successful and autonomous, especially with new and challenging tasks; allowing employees the freedom to decide how they will accomplish their goals and resolve issues.' },
-  { term: 'Ethics and Integrity', definition: 'Earns others\' trust and respect through consistent honesty and professionalism in all interactions.' },
-  { term: 'Flexibility', definition: 'Adapting to and working with a variety of situations, individuals, and groups. Openness to different and new ways of doing things; willingness to modify one\'s preferred way of doing things.' },
-  { term: 'Group Facilitation', definition: 'Enables and encourages cooperative and productive group interactions.' },
-  { term: 'Influencing Others', definition: 'Influences others to be excited and committed to furthering the organization objectives; ability to gain others\' support for ideas, proposals, and solutions.' },
-  { term: 'Initiative', definition: 'Recognizes situations that warrant initiative and moves forward without hesitation; reasonably resolves issues, problems, or situations.' },
-  { term: 'Interpersonal Skills', definition: 'Gets along and interacts positively with colleagues and others; understands and relates to others.' },
-  { term: 'Leadership', definition: 'Promotes organizational mission and goals, and shows ways to achieve them.' },
-  { term: 'Listening', definition: 'Comprehends, understands, and learns from what others say.' },
-  { term: 'Planning and Organizing', definition: 'Defining tasks and milestones to achieve objectives while ensuring the optimal use of resources to achieve those objectives.' },
-  { term: 'Policy, Rules, and Regulation Enforcement', definition: 'Enforces policies, rules, and regulations consistently and in a way that is and is perceived as fair, objective, and reasonable.' },
-  { term: 'Problem-Solving', definition: 'Resolves difficult or complicated challenges.' },
-  { term: 'Project Management', definition: 'Structures and directs others\' work on projects or programs; ensures timeliness of project completion and meets project objectives deadlines.' },
-  { term: 'Reading Comprehension', definition: 'Grasps the meaning of written information and applies it to work situations.' },
-  { term: 'Relationship Building', definition: 'Builds constructive working relationships characterized by a high level of acceptance, cooperation, and mutual respect.' },
-  { term: 'Researching Information', definition: 'Identifies, collects, and organizes data for analyzing and decision-making.' },
-  { term: 'Results Focused', definition: 'Focuses on results and desired outcomes and how best to achieve them in order to get the job done.' },
-  { term: 'Risk Management', definition: 'Identifying, assessing, and managing risk while striving to attain objectives.' },
-  { term: 'Speaking', definition: 'Conveys ideas and facts orally pertinent and relevant to the audience and in a way the audience can understand.' },
-  { term: 'Staff Management', definition: 'Manages staff in ways that improve their ability to succeed on the job in an autonomous manner.' },
-  { term: 'Strategic Vision', definition: 'Sees the big, long-range picture.' },
-  { term: 'Stress Tolerance', definition: 'Maintains composure in highly stressful or adverse situations.' },
-  { term: 'Tact', definition: 'Diplomatically handles challenges or tense interpersonal situations.' },
-  { term: 'Teamwork', definition: 'Promotes cooperation and commitment within a team to achieve goals and deliverables.' },
-  { term: 'Training and Presenting Information', definition: 'Formally, effectively, and thoughtfully delivers information to a group.' },
-  { term: 'Writing', definition: 'Conveys ideas and facts in writing using language the reader and audience will best understand.' },
-]
 
 const STAR_LABELS: Record<number, { label: string; description: string; color: string }> = {
   5: { label: 'Outstanding',              description: 'Consistently exceeds performance requirements.',                               color: '#a78bfa' },
@@ -327,6 +287,8 @@ function EmployeePipPanel() {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function EmployeePortal({ profile, position, manager, initialSelfReview, initialDriveUrl, selfReviewId, activeCycle = null, unreadCount = 0, initialPage }: Props) {
+  // Admin-managed list; aliased to the { term, definition } shape used below.
+  const COMPETENCY_TERMS = useCompetencies().map(c => ({ term: c.name, definition: c.definition }))
   const router = useRouter()
   const [page, setPage] = useState<Page>((initialPage as Page) ?? 'self-assessment')
   const [collapsed, setCollapsed] = useState(false)

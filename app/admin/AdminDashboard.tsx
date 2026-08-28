@@ -5,10 +5,18 @@ import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, FileText, RefreshCw, BarChart2,
   ClipboardList, CalendarCheck, Settings, ChevronLeft, ChevronRight,
-  Plus, LogOut, ExternalLink, Bell, Star, TrendingUp,
+  Plus, LogOut, ExternalLink, Bell, Star, TrendingUp, BookMarked, Trash2, Pencil,
 } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+type CompetencyRow = {
+  id: string
+  name: string
+  definition: string
+  sort_order: number
+  is_active: boolean
+}
 
 type UserRecord = {
   id: string; name: string | null; email: string; role: string
@@ -86,7 +94,7 @@ type CheckinRecord = {
   employee_pulse: number | null
 }
 
-type Page = 'dashboard' | 'users' | 'reviews' | 'cycles' | 'analytics' | 'checkins' | 'feedback' | 'audit' | 'settings' | 'pip'
+type Page = 'dashboard' | 'users' | 'reviews' | 'cycles' | 'analytics' | 'checkins' | 'feedback' | 'audit' | 'settings' | 'pip' | 'competencies'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -107,6 +115,7 @@ const NAV: { id: Page; label: string; icon: React.FC<{ size: number; color?: str
   { id: 'feedback',  label: '360 Feedback',   icon: Star            },
   { id: 'pip',       label: 'PIPs',           icon: TrendingUp      },
   { id: 'audit',     label: 'Audit Log',      icon: ClipboardList   },
+  { id: 'competencies', label: 'Competencies', icon: BookMarked    },
   { id: 'settings',  label: 'Settings',       icon: Settings        },
 ]
 
@@ -429,6 +438,18 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [checkinsError, setCheckinsError] = useState<string | null>(null)
   const [checkinsQuarter, setCheckinsQuarter] = useState<1 | 2 | 3 | 4>(2)
 
+  // Competencies state
+  const [comps, setComps] = useState<CompetencyRow[]>([])
+  const [compsLoading, setCompsLoading] = useState(false)
+  const [compsError, setCompsError] = useState<string | null>(null)
+  const [compsLoaded, setCompsLoaded] = useState(false)
+  const [compNewName, setCompNewName] = useState('')
+  const [compNewDef, setCompNewDef] = useState('')
+  const [compSaving, setCompSaving] = useState(false)
+  const [compEditId, setCompEditId] = useState<string | null>(null)
+  const [compEditName, setCompEditName] = useState('')
+  const [compEditDef, setCompEditDef] = useState('')
+
   // 360 Feedback state
   type FeedbackRequestRecord = {
     id: string; year: number; message: string | null; is_anonymous: boolean; status: string
@@ -616,6 +637,26 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         .finally(() => setCheckinsLoading(false))
     }
   }, [page, checkins.length, checkinsLoading])
+
+  const loadComps = useCallback(async () => {
+    setCompsLoading(true)
+    setCompsError(null)
+    try {
+      const res = await fetch('/api/competencies?all=true')
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error ?? 'Failed to load competencies')
+      setComps(json.competencies ?? [])
+      setCompsLoaded(true)
+    } catch (e) {
+      setCompsError(e instanceof Error ? e.message : 'Failed to load competencies')
+    } finally {
+      setCompsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (page === 'competencies' && !compsLoaded && !compsLoading) loadComps()
+  }, [page, compsLoaded, compsLoading, loadComps])
 
   function openNewCycle() {
     setEditingCycle(null)
@@ -1895,6 +1936,189 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     return <PipAdminPanel isDevAdmin={isDevAdmin} />
   }
 
+  function renderCompetencies() {
+    const card: React.CSSProperties = { background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '24px 28px', marginBottom: 20 }
+    const inputStyle: React.CSSProperties = { width: '100%', padding: '8px 10px', background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, color: '#e0e7ff', fontSize: 13, boxSizing: 'border-box' }
+    const labelStyle: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }
+
+    async function addCompetency() {
+      const name = compNewName.trim()
+      if (!name) return
+      setCompSaving(true)
+      setCompsError(null)
+      try {
+        const res = await fetch('/api/competencies', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, definition: compNewDef.trim() }),
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json?.error ?? 'Failed to add competency')
+        setCompNewName(''); setCompNewDef('')
+        await loadComps()
+      } catch (e) {
+        setCompsError(e instanceof Error ? e.message : 'Failed to add competency')
+      } finally {
+        setCompSaving(false)
+      }
+    }
+
+    async function patchCompetency(id: string, patch: Record<string, unknown>) {
+      setCompsError(null)
+      try {
+        const res = await fetch('/api/competencies', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, ...patch }),
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json?.error ?? 'Failed to save change')
+        await loadComps()
+      } catch (e) {
+        setCompsError(e instanceof Error ? e.message : 'Failed to save change')
+      }
+    }
+
+    async function deleteCompetency(row: CompetencyRow) {
+      if (!confirm(`Delete "${row.name}"?\n\nIt will no longer be selectable in self-assessments or performance reviews. Reviews that already recorded it are unchanged.`)) return
+      setCompsError(null)
+      try {
+        const res = await fetch(`/api/competencies?id=${encodeURIComponent(row.id)}`, { method: 'DELETE' })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json?.error ?? 'Failed to delete competency')
+        await loadComps()
+      } catch (e) {
+        setCompsError(e instanceof Error ? e.message : 'Failed to delete competency')
+      }
+    }
+
+    const activeCount = comps.filter(c => c.is_active).length
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Competencies</h1>
+          <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>
+            These populate the competency dropdowns in employee self-assessments and manager performance reviews.
+            Hiding or deleting one changes what can be selected from now on — reviews that already recorded it are untouched.
+          </p>
+        </div>
+
+        {compsError && (
+          <div style={{ ...card, borderColor: '#7f1d1d', background: '#1a1013', padding: '14px 18px', marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: '#f87171' }}>{compsError}</div>
+            {compsError.includes('does not exist') && (
+              <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>
+                Run <code style={{ color: '#e0e7ff' }}>supabase/add-competencies.sql</code> in the Supabase SQL editor, then reload.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Add */}
+        <div style={card}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#f0f2fa', marginBottom: 4 }}>Add a competency</div>
+          <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 18 }}>It is appended to the end of the list.</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 12, alignItems: 'end' }}>
+            <div>
+              <label style={labelStyle}>Name</label>
+              <input value={compNewName} onChange={e => setCompNewName(e.target.value)} placeholder="e.g. Data Literacy" style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Definition</label>
+              <input value={compNewDef} onChange={e => setCompNewDef(e.target.value)} placeholder="How this competency is demonstrated" style={inputStyle} />
+            </div>
+            <button onClick={addCompetency} disabled={!compNewName.trim() || compSaving}
+              style={{ padding: '9px 18px', background: !compNewName.trim() || compSaving ? '#1e2130' : 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: !compNewName.trim() || compSaving ? '#4b5563' : '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: !compNewName.trim() || compSaving ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
+              {compSaving ? 'Adding…' : 'Add'}
+            </button>
+          </div>
+        </div>
+
+        {/* List */}
+        <div style={card}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 18 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#f0f2fa', marginBottom: 4 }}>Current list</div>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>{activeCount} selectable{comps.length !== activeCount ? ` · ${comps.length - activeCount} hidden` : ''}</div>
+            </div>
+            <button onClick={loadComps} disabled={compsLoading}
+              style={{ padding: '6px 12px', background: '#1e2130', color: '#9ca3af', border: '1px solid #2a2d3f', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: compsLoading ? 'default' : 'pointer' }}>
+              {compsLoading ? 'Loading…' : 'Refresh'}
+            </button>
+          </div>
+
+          {compsLoading && comps.length === 0 ? (
+            <div style={{ fontSize: 13, color: '#6b7280', padding: '20px 0' }}>Loading competencies…</div>
+          ) : comps.length === 0 ? (
+            <div style={{ fontSize: 13, color: '#6b7280', padding: '20px 0' }}>No competencies yet. Add one above.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {comps.map(row => {
+                const editing = compEditId === row.id
+                return (
+                  <div key={row.id} style={{ padding: '12px 0', borderBottom: '1px solid #1a1c2a', opacity: row.is_active ? 1 : 0.55 }}>
+                    {editing ? (
+                      <div style={{ display: 'grid', gap: 10 }}>
+                        <div>
+                          <label style={labelStyle}>Name</label>
+                          <input value={compEditName} onChange={e => setCompEditName(e.target.value)} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Definition</label>
+                          <textarea value={compEditDef} onChange={e => setCompEditDef(e.target.value)} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={async () => {
+                            if (!compEditName.trim()) return
+                            await patchCompetency(row.id, { name: compEditName, definition: compEditDef })
+                            setCompEditId(null)
+                          }}
+                            style={{ padding: '7px 16px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                            Save
+                          </button>
+                          <button onClick={() => setCompEditId(null)}
+                            style={{ padding: '7px 16px', background: '#1e2130', color: '#9ca3af', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#e0e7ff', marginBottom: 2 }}>
+                            {row.name}
+                            {!row.is_active && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.15)', padding: '2px 7px', borderRadius: 20 }}>HIDDEN</span>}
+                          </div>
+                          <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>{row.definition || <span style={{ fontStyle: 'italic', color: '#4b5563' }}>No definition</span>}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                          <button title="Edit" onClick={() => { setCompEditId(row.id); setCompEditName(row.name); setCompEditDef(row.definition) }}
+                            style={{ padding: 6, background: '#1e2130', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex' }}>
+                            <Pencil size={13} color="#9ca3af" />
+                          </button>
+                          <button title={row.is_active ? 'Hide from dropdowns' : 'Make selectable again'}
+                            onClick={() => patchCompetency(row.id, { is_active: !row.is_active })}
+                            style={{ padding: '6px 10px', background: '#1e2130', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 600, color: '#9ca3af' }}>
+                            {row.is_active ? 'Hide' : 'Show'}
+                          </button>
+                          <button title="Delete" onClick={() => deleteCompetency(row)}
+                            style={{ padding: 6, background: '#1e2130', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex' }}>
+                            <Trash2 size={13} color="#f87171" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   function renderSettings() {
     const sectionCard: React.CSSProperties = { background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '24px 28px', marginBottom: 20 }
     const sectionTitle: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: '#f0f2fa', marginBottom: 4 }
@@ -2904,6 +3128,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
         {page === 'audit' && renderAuditLog()}
 
+        {page === 'competencies' && renderCompetencies()}
         {page === 'settings' && renderSettings()}
       </main>
 
