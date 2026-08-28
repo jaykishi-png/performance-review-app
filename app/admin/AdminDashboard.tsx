@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, FileText, RefreshCw, BarChart2,
-  ClipboardList, CalendarCheck, Settings, ChevronLeft, ChevronRight,
+  ClipboardList, Settings, ChevronLeft, ChevronRight,
   Plus, LogOut, ExternalLink, Bell, Star, TrendingUp, BookMarked, Trash2, Pencil,
 } from 'lucide-react'
 
@@ -96,6 +96,10 @@ type CheckinRecord = {
 
 type Page = 'dashboard' | 'users' | 'reviews' | 'cycles' | 'analytics' | 'checkins' | 'feedback' | 'audit' | 'settings' | 'pip' | 'competencies'
 
+// Quarterly Check-ins are hidden from every portal. The page and its data
+// loading are left intact — flip this to true to bring it back.
+const SHOW_CHECKINS = false
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const ROLE_COLORS: Record<string, string> = {
@@ -111,7 +115,6 @@ const NAV: { id: Page; label: string; icon: React.FC<{ size: number; color?: str
   { id: 'reviews',   label: 'Reviews',        icon: FileText        },
   { id: 'cycles',    label: 'Review Cycles',  icon: RefreshCw       },
   { id: 'analytics', label: 'Analytics',      icon: BarChart2       },
-  { id: 'checkins',  label: 'Check-ins',      icon: CalendarCheck   },
   { id: 'feedback',  label: '360 Feedback',   icon: Star            },
   { id: 'pip',       label: 'PIPs',           icon: TrendingUp      },
   { id: 'audit',     label: 'Audit Log',      icon: ClipboardList   },
@@ -627,7 +630,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   }, [page, auditLogs.length, auditLoading, fetchAuditLogs])
 
   useEffect(() => {
-    if (page === 'checkins' && checkins.length === 0 && !checkinsLoading) {
+    if (SHOW_CHECKINS && page === 'checkins' && checkins.length === 0 && !checkinsLoading) {
       setCheckinsLoading(true)
       setCheckinsError(null)
       fetch('/api/quarterly-checkins?all=true&year=2026')
@@ -2559,19 +2562,6 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           </table>
         </div>
 
-        {/* Check-ins shortcut */}
-        <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '18px 24px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#f0f2fa', marginBottom: 4 }}>Quarterly Check-ins</div>
-            <div style={{ fontSize: 13, color: '#6b7280' }}>View manager and employee check-in submissions by quarter.</div>
-          </div>
-          <button
-            onClick={() => setPage('checkins' as Page)}
-            style={{ padding: '8px 20px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-          >
-            View Check-ins →
-          </button>
-        </div>
 
         <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
@@ -2956,7 +2946,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <div style={{ textAlign: 'center', padding: '48px 0' }}>
               <div style={{ fontSize: 32, marginBottom: 12 }}>⭐</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>No feedback requests yet</div>
-              <div style={{ fontSize: 13, color: '#4b5563' }}>Employees can send peer feedback requests from the Check-ins tab.</div>
+              <div style={{ fontSize: 13, color: '#4b5563' }}>Managers send feedback requests from Peer Reviews in the manager portal.</div>
             </div>
           )}
           {!feedbackLoading && !feedbackError && total > 0 && (
@@ -3120,7 +3110,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
         {page === 'analytics' && renderAnalytics()}
 
-        {page === 'checkins' && renderCheckinsAdmin()}
+        {SHOW_CHECKINS && page === 'checkins' && renderCheckinsAdmin()}
 
         {page === 'feedback' && renderFeedbackAdmin()}
 
