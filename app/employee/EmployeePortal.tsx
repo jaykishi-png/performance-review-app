@@ -5,21 +5,14 @@ import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, FileText, BookOpen, BookMarked,
   Send, LogOut, CheckCircle2, Star, Plus, X, Loader2,
-  ExternalLink, Clock, Bell, Target, User, ChevronDown,
-  BarChart2, History, Pencil, Check, Sparkles, Users,
+  ExternalLink, Bell, Target, User, ChevronDown,
+  BarChart2, History, Pencil, Check, Sparkles,
 } from 'lucide-react'
 import { SignaturePad, SignatureDisplay, encodeSignature, decodeSignature, type SignatureResult } from '@/components/SignaturePad'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Page = 'self-assessment' | 'reviews' | 'timeline' | 'goals' | 'checkins' | 'feedback' | 'guide' | 'glossary' | 'pip'
-
-// Features hidden from every portal. The pages and their logic are left intact —
-// flip a flag to true to bring one back.
-const SHOW_CHECKINS = false
-const SHOW_ONE_ON_ONES = false
-// Peer Reviews (360°) are managed by managers only — employees don't see them.
-const SHOW_PEER_REVIEWS = false
+type Page = 'self-assessment' | 'reviews' | 'timeline' | 'goals' | 'guide' | 'glossary' | 'pip'
 
 type KeyResult = {
   id: string
@@ -138,8 +131,6 @@ const NAV_ITEMS: { id: Page; label: string; icon: React.FC<{ size: number; color
   { id: 'reviews',         label: 'Performance Review Meeting', icon: BarChart2  },
   { id: 'timeline',        label: 'Review Timeline',      icon: History    },
   { id: 'goals',           label: 'Goals Tracker',        icon: Target     },
-  ...(SHOW_CHECKINS ? [{ id: 'checkins' as Page, label: 'Quarterly Check-ins', icon: Sparkles }] : []),
-  ...(SHOW_PEER_REVIEWS ? [{ id: 'feedback' as Page, label: '360 Feedback', icon: Users }] : []),
   { id: 'pip',             label: 'Coaching Plan',        icon: BarChart2  },
   { id: 'guide',           label: 'Employee Guide',       icon: BookOpen   },
   { id: 'glossary',        label: 'Competency Glossary',  icon: BookMarked },
@@ -512,44 +503,11 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   const bothSigned = managerReviews.some(r => r.employee_signed_at)
   const effectivePhase = bothSigned ? 'complete' : managerReviewComplete ? 'meeting' : activeCycle?.phase ?? 'sa_open'
 
-  // ── Quarterly check-ins state ─────────────────────────────────────────────
+
+  // Check-in submissions shown as events on the Review Timeline. The Quarterly
+  // Check-ins page itself is retired; this read-only summary is all that remains.
   const CI_YEAR = 2026
-  const [ciActiveQ, setCiActiveQ] = useState(1)
-  const [ciLoading, setCiLoading] = useState(false)
-  const [ciSaving, setCiSaving] = useState(false)
-  const [ciSavedFlash, setCiSavedFlash] = useState(false)
-  const [ciPulse, setCiPulse] = useState(0)
-  const [ciMyUpdate, setCiMyUpdate] = useState('')
-  const [ciStatus, setCiStatus] = useState<'draft' | 'submitted'>('draft')
-  const [ciSubmittedAt, setCiSubmittedAt] = useState<string | null>(null)
-  const [ciManagerPulse, setCiManagerPulse] = useState<number | null>(null)
-  const [ciManagerUpdate, setCiManagerUpdate] = useState<string | null>(null)
-  const [ciManagerSubmittedAt, setCiManagerSubmittedAt] = useState<string | null>(null)
-  // Per-goal progress tracking
-  type CiGoalProgress = { id: string; title: string; checkin_status: 'on_track' | 'at_risk' | 'completed' | 'blocked' | ''; notes: string }
-  const [ciGoalProgress, setCiGoalProgress] = useState<CiGoalProgress[]>([])
-  const [ciManagerGoalProgress, setCiManagerGoalProgress] = useState<CiGoalProgress[]>([])
-  const [ciGoalsLoading, setCiGoalsLoading] = useState(false)
-
-  // All quarters check-ins for timeline display
   const [allCheckins, setAllCheckins] = useState<Array<{ quarter: number; employee_submitted_at: string | null; manager_submitted_at: string | null }>>([])
-
-  // Shared 1:1 notes from manager
-  const [sharedNotes, setSharedNotes] = useState<Array<{ id: string; meeting_date: string; note: string; tags: string[] }>>([])
-  const [sharedNotesLoading, setSharedNotesLoading] = useState(false)
-
-  // ── 360 Feedback state ────────────────────────────────────────────────────
-  const [feedbackSent, setFeedbackSent] = useState<any[]>([])
-  const [feedbackReceived, setFeedbackReceived] = useState<any[]>([])
-  const [feedbackLoading, setFeedbackLoading] = useState(false)
-  const [peers, setPeers] = useState<{id:string,name:string,email:string,position:string}[]>([])
-  const [selectedPeer, setSelectedPeer] = useState('')
-  const [feedbackMessage, setFeedbackMessage] = useState('')
-  const [feedbackAnon, setFeedbackAnon] = useState(false)
-  const [feedbackSending, setFeedbackSending] = useState(false)
-  const [feedbackSendError, setFeedbackSendError] = useState<string|null>(null)
-  const [feedbackSendSuccess, setFeedbackSendSuccess] = useState(false)
-
 
   useEffect(() => {
     if (page !== 'timeline') return
@@ -560,81 +518,6 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
       })
       .catch(() => {})
   }, [page])
-
-  useEffect(() => {
-    if (page !== 'checkins') return
-    // Fetch shared notes from manager
-    setSharedNotesLoading(true)
-    fetch(`/api/one-on-one-notes?employee_id=${profile.id}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.data) setSharedNotes(d.data) })
-      .catch(() => {})
-      .finally(() => setSharedNotesLoading(false))
-  }, [page])
-
-  useEffect(() => {
-    if (page !== 'checkins') return
-    let cancelled = false
-    setCiLoading(true)
-    setCiGoalsLoading(true)
-
-    // Load goals and check-in data in parallel
-    Promise.all([
-      fetch(`/api/quarterly-checkins?employee_id=${profile.id}&year=${CI_YEAR}&quarter=${ciActiveQ}`).then(r => r.ok ? r.json() : null),
-      fetch('/api/goals').then(r => r.ok ? r.json() : null),
-    ]).then(([ciData, goalsData]: [
-      { data?: { employee_pulse?: number; employee_update?: string; employee_goal_progress?: {id:string;title:string;checkin_status:string;notes:string}[]; employee_submitted_at?: string | null; manager_pulse?: number | null; manager_update?: string | null; manager_goal_progress?: {id:string;title:string;checkin_status:string;notes:string}[]; manager_submitted_at?: string | null } | null } | null,
-      { goals?: { id: string; title: string; status: string }[] } | null
-    ]) => {
-      if (cancelled) return
-      const ci = ciData?.data ?? null
-      setCiPulse(ci?.employee_pulse ?? 0)
-      setCiMyUpdate(ci?.employee_update ?? '')
-      setCiStatus(ci?.employee_submitted_at ? 'submitted' : 'draft')
-      setCiSubmittedAt(ci?.employee_submitted_at ?? null)
-      setCiManagerPulse(ci?.manager_pulse ?? null)
-      setCiManagerUpdate(ci?.manager_update ?? null)
-      setCiManagerSubmittedAt(ci?.manager_submitted_at ?? null)
-
-      // Build per-goal progress from goals list, merging any saved progress
-      const savedProgress = ci?.employee_goal_progress ?? []
-      const savedMgrProgress = ci?.manager_goal_progress ?? []
-      const goalList = goalsData?.goals ?? []
-      setCiGoalProgress(goalList.map(g => {
-        const saved = savedProgress.find((s: {id:string}) => s.id === g.id)
-        return { id: g.id, title: g.title, checkin_status: (saved?.checkin_status ?? '') as CiGoalProgress['checkin_status'], notes: saved?.notes ?? '' }
-      }))
-      setCiManagerGoalProgress(goalList.map(g => {
-        const saved = savedMgrProgress.find((s: {id:string}) => s.id === g.id)
-        return { id: g.id, title: g.title, checkin_status: (saved?.checkin_status ?? '') as CiGoalProgress['checkin_status'], notes: saved?.notes ?? '' }
-      }))
-      setCiLoading(false)
-      setCiGoalsLoading(false)
-    }).catch(() => { if (!cancelled) { setCiLoading(false); setCiGoalsLoading(false) } })
-
-    return () => { cancelled = true }
-  }, [page, ciActiveQ])
-
-  async function saveCiDraft() {
-    setCiSaving(true)
-    await fetch('/api/quarterly-checkins', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ employee_id: profile.id, year: CI_YEAR, quarter: ciActiveQ, type: 'employee', pulse_rating: ciPulse, written_update: ciMyUpdate, goal_progress: ciGoalProgress, status: 'draft' })
-    })
-    setCiSaving(false); setCiSavedFlash(true); setTimeout(() => setCiSavedFlash(false), 2000)
-  }
-
-  async function submitCiCheckin() {
-    setCiSaving(true)
-    const res = await fetch('/api/quarterly-checkins', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ employee_id: profile.id, year: CI_YEAR, quarter: ciActiveQ, type: 'employee', pulse_rating: ciPulse, written_update: ciMyUpdate, goal_progress: ciGoalProgress, status: 'submitted' })
-    })
-    const json = await res.json()
-    setCiSaving(false)
-    setCiStatus('submitted')
-    setCiSubmittedAt(json.data?.employee_submitted_at ?? new Date().toISOString())
-  }
 
   // DB notifications state
   const [cycleNotifs, setCycleNotifs] = useState<{ id: string; type: string; title: string; body: string; created_at: string }[]>([])
@@ -757,27 +640,6 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
       .then(r => r.json())
       .then(data => { if (data.reviews) setManagerReviews(data.reviews) })
       .catch(() => {})
-  }, [page])
-
-  // Fetch 360 feedback data when Feedback page opens
-  useEffect(() => {
-    if (page !== 'feedback') return
-    setFeedbackLoading(true)
-    Promise.all([
-      fetch('/api/feedback-requests?role=requestor').then(r=>r.json()),
-      fetch('/api/feedback-requests?role=reviewer').then(r=>r.json()),
-      fetch('/api/users').then(r=>r.json()),
-    ]).then(([sentData, receivedData, allUsers]) => {
-      // requests come back as { requests: [...] }
-      const sentList = sentData?.requests ?? (Array.isArray(sentData) ? sentData : [])
-      const receivedList = receivedData?.requests ?? (Array.isArray(receivedData) ? receivedData : [])
-      setFeedbackSent(sentList)
-      setFeedbackReceived(receivedList)
-      const myId = profile.id
-      const peerList = (allUsers?.users ?? []).filter((u:any) => u.id !== myId)
-      setPeers(peerList.map((u:any) => ({ id: u.id, name: u.name || u.email, email: u.email, position: u.position ?? '' })))
-      setFeedbackLoading(false)
-    }).catch(() => setFeedbackLoading(false))
   }, [page])
 
   async function handleEmployeeSign(reviewId: string, result: SignatureResult) {
@@ -1993,227 +1855,6 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   }
 
   // ── Page: Quarterly Check-ins ─────────────────────────────────────────────
-  function renderCheckins() {
-    const QUARTERS = [{ label: 'Q1', n: 1 }, { label: 'Q2', n: 2 }, { label: 'Q3', n: 3 }, { label: 'Q4', n: 4 }]
-    const isSubmitted = ciStatus === 'submitted'
-    const PULSE_EMOJIS: Record<number, string> = { 1: '😔', 2: '😕', 3: '😐', 4: '🙂', 5: '😄' }
-    const PULSE_LABELS = ['', 'Struggling', 'Below Expectations', 'On Track', 'Going Well', 'Thriving']
-    const PULSE_COLORS = ['', '#f87171', '#fb923c', '#fbbf24', '#34d399', '#34d399']
-
-    const GOAL_STATUSES: { value: CiGoalProgress['checkin_status']; label: string; color: string; bg: string }[] = [
-      { value: 'on_track',  label: 'On Track',  color: '#34d399', bg: 'rgba(52,211,153,0.12)' },
-      { value: 'completed', label: 'Completed', color: '#818cf8', bg: 'rgba(129,140,248,0.12)' },
-      { value: 'at_risk',   label: 'At Risk',   color: '#fbbf24', bg: 'rgba(251,191,36,0.12)' },
-      { value: 'blocked',   label: 'Blocked',   color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
-    ]
-
-    const sectionLabel = (text: string) => (
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>{text}</div>
-    )
-
-    return (
-      <div style={{ padding: '28px 32px', maxWidth: 820, margin: '0 auto' }}>
-        <div style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f0f2fa' }}>Quarterly Check-ins</h1>
-          <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Assess your progress against annual goals and share how the quarter is going with your manager.</p>
-        </div>
-
-        {/* Quarter tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 28 }}>
-          {QUARTERS.map(q => (
-            <button key={q.n} onClick={() => setCiActiveQ(q.n)}
-              style={{ padding: '7px 20px', borderRadius: 8, border: `1px solid ${ciActiveQ === q.n ? '#4f46e5' : '#1e2130'}`, background: ciActiveQ === q.n ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : 'transparent', color: ciActiveQ === q.n ? '#fff' : '#9ca3af', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
-              {q.label} {CI_YEAR}
-            </button>
-          ))}
-        </div>
-
-        {(ciLoading || ciGoalsLoading) ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#6b7280', fontSize: 13 }}>
-            <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Loading…
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-
-            {/* ── LEFT: MY CHECK-IN ── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: 22 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-                  <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#f0f2fa' }}>My Check-in</h2>
-                  {isSubmitted && ciSubmittedAt && (
-                    <span style={{ fontSize: 11, color: '#34d399', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <CheckCircle2 size={12} /> Submitted {new Date(ciSubmittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </span>
-                  )}
-                </div>
-
-                {/* Pulse */}
-                {sectionLabel('Overall performance this quarter')}
-                <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
-                  {[1,2,3,4,5].map(n => (
-                    <button key={n} onClick={() => { if (!isSubmitted) setCiPulse(n) }}
-                      style={{ width: 48, height: 48, borderRadius: 10, border: `2px solid ${ciPulse === n ? '#4f46e5' : '#1e2130'}`, background: ciPulse === n ? 'rgba(79,70,229,0.18)' : 'transparent', fontSize: 22, cursor: isSubmitted ? 'default' : 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      title={`${n} — ${PULSE_LABELS[n]}`}>
-                      {PULSE_EMOJIS[n]}
-                    </button>
-                  ))}
-                </div>
-                {ciPulse > 0 && (
-                  <div style={{ fontSize: 12, color: PULSE_COLORS[ciPulse], fontWeight: 600, marginBottom: 20 }}>{PULSE_LABELS[ciPulse]}</div>
-                )}
-                {ciPulse === 0 && <div style={{ marginBottom: 20 }} />}
-
-                {/* Written update */}
-                {sectionLabel('Update for your manager')}
-                <textarea value={ciMyUpdate} onChange={e => { if (!isSubmitted) setCiMyUpdate(e.target.value) }}
-                  disabled={isSubmitted} placeholder="Highlights, blockers, wins, or context your manager should be aware of…"
-                  rows={4} style={{ width: '100%', background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', color: '#f0f2fa', fontSize: 13, resize: 'vertical', boxSizing: 'border-box', outline: 'none', opacity: isSubmitted ? 0.6 : 1 }} />
-
-                {!isSubmitted && (
-                  <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-                    <button onClick={saveCiDraft} disabled={ciSaving}
-                      style={{ padding: '8px 18px', background: 'transparent', color: ciSavedFlash ? '#34d399' : '#9ca3af', border: `1px solid ${ciSavedFlash ? '#34d399' : '#2a2d3a'}`, borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {ciSavedFlash ? <><Check size={12} /> Saved</> : ciSaving ? <><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Saving…</> : 'Save Draft'}
-                    </button>
-                    <button onClick={submitCiCheckin} disabled={ciSaving || ciPulse === 0}
-                      style={{ padding: '8px 20px', background: ciPulse === 0 ? '#1e2130' : 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: ciPulse === 0 ? '#4b5563' : '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: ciPulse === 0 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Send size={12} /> Submit
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Goal progress — my side */}
-              <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: 22 }}>
-                <h2 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: '#f0f2fa' }}>Goal Progress</h2>
-                {ciGoalProgress.length === 0 ? (
-                  <div style={{ fontSize: 13, color: '#4b5563', fontStyle: 'italic' }}>
-                    No goals set yet. Add goals in the Goals section.
-                  </div>
-                ) : ciGoalProgress.map((g, gi) => {
-                  const statusMeta = GOAL_STATUSES.find(s => s.value === g.checkin_status)
-                  return (
-                    <div key={g.id} style={{ marginBottom: gi < ciGoalProgress.length - 1 ? 16 : 0, paddingBottom: gi < ciGoalProgress.length - 1 ? 16 : 0, borderBottom: gi < ciGoalProgress.length - 1 ? '1px solid #1e2130' : 'none' }}>
-                      <div style={{ fontSize: 13, color: '#e0e4f0', fontWeight: 600, marginBottom: 8, lineHeight: 1.4 }}>{g.title}</div>
-                      {/* Status pills */}
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-                        {GOAL_STATUSES.map(s => (
-                          <button key={s.value} onClick={() => { if (!isSubmitted) setCiGoalProgress(prev => prev.map((p, i) => i === gi ? { ...p, checkin_status: s.value } : p)) }}
-                            style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: isSubmitted ? 'default' : 'pointer', border: `1px solid ${g.checkin_status === s.value ? s.color : 'transparent'}`, background: g.checkin_status === s.value ? s.bg : '#0d0f1a', color: g.checkin_status === s.value ? s.color : '#4b5563', transition: 'all 0.15s' }}>
-                            {s.label}
-                          </button>
-                        ))}
-                      </div>
-                      {/* Notes */}
-                      <textarea value={g.notes} onChange={e => { if (!isSubmitted) setCiGoalProgress(prev => prev.map((p, i) => i === gi ? { ...p, notes: e.target.value } : p)) }}
-                        disabled={isSubmitted} placeholder="Add a note about this goal…" rows={2}
-                        style={{ width: '100%', background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 7, padding: '8px 10px', color: isSubmitted ? '#6b7280' : '#c4c9d4', fontSize: 12, resize: 'vertical', boxSizing: 'border-box', outline: 'none' }} />
-                      {/* Show current status badge if submitted */}
-                      {isSubmitted && statusMeta && (
-                        <div style={{ marginTop: 4 }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 12, background: statusMeta.bg, color: statusMeta.color }}>{statusMeta.label}</span>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* ── RIGHT: MANAGER VIEW ── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: 22 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-                  <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#f0f2fa' }}>Manager&apos;s Check-in</h2>
-                  {ciManagerSubmittedAt && (
-                    <span style={{ fontSize: 11, color: '#818cf8', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <CheckCircle2 size={12} /> {new Date(ciManagerSubmittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </span>
-                  )}
-                </div>
-
-                {ciManagerSubmittedAt ? (
-                  <>
-                    {ciManagerPulse !== null && (
-                      <div style={{ marginBottom: 16 }}>
-                        {sectionLabel('Manager pulse')}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontSize: 22 }}>{PULSE_EMOJIS[ciManagerPulse]}</span>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: PULSE_COLORS[ciManagerPulse] }}>{PULSE_LABELS[ciManagerPulse]}</span>
-                        </div>
-                      </div>
-                    )}
-                    {ciManagerUpdate && (
-                      <div>
-                        {sectionLabel('Manager notes')}
-                        <p style={{ margin: 0, fontSize: 13, color: '#9ca3af', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{ciManagerUpdate}</p>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#4b5563', fontSize: 13 }}>
-                    <Clock size={14} /> Your manager hasn&apos;t completed their check-in yet.
-                  </div>
-                )}
-              </div>
-
-              {/* Manager goal assessment */}
-              {ciManagerSubmittedAt && ciManagerGoalProgress.some(g => g.checkin_status || g.notes) && (
-                <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 12, padding: 22 }}>
-                  <h2 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: '#f0f2fa' }}>Manager&apos;s Goal Assessment</h2>
-                  {ciManagerGoalProgress.filter(g => g.checkin_status || g.notes).map((g, gi, arr) => {
-                    const statusMeta = GOAL_STATUSES.find(s => s.value === g.checkin_status)
-                    return (
-                      <div key={g.id} style={{ marginBottom: gi < arr.length - 1 ? 16 : 0, paddingBottom: gi < arr.length - 1 ? 16 : 0, borderBottom: gi < arr.length - 1 ? '1px solid #1e2130' : 'none' }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-                          <div style={{ fontSize: 13, color: '#e0e4f0', fontWeight: 600, lineHeight: 1.4 }}>{g.title}</div>
-                          {statusMeta && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 12, flexShrink: 0, background: statusMeta.bg, color: statusMeta.color }}>{statusMeta.label}</span>}
-                        </div>
-                        {g.notes && <p style={{ margin: 0, fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>{g.notes}</p>}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Shared 1:1 Notes from Manager */}
-        {SHOW_ONE_ON_ONES && (sharedNotesLoading || sharedNotes.length > 0) && (
-          <div style={{ marginTop: 32 }}>
-            <h2 style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 700, color: '#f0f2fa' }}>Notes from Your Manager</h2>
-            {sharedNotesLoading ? (
-              <div style={{ fontSize: 13, color: '#6b7280', padding: 20 }}>Loading notes…</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {sharedNotes.map(n => {
-                  const NOTE_TAG_META: Record<string, { label: string; color: string; bg: string }> = {
-                    recognition: { label: 'Recognition', color: '#16a34a', bg: 'rgba(22,163,74,0.15)' },
-                    concern:     { label: 'Concern',     color: '#dc2626', bg: 'rgba(220,38,38,0.15)' },
-                    goal_update: { label: 'Goal Update', color: '#2563eb', bg: 'rgba(37,99,235,0.15)' },
-                    general:     { label: 'General',     color: '#6b7280', bg: 'rgba(107,114,128,0.15)' },
-                  }
-                  return (
-                    <div key={n.id} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 10, padding: '14px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>{new Date(n.meeting_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                        {(n.tags ?? []).map(tagId => {
-                          const t = NOTE_TAG_META[tagId]
-                          return t ? <span key={tagId} style={{ padding: '2px 8px', borderRadius: 20, background: t.bg, color: t.color, fontSize: 10, fontWeight: 700, border: `1px solid ${t.color}` }}>{t.label}</span> : null
-                        })}
-                      </div>
-                      <p style={{ margin: 0, fontSize: 13, color: '#d1d5db', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{n.note}</p>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
 
   // ── Page: Employee Guide ──────────────────────────────────────────────────
   function renderGuidePage() {
@@ -2382,183 +2023,6 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
               </div>
             </div>
           </>
-        )}
-      </div>
-    )
-  }
-
-  // ── Page: 360 Feedback ────────────────────────────────────────────────────
-  function renderFeedback() {
-    const currentYear = new Date().getFullYear()
-    const alreadyRequestedIds = new Set(feedbackSent.filter((r:any) => r.year === currentYear).map((r:any) => r.reviewer?.id ?? r.reviewer_id))
-
-    async function sendFeedbackRequest() {
-      if (!selectedPeer) return
-      setFeedbackSending(true)
-      setFeedbackSendError(null)
-      setFeedbackSendSuccess(false)
-      try {
-        const res = await fetch('/api/feedback-requests', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reviewer_id: selectedPeer, year: currentYear, message: feedbackMessage, is_anonymous: feedbackAnon }),
-        })
-        if (!res.ok) {
-          const d = await res.json().catch(() => ({}))
-          setFeedbackSendError(d.error || 'Failed to send request.')
-        } else {
-          const refreshed = await fetch('/api/feedback-requests?role=requestor').then(r=>r.json())
-          setFeedbackSent(refreshed?.requests ?? [])
-          setSelectedPeer('')
-          setFeedbackMessage('')
-          setFeedbackAnon(false)
-          setFeedbackSendSuccess(true)
-          setTimeout(() => setFeedbackSendSuccess(false), 4000)
-        }
-      } catch {
-        setFeedbackSendError('Network error. Please try again.')
-      } finally {
-        setFeedbackSending(false)
-      }
-    }
-
-    async function cancelFeedbackRequest(id: string) {
-      await fetch(`/api/feedback-requests?id=${id}`, { method: 'DELETE' }).catch(() => {})
-      setFeedbackSent(prev => prev.filter((r:any) => r.id !== id))
-    }
-
-    function statusBadge(status: string) {
-      const styles: Record<string, React.CSSProperties> = {
-        pending:   { background: '#451a03', color: '#fbbf24', border: '1px solid #78350f' },
-        submitted: { background: '#052e16', color: '#34d399', border: '1px solid #065f46' },
-        declined:  { background: '#1c1c1c', color: '#9ca3af', border: '1px solid #374151' },
-      }
-      const s = styles[status] || styles.pending
-      return (
-        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, textTransform: 'capitalize', ...s }}>
-          {status}
-        </span>
-      )
-    }
-
-    const availablePeers = peers.filter(p => !alreadyRequestedIds.has(p.id))
-
-    return (
-      <div style={{ padding: '32px', maxWidth: 720, margin: '0 auto' }}>
-        <div style={{ marginBottom: 28 }}>
-          <h1 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 700, color: '#f0f2fa' }}>360 Feedback</h1>
-          <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Request feedback from colleagues. Responses are collected and shared with your manager.</p>
-        </div>
-
-        {/* Requests Sent */}
-        <div style={{ background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#f0f2fa' }}>Feedback I&apos;ve Requested</h2>
-            {feedbackSent.length > 0 && (
-              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#1e2130', color: '#9ca3af' }}>{feedbackSent.length}</span>
-            )}
-          </div>
-          {feedbackLoading ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#6b7280', fontSize: 13 }}>
-              <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Loading…
-            </div>
-          ) : feedbackSent.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 13, color: '#4b5563' }}>No requests sent yet.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {feedbackSent.map((req: any) => (
-                <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 14px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#c4c9d4' }}>{req.reviewer?.name || req.reviewer?.email || req.reviewer_id}</span>
-                    <span style={{ fontSize: 11, color: '#4b5563' }}>{req.reviewer?.email && <span style={{ color: '#374151' }}>{req.reviewer.email} · </span>}Sent {req.created_at ? new Date(req.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}{req.is_anonymous ? ' · Anonymous' : ''}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    {statusBadge(req.status || 'pending')}
-                    {(!req.status || req.status === 'pending') && (
-                      <button onClick={() => cancelFeedbackRequest(req.id)} style={{ fontSize: 11, color: '#f87171', background: 'none', border: '1px solid #3b1515', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Request New Feedback */}
-        <div style={{ background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px', marginBottom: 20 }}>
-          <h2 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#f0f2fa' }}>Request New Feedback</h2>
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#9ca3af', display: 'block', marginBottom: 6 }}>Select Colleague</label>
-            <select
-              value={selectedPeer}
-              onChange={e => setSelectedPeer(e.target.value)}
-              style={{ width: '100%', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '9px 12px', color: selectedPeer ? '#f0f2fa' : '#4b5563', fontSize: 13, outline: 'none' }}
-            >
-              <option value="">— Choose a colleague —</option>
-              {availablePeers.map(p => (
-                <option key={p.id} value={p.id}>{p.name}{p.position ? ` · ${p.position}` : ''} ({p.email})</option>
-              ))}
-            </select>
-            {peers.length > 0 && availablePeers.length === 0 && !feedbackLoading && (
-              <p style={{ margin: '6px 0 0', fontSize: 12, color: '#4b5563' }}>You&apos;ve already sent requests to all available colleagues this year.</p>
-            )}
-            {peers.length === 0 && !feedbackLoading && (
-              <p style={{ margin: '6px 0 0', fontSize: 12, color: '#4b5563' }}>No colleagues found. Make sure other users are active in the system.</p>
-            )}
-          </div>
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#9ca3af', display: 'block', marginBottom: 6 }}>Message <span style={{ fontWeight: 400, color: '#4b5563' }}>(optional)</span></label>
-            <textarea
-              value={feedbackMessage}
-              onChange={e => setFeedbackMessage(e.target.value)}
-              placeholder="Add context for your reviewer (optional)"
-              rows={3}
-              style={{ width: '100%', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '9px 12px', color: '#f0f2fa', fontSize: 13, resize: 'vertical', outline: 'none', boxSizing: 'border-box' }}
-            />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <input type="checkbox" id="feedbackAnon" checked={feedbackAnon} onChange={e => setFeedbackAnon(e.target.checked)} style={{ cursor: 'pointer' }} />
-            <label htmlFor="feedbackAnon" style={{ fontSize: 13, color: '#9ca3af', cursor: 'pointer' }}>Request anonymous response</label>
-          </div>
-          {feedbackSendError && (
-            <div style={{ marginBottom: 12, fontSize: 13, color: '#f87171', background: '#1f0a0a', border: '1px solid #3b1515', borderRadius: 8, padding: '8px 12px' }}>{feedbackSendError}</div>
-          )}
-          {feedbackSendSuccess && (
-            <div style={{ marginBottom: 12, fontSize: 13, color: '#34d399', background: '#052e16', border: '1px solid #065f46', borderRadius: 8, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <CheckCircle2 size={14} /> Request sent!
-            </div>
-          )}
-          <button
-            onClick={sendFeedbackRequest}
-            disabled={!selectedPeer || feedbackSending}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 20px', background: selectedPeer && !feedbackSending ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', color: selectedPeer && !feedbackSending ? '#fff' : '#4b5563', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: selectedPeer && !feedbackSending ? 'pointer' : 'default', transition: 'all 0.2s' }}
-          >
-            {feedbackSending ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Sending…</> : <><Send size={14} /> Send Request</>}
-          </button>
-        </div>
-
-        {/* Feedback Received (pending review tasks) */}
-        {feedbackReceived.length > 0 && (
-          <div style={{ background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 12, padding: '20px 24px' }}>
-            <h2 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: '#f0f2fa' }}>Feedback I&apos;ve Received</h2>
-            <p style={{ margin: '0 0 16px', fontSize: 12, color: '#4b5563' }}>The full content of feedback written about you is visible to your manager only.</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {feedbackReceived.map((req: any) => (
-                <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 14px' }}>
-                  <span style={{ fontSize: 13, color: '#c4c9d4' }}>Feedback requested by <strong>{req.requestor?.name || req.requestor?.email || 'a colleague'}</strong></span>
-                  {req.status === 'submitted' ? (
-                    <span style={{ fontSize: 12, color: '#34d399', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={13} /> Submitted</span>
-                  ) : req.token ? (
-                    <a href={`/feedback/${req.token}`} style={{ fontSize: 12, color: '#818cf8', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      Submit Feedback <ExternalLink size={11} />
-                    </a>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </div>
         )}
       </div>
     )
@@ -2767,8 +2231,6 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           {page === 'reviews'  && renderReviewsPage()}
           {page === 'timeline' && renderTimelinePage()}
           {page === 'goals'     && renderGoalsPage()}
-          {SHOW_CHECKINS && page === 'checkins'  && renderCheckins()}
-          {SHOW_PEER_REVIEWS && page === 'feedback'  && renderFeedback()}
           {page === 'pip'       && renderPipPage()}
           {page === 'guide'     && renderGuidePage()}
           {page === 'glossary'  && renderGlossaryPage()}
