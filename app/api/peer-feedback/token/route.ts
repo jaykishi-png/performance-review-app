@@ -119,6 +119,9 @@ export async function POST(req: NextRequest) {
     .from('peer_feedback')
     .insert({
       request_id: r.id,
+      // requestor_id is NOT NULL and is not derivable from the row's other
+      // columns, so it has to be carried over from the request explicitly.
+      requestor_id: r.requestor_id,
       reviewer_id: r.reviewer_id,
       q1_strengths,
       q2_improvements,
