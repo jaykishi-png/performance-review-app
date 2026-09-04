@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
+import { getAppUrl } from '@/lib/app-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
 
   // Send consent emails
   try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://performance-review-app-three.vercel.app'
+    const appUrl = getAppUrl()
     const managerName = managerProfile?.name ?? 'Your manager'
     const employeeName = employeeProfile.name ?? 'the employee'
     const formattedDate = new Date(meeting_date).toLocaleDateString('en-US', {

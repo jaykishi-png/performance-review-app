@@ -1,11 +1,11 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { getAppUrl } from '@/lib/app-url'
 
 
 export const dynamic = 'force-dynamic'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ||
-  'https://performance-review-app-git-main-automation-7724s-projects.vercel.app'
+const APP_URL = getAppUrl()
 
 // ---------------------------------------------------------------------------
 // GET — list feedback requests for the current user

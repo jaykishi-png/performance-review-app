@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { getAppUrl } from '@/lib/app-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -59,8 +60,7 @@ export async function POST(req: NextRequest) {
         const managerName = (profile as { name: string | null; email: string }).name ||
           (profile as { name: string | null; email: string }).email
         const currentYear = new Date().getFullYear()
-        const APP_URL = process.env.NEXT_PUBLIC_APP_URL ||
-          'https://performance-review-app-three.vercel.app'
+        const APP_URL = getAppUrl()
 
         try {
         const { sendEmail } = await import('@/lib/email')

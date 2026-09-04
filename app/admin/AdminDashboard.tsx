@@ -1175,7 +1175,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               <thead><tr>{['Email', 'Role', 'Invited', 'Expires', ''].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr></thead>
               <tbody>
                 {invites.map(inv => {
-                  const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://performance-review-app-three.vercel.app'
+                  // Whatever host the admin is on. No hardcoded fallback: an absolute
+                  // URL to a stale domain is worse than a relative one during SSR.
+                  const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
                   const inviteLink = `${appUrl}/login?invite=${inv.token}`
                   return (
                   <tr key={inv.id}>

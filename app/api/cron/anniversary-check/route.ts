@@ -1,9 +1,9 @@
 // @ts-nocheck
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { getAppUrl } from '@/lib/app-url'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ||
-  'https://performance-review-app-git-main-automation-7724s-projects.vercel.app'
+const APP_URL = getAppUrl()
 
 // ── Email templates ────────────────────────────────────────────────────────────
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { getAppUrl } from '@/lib/app-url'
 
 export async function POST(req: NextRequest) {
   try {
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
 
       try {
         const { sendEmail } = await import('@/lib/email')
-        const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://performance-review-app-three.vercel.app'
+        const APP_URL = getAppUrl()
         await sendEmail({
           to: admin.email,
           subject: `⚠️ ${title}`,

@@ -1,9 +1,9 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { sendEmail } from '@/lib/email'
+import { getAppUrl } from '@/lib/app-url'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ||
-  'https://performance-review-app-three.vercel.app'
+const APP_URL = getAppUrl()
 
 export async function POST(request: Request) {
   const supabase = await createClient()
