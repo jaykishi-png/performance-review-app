@@ -115,7 +115,7 @@ Return ONLY this JSON object, no other text:
       try {
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
         const msg = await anthropic.messages.create({
-          model: 'claude-3-5-haiku-20241022', max_tokens: 300,
+          model: 'claude-haiku-4-5', max_tokens: 300,
           system: systemPrompt, messages: [{ role: 'user', content: userPrompt }],
         })
         raw = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : ''

@@ -232,12 +232,23 @@ Keep the tone professional, constructive, and forward-looking throughout.`
     try {
       const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
       const msg = await anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-5',
         max_tokens: 2000,
+        // Sonnet 5 thinks by default. This is a short, bounded comparison and
+        // max_tokens is shared with thinking tokens, so keep it off to preserve
+        // the previous latency and leave the full budget for the answer.
+        thinking: { type: 'disabled' },
         system,
         messages,
       })
-      const text = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : ''
+      // Read every text block rather than content[0]: if thinking is ever turned
+      // on here, the first block is a thinking block and this would silently
+      // return empty and fall through to the next provider.
+      const text = msg.content
+        .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+        .map(b => b.text)
+        .join('')
+        .trim()
       if (text) return text
       providerErrors.push('Anthropic: empty response')
     } catch (e) {

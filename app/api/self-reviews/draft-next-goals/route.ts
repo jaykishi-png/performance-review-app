@@ -91,7 +91,7 @@ Return ONLY this JSON array (2–3 items), no other text:
       try {
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
         const msg = await anthropic.messages.create({
-          model: 'claude-3-5-haiku-20241022',
+          model: 'claude-haiku-4-5',
           max_tokens: 600,
           system: systemPrompt,
           messages: [{ role: 'user', content: userPrompt }],
