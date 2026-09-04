@@ -55,8 +55,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ status: 'submitted' })
   }
 
+  // The form addresses the requestor by first name ("What are Alvin's greatest
+  // strengths?"), so send it explicitly rather than leaving the page to render
+  // the questions with a blank where the name belongs.
+  const fullName = requestor?.name?.trim() || ''
+  const firstName = fullName ? fullName.split(/\s+/)[0] : (requestor?.email?.split('@')[0] ?? '')
+
   return NextResponse.json({
-    requestor_name: requestor?.name ?? requestor?.email ?? null,
+    requestor_name: fullName || requestor?.email || null,
+    first_name: firstName,
     year: r.year,
     message: r.message,
     is_anonymous: r.is_anonymous,

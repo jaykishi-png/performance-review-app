@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 
 interface FeedbackRequest {
   id: string;
@@ -23,8 +24,12 @@ interface FormState {
 
 type PageState = 'loading' | 'not_found' | 'already_submitted' | 'form' | 'success' | 'error';
 
-export default function FeedbackPage({ params }: { params: { token: string } }) {
-  const { token } = params;
+export default function FeedbackPage() {
+  // `params` is a Promise in Next 16, so destructuring it in a client component
+  // yields undefined and the request goes out as ?token=undefined. Read the
+  // route param the way the other client route (/consent/[token]) does.
+  const params = useParams();
+  const token = params?.token as string | undefined;
 
   const [pageState, setPageState] = useState<PageState>('loading');
   const [request, setRequest] = useState<FeedbackRequest | null>(null);
@@ -40,9 +45,10 @@ export default function FeedbackPage({ params }: { params: { token: string } }) 
   const [hoveredStar, setHoveredStar] = useState(0);
 
   useEffect(() => {
+    if (!token) return;
     async function fetchRequest() {
       try {
-        const res = await fetch(`/api/peer-feedback/token?token=${encodeURIComponent(token)}`);
+        const res = await fetch(`/api/peer-feedback/token?token=${encodeURIComponent(token as string)}`);
         if (res.status === 404) {
           setPageState('not_found');
           return;
