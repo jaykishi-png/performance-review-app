@@ -15,25 +15,40 @@ export async function GET(req: NextRequest) {
 
   const svc = createServiceClient()
 
-  const { data: request } = await svc
+  // Deliberately not a PostgREST embed. Reading the requestor through
+  // `profiles!feedback_requests_requestor_id_fkey` fails whenever that
+  // constraint is absent, and this is a public link: a lookup failure here
+  // renders as "Link Not Found" to the reviewer, which is indistinguishable
+  // from a genuinely bad token. Fetch the name separately so a valid link
+  // always opens.
+  const { data: request, error: requestError } = await svc
     .from('feedback_requests')
-    .select(`
-      id, year, message, is_anonymous, status,
-      requestor:profiles!feedback_requests_requestor_id_fkey(name)
-    `)
+    .select('id, year, message, is_anonymous, status, requestor_id')
     .eq('token', token)
     .maybeSingle()
 
+  // Surface a real failure as a 500. Collapsing it into 404 tells the reviewer
+  // their link expired when nothing is wrong with it.
+  if (requestError) {
+    return NextResponse.json({ error: requestError.message }, { status: 500 })
+  }
   if (!request) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const r = request as unknown as {
+  const r = request as {
     id: string
     year: number
     message: string | null
     is_anonymous: boolean
     status: string
-    requestor: { name: string | null } | null
+    requestor_id: string
   }
+
+  const { data: requestorProfile } = await svc
+    .from('profiles')
+    .select('name, email')
+    .eq('id', r.requestor_id)
+    .maybeSingle()
+  const requestor = requestorProfile as { name: string | null; email: string } | null
 
   // If already submitted, tell the client so the page can show the right state
   if (r.status === 'submitted') {
@@ -41,7 +56,7 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
-    requestor_name: r.requestor?.name ?? null,
+    requestor_name: requestor?.name ?? requestor?.email ?? null,
     year: r.year,
     message: r.message,
     is_anonymous: r.is_anonymous,
