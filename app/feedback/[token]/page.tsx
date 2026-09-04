@@ -462,45 +462,7 @@ export default function FeedbackPage() {
         <div style={styles.divider} />
 
         <form onSubmit={handleSubmit}>
-          {/* Q1: Strengths */}
-          <div style={styles.questionBlock}>
-            <label style={styles.label}>
-              What are {firstName}'s greatest strengths?
-              <span style={styles.required}>*</span>
-            </label>
-            <textarea
-              rows={4}
-              style={styles.textarea}
-              placeholder="Describe specific strengths you've observed..."
-              value={form.q1_strengths}
-              onChange={(e) => setForm({ ...form, q1_strengths: e.target.value })}
-              onFocus={(e) => (e.target.style.borderColor = '#4f46e5')}
-              onBlur={(e) => (e.target.style.borderColor = '#1e2130')}
-              required
-            />
-            {renderAiAssist('q1_strengths', `e.g. "always unblocks people fast, ran the launch checklist, calm under pressure"`)}
-          </div>
-
-          {/* Q2: Areas for Growth */}
-          <div style={styles.questionBlock}>
-            <label style={styles.label}>
-              What is one area where {firstName} could improve?
-              <span style={styles.required}>*</span>
-            </label>
-            <textarea
-              rows={4}
-              style={styles.textarea}
-              placeholder="Be specific and constructive..."
-              value={form.q2_improvements}
-              onChange={(e) => setForm({ ...form, q2_improvements: e.target.value })}
-              onFocus={(e) => (e.target.style.borderColor = '#4f46e5')}
-              onBlur={(e) => (e.target.style.borderColor = '#1e2130')}
-              required
-            />
-            {renderAiAssist('q2_improvements', `e.g. "takes on too much at once, updates can come late, would help to flag blockers sooner"`)}
-          </div>
-
-          {/* Q3: Collaboration */}
+          {/* Collaboration rating — asked first: the rating anchors the written answers */}
           <div style={styles.questionBlock}>
             <label style={styles.label}>
               How effectively does {firstName} collaborate and communicate with others?
@@ -539,6 +501,44 @@ export default function FeedbackPage() {
               onBlur={(e) => (e.target.style.borderColor = '#1e2130')}
             />
             {renderAiAssist('q3_collab_text', `e.g. "clear in standups, shares context early, sometimes quiet in bigger meetings"`)}
+          </div>
+
+          {/* Q1: Strengths */}
+          <div style={styles.questionBlock}>
+            <label style={styles.label}>
+              What are {firstName}'s greatest strengths?
+              <span style={styles.required}>*</span>
+            </label>
+            <textarea
+              rows={4}
+              style={styles.textarea}
+              placeholder="Describe specific strengths you've observed..."
+              value={form.q1_strengths}
+              onChange={(e) => setForm({ ...form, q1_strengths: e.target.value })}
+              onFocus={(e) => (e.target.style.borderColor = '#4f46e5')}
+              onBlur={(e) => (e.target.style.borderColor = '#1e2130')}
+              required
+            />
+            {renderAiAssist('q1_strengths', `e.g. "always unblocks people fast, ran the launch checklist, calm under pressure"`)}
+          </div>
+
+          {/* Q2: Areas for Growth */}
+          <div style={styles.questionBlock}>
+            <label style={styles.label}>
+              What is one area where {firstName} could improve?
+              <span style={styles.required}>*</span>
+            </label>
+            <textarea
+              rows={4}
+              style={styles.textarea}
+              placeholder="Be specific and constructive..."
+              value={form.q2_improvements}
+              onChange={(e) => setForm({ ...form, q2_improvements: e.target.value })}
+              onFocus={(e) => (e.target.style.borderColor = '#4f46e5')}
+              onBlur={(e) => (e.target.style.borderColor = '#1e2130')}
+              required
+            />
+            {renderAiAssist('q2_improvements', `e.g. "takes on too much at once, updates can come late, would help to flag blockers sooner"`)}
           </div>
 
           {/* Additional Comments */}

@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
 
     const { data: feedbackList } = await svc
       .from('peer_feedback')
-      .select('id, request_id, reviewer_id, q1_strengths, q2_improvements, q3_collab_rating, q3_collab_text, additional_comments, created_at')
+      .select('id, request_id, reviewer_id, q1_strengths, q2_improvements, q3_collab_rating, q3_collab_text, additional_comments, submitted_at, created_at')
       .eq('request_id', requestId)
 
     // New requests are never anonymous, but historical ones may be — never
@@ -139,7 +139,7 @@ export async function GET(req: NextRequest) {
 
     const { data: feedbackList } = await svc
       .from('peer_feedback')
-      .select('id, request_id, reviewer_id, q1_strengths, q2_improvements, q3_collab_rating, q3_collab_text, additional_comments, created_at')
+      .select('id, request_id, reviewer_id, q1_strengths, q2_improvements, q3_collab_rating, q3_collab_text, additional_comments, submitted_at, created_at')
       .in('request_id', requestIds)
 
     // Resolve reviewer names here rather than making the client do it — the
@@ -285,4 +285,52 @@ export async function POST(req: NextRequest) {
   })
 
   return NextResponse.json({ feedback: newFeedback }, { status: 201 })
+}
+
+// ---------------------------------------------------------------------------
+// DELETE ?request_id=UUID — remove a submission (admin)
+//
+// The request is reopened rather than left marked submitted: a request with no
+// feedback behind it would otherwise be stranded, and the reviewer's original
+// link would keep reporting that it was already answered.
+// ---------------------------------------------------------------------------
+export async function DELETE(req: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const svc = createServiceClient()
+  const { data: callerProfile } = await svc
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  const role = (callerProfile as { role: string } | null)?.role
+  if (role !== 'admin' && role !== 'dev_admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const requestId = req.nextUrl.searchParams.get('request_id')
+  if (!requestId) return NextResponse.json({ error: 'request_id is required' }, { status: 400 })
+
+  const { data: request } = await svc
+    .from('feedback_requests')
+    .select('id')
+    .eq('id', requestId)
+    .maybeSingle()
+  if (!request) return NextResponse.json({ error: 'Request not found' }, { status: 404 })
+
+  const { error: deleteError, count } = await svc
+    .from('peer_feedback')
+    .delete({ count: 'exact' })
+    .eq('request_id', requestId)
+  if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 })
+
+  const { error: statusError } = await svc
+    .from('feedback_requests')
+    .update({ status: 'pending' })
+    .eq('id', requestId)
+  if (statusError) return NextResponse.json({ error: statusError.message }, { status: 500 })
+
+  return NextResponse.json({ ok: true, deleted: count ?? 0 })
 }

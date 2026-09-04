@@ -457,6 +457,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   type FeedbackRequestRecord = {
     id: string; year: number; message: string | null; is_anonymous: boolean; status: string
     created_at: string
+    submitted_at: string | null
     requestor: { id: string; name: string | null; email: string } | null
     reviewer: { id: string; name: string | null; email: string } | null
   }
@@ -474,11 +475,35 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     q3_collab_rating: number | null
     q3_collab_text: string
     additional_comments: string | null
+    submitted_at: string | null
+    created_at: string
   }
   const [fbExpanded, setFbExpanded] = useState<string | null>(null)
   const [fbDetail, setFbDetail] = useState<Record<string, PeerFeedbackRow[]>>({})
   const [fbDetailLoading, setFbDetailLoading] = useState<string | null>(null)
   const [fbDetailError, setFbDetailError] = useState<string | null>(null)
+
+  const [fbDeleting, setFbDeleting] = useState<string | null>(null)
+
+  async function deleteFeedback(r: FeedbackRequestRecord) {
+    const who = r.requestor?.name || r.requestor?.email || 'this employee'
+    const from = r.reviewer?.name || r.reviewer?.email || 'the reviewer'
+    if (!confirm(`Delete the peer feedback about ${who} from ${from}?\n\nThe answers are removed permanently and the request reopens, so ${from} can submit again using their original link.`)) return
+    setFbDeleting(r.id)
+    setFbDetailError(null)
+    try {
+      const res = await fetch(`/api/peer-feedback?request_id=${encodeURIComponent(r.id)}`, { method: 'DELETE' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error ?? 'Failed to delete feedback')
+      setFbExpanded(null)
+      setFbDetail(prev => { const next = { ...prev }; delete next[r.id]; return next })
+      await loadFeedbackRequests()
+    } catch (e) {
+      setFbDetailError(e instanceof Error ? e.message : 'Failed to delete feedback')
+    } finally {
+      setFbDeleting(null)
+    }
+  }
 
   async function toggleFeedbackDetail(requestId: string) {
     if (fbExpanded === requestId) { setFbExpanded(null); return }
@@ -499,17 +524,26 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     }
   }
 
+  const loadFeedbackRequests = useCallback(async () => {
+    setFeedbackLoading(true)
+    setFeedbackError(null)
+    try {
+      const res = await fetch('/api/feedback-requests?all=true&year=2026')
+      if (!res.ok) throw new Error('Failed to load feedback requests')
+      const data = (await res.json()) as { requests: FeedbackRequestRecord[] }
+      setFeedbackRequests(data.requests ?? [])
+    } catch {
+      setFeedbackError('Failed to load 360 feedback data.')
+    } finally {
+      setFeedbackLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (page === 'feedback' && feedbackRequests.length === 0 && !feedbackLoading) {
-      setFeedbackLoading(true)
-      setFeedbackError(null)
-      fetch('/api/feedback-requests?all=true&year=2026')
-        .then(r => r.ok ? r.json() : Promise.reject('Failed to load feedback requests'))
-        .then((data: { requests: FeedbackRequestRecord[] }) => setFeedbackRequests(data.requests ?? []))
-        .catch(() => setFeedbackError('Failed to load 360 feedback data.'))
-        .finally(() => setFeedbackLoading(false))
+      loadFeedbackRequests()
     }
-  }, [page, feedbackRequests.length, feedbackLoading])
+  }, [page, feedbackRequests.length, feedbackLoading, loadFeedbackRequests])
 
   // Settings state
   const [settingsDriveFolderUrl, setSettingsDriveFolderUrl] = useState('')
@@ -3016,8 +3050,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       {r.is_anonymous ? 'Yes' : 'No'}
                     </td>
                     <td style={{ padding: '10px 12px', color: '#6b7280' }}>
-                      {r.status === 'submitted'
-                        ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                      {r.status === 'submitted' && r.submitted_at
+                        ? new Date(r.submitted_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
                         : '—'}
                     </td>
                     <td style={{ padding: '10px 12px', textAlign: 'right' }}>
@@ -3044,13 +3078,24 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                           ) : (
                             fbDetail[r.id].map(fb => (
                               <div key={fb.id} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                {fb.q3_collab_rating != null && (
-                                  <div style={{ fontSize: 12, color: '#9ca3af' }}>
-                                    Collaboration rating:{' '}
-                                    <span style={{ color: '#fbbf24' }}>{'★'.repeat(fb.q3_collab_rating)}{'☆'.repeat(Math.max(0, 5 - fb.q3_collab_rating))}</span>
-                                    <span style={{ color: '#6b7280' }}> ({fb.q3_collab_rating}/5)</span>
-                                  </div>
-                                )}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                                  {fb.q3_collab_rating != null && (
+                                    <div style={{ fontSize: 12, color: '#9ca3af' }}>
+                                      Collaboration rating:{' '}
+                                      <span style={{ color: '#fbbf24' }}>{'★'.repeat(fb.q3_collab_rating)}{'☆'.repeat(Math.max(0, 5 - fb.q3_collab_rating))}</span>
+                                      <span style={{ color: '#6b7280' }}> ({fb.q3_collab_rating}/5)</span>
+                                    </div>
+                                  )}
+                                  {(fb.submitted_at ?? fb.created_at) && (
+                                    <div style={{ fontSize: 12, color: '#6b7280' }}>
+                                      Submitted {new Date((fb.submitted_at ?? fb.created_at) as string).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                                    </div>
+                                  )}
+                                  <button onClick={() => deleteFeedback(r)} disabled={fbDeleting === r.id}
+                                    style={{ marginLeft: 'auto', padding: '4px 10px', background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: fbDeleting === r.id ? 'default' : 'pointer', opacity: fbDeleting === r.id ? 0.6 : 1 }}>
+                                    {fbDeleting === r.id ? 'Deleting…' : 'Delete feedback'}
+                                  </button>
+                                </div>
                                 {[
                                   ['Greatest strengths', fb.q1_strengths],
                                   ['Area to improve', fb.q2_improvements],

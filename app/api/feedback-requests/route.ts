@@ -44,7 +44,23 @@ export async function GET(req: NextRequest) {
     if (year) adminQuery = adminQuery.eq('year', parseInt(year))
     const { data: allData, error: allError } = await adminQuery
     if (allError) return NextResponse.json({ error: allError.message }, { status: 500 })
-    return NextResponse.json({ requests: allData ?? [] })
+
+    // feedback_requests records when the request was *sent*; the date the
+    // reviewer actually answered lives on peer_feedback. Attach it so the admin
+    // list can show a submitted date rather than the request's creation date.
+    const rows = (allData ?? []) as { id: string }[]
+    const ids = rows.map(r => r.id)
+    const { data: submissions } = ids.length
+      ? await svc.from('peer_feedback').select('request_id, submitted_at, created_at').in('request_id', ids)
+      : { data: [] }
+    const submittedAt = new Map(
+      ((submissions ?? []) as { request_id: string; submitted_at: string | null; created_at: string }[])
+        .map(f => [f.request_id, f.submitted_at ?? f.created_at])
+    )
+
+    return NextResponse.json({
+      requests: rows.map(r => ({ ...r, submitted_at: submittedAt.get(r.id) ?? null })),
+    })
   }
 
   let query = svc
