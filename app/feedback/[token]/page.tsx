@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { Sparkles, Loader2 } from 'lucide-react';
 
 interface FeedbackRequest {
   id: string;
@@ -44,6 +45,34 @@ export default function FeedbackPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [hoveredStar, setHoveredStar] = useState(0);
 
+  // AI drafting, one independent state per question
+  type AiField = 'q1_strengths' | 'q2_improvements' | 'q3_collab_text' | 'additional_comments';
+  type AiState = { open: boolean; context: string; loading: boolean; error: string };
+  const emptyAi: AiState = { open: false, context: '', loading: false, error: '' };
+  const [ai, setAi] = useState<Record<string, AiState>>({});
+  const getAi = (f: AiField): AiState => ai[f] ?? emptyAi;
+  const setAiFor = (f: AiField, patch: Partial<AiState>) =>
+    setAi((prev) => ({ ...prev, [f]: { ...(prev[f] ?? emptyAi), ...patch } }));
+
+  async function draftField(f: AiField) {
+    const state = getAi(f);
+    if (!state.context.trim()) return;
+    setAiFor(f, { loading: true, error: '' });
+    try {
+      const res = await fetch('/api/peer-feedback/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, field: f, context: state.context }),
+      });
+      const data = (await res.json()) as { draft?: string; error?: string };
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Request failed');
+      setForm((prev) => ({ ...prev, [f]: data.draft ?? '' }));
+      setAiFor(f, { open: false, context: '', loading: false, error: '' });
+    } catch (e) {
+      setAiFor(f, { loading: false, error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
   useEffect(() => {
     if (!token) return;
     async function fetchRequest() {
@@ -70,6 +99,67 @@ export default function FeedbackPage() {
     }
     fetchRequest();
   }, [token]);
+
+
+  function renderAiAssist(f: AiField, placeholder: string) {
+    const state = getAi(f);
+    return (
+      <div style={{ marginTop: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {state.error && (
+            <span style={{ fontSize: 11, color: '#f87171', flex: 1 }}>{state.error}</span>
+          )}
+          <button
+            type="button"
+            onClick={() => setAiFor(f, { open: !state.open, error: '' })}
+            style={{
+              marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5,
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: state.open ? '#a78bfa' : '#818cf8', fontSize: 12, fontWeight: 600, padding: 0,
+            }}
+          >
+            <Sparkles size={12} />
+            {state.open ? 'Cancel' : 'AI Draft'}
+          </button>
+        </div>
+
+        {state.open && (
+          <div style={{ marginTop: 8, padding: '12px 14px', background: 'rgba(79,70,229,0.08)', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 10 }}>
+            <p style={{ margin: '0 0 8px', fontSize: 11, color: '#a78bfa' }}>
+              Jot down what you have observed — AI will turn it into feedback. It will not invent details you did not mention.
+            </p>
+            <textarea
+              rows={2}
+              value={state.context}
+              onChange={(e) => setAiFor(f, { context: e.target.value })}
+              onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) draftField(f); }}
+              placeholder={placeholder}
+              style={{ ...styles.textarea, fontSize: 12, marginBottom: 8, background: '#0a0c14', border: '1px solid rgba(129,140,248,0.3)' }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => draftField(f)}
+                disabled={state.loading || !state.context.trim()}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px',
+                  background: 'rgba(126,105,228,0.8)', color: '#fff', border: 'none', borderRadius: 8,
+                  fontSize: 11, fontWeight: 600,
+                  cursor: state.loading || !state.context.trim() ? 'not-allowed' : 'pointer',
+                  opacity: state.loading || !state.context.trim() ? 0.5 : 1,
+                }}
+              >
+                {state.loading
+                  ? <><Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> Drafting…</>
+                  : <><Sparkles size={11} /> Draft</>}
+              </button>
+              <span style={{ fontSize: 10, color: '#4b5563' }}>⌘↵ to submit</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -388,6 +478,7 @@ export default function FeedbackPage() {
               onBlur={(e) => (e.target.style.borderColor = '#1e2130')}
               required
             />
+            {renderAiAssist('q1_strengths', `e.g. "always unblocks people fast, ran the launch checklist, calm under pressure"`)}
           </div>
 
           {/* Q2: Areas for Growth */}
@@ -406,6 +497,7 @@ export default function FeedbackPage() {
               onBlur={(e) => (e.target.style.borderColor = '#1e2130')}
               required
             />
+            {renderAiAssist('q2_improvements', `e.g. "takes on too much at once, updates can come late, would help to flag blockers sooner"`)}
           </div>
 
           {/* Q3: Collaboration */}
@@ -446,6 +538,7 @@ export default function FeedbackPage() {
               onFocus={(e) => (e.target.style.borderColor = '#4f46e5')}
               onBlur={(e) => (e.target.style.borderColor = '#1e2130')}
             />
+            {renderAiAssist('q3_collab_text', `e.g. "clear in standups, shares context early, sometimes quiet in bigger meetings"`)}
           </div>
 
           {/* Additional Comments */}
@@ -463,6 +556,7 @@ export default function FeedbackPage() {
               onFocus={(e) => (e.target.style.borderColor = '#4f46e5')}
               onBlur={(e) => (e.target.style.borderColor = '#1e2130')}
             />
+            {renderAiAssist('additional_comments', `e.g. "stepped up while the team was short-handed this quarter"`)}
           </div>
 
           {/* Error */}
