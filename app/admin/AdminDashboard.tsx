@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { Fragment, useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, FileText, RefreshCw, BarChart2,
@@ -463,6 +463,41 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [feedbackRequests, setFeedbackRequests] = useState<FeedbackRequestRecord[]>([])
   const [feedbackLoading, setFeedbackLoading] = useState(false)
   const [feedbackError, setFeedbackError] = useState<string | null>(null)
+  // Submitted answers, loaded per request when an admin expands a row
+  type PeerFeedbackRow = {
+    id: string
+    reviewer_name: string | null
+    reviewer_email: string | null
+    is_anonymous?: boolean
+    q1_strengths: string
+    q2_improvements: string
+    q3_collab_rating: number | null
+    q3_collab_text: string
+    additional_comments: string | null
+  }
+  const [fbExpanded, setFbExpanded] = useState<string | null>(null)
+  const [fbDetail, setFbDetail] = useState<Record<string, PeerFeedbackRow[]>>({})
+  const [fbDetailLoading, setFbDetailLoading] = useState<string | null>(null)
+  const [fbDetailError, setFbDetailError] = useState<string | null>(null)
+
+  async function toggleFeedbackDetail(requestId: string) {
+    if (fbExpanded === requestId) { setFbExpanded(null); return }
+    setFbExpanded(requestId)
+    setFbDetailError(null)
+    if (fbDetail[requestId]) return
+    setFbDetailLoading(requestId)
+    try {
+      const res = await fetch(`/api/peer-feedback?request_id=${encodeURIComponent(requestId)}`)
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error ?? 'Failed to load feedback')
+      const rows = Array.isArray(json.feedback) ? json.feedback : json.feedback ? [json.feedback] : []
+      setFbDetail(prev => ({ ...prev, [requestId]: rows }))
+    } catch (e) {
+      setFbDetailError(e instanceof Error ? e.message : 'Failed to load feedback')
+    } finally {
+      setFbDetailLoading(null)
+    }
+  }
 
   useEffect(() => {
     if (page === 'feedback' && feedbackRequests.length === 0 && !feedbackLoading) {
@@ -2955,14 +2990,15 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #1e2130' }}>
-                  {['Requestor', 'Reviewer', 'Status', 'Anonymous?', 'Submitted'].map(h => (
-                    <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontWeight: 600, color: '#6b7280', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                  {['Requestor', 'Reviewer', 'Status', 'Anonymous?', 'Submitted', ''].map((h, i) => (
+                    <th key={i} style={{ textAlign: 'left', padding: '8px 12px', fontWeight: 600, color: '#6b7280', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {feedbackRequests.map(r => (
-                  <tr key={r.id} style={{ borderBottom: '1px solid #1a1c2a' }}
+                  <Fragment key={r.id}>
+                  <tr style={{ borderBottom: '1px solid #1a1c2a' }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#0d0f1a')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                     <td style={{ padding: '10px 12px', color: '#d1d5db' }}>
@@ -2984,7 +3020,56 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                         ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                         : '—'}
                     </td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                      {r.status === 'submitted' ? (
+                        <button onClick={() => toggleFeedbackDetail(r.id)}
+                          style={{ padding: '4px 10px', background: '#1e2130', color: '#a5b4fc', border: '1px solid #2a2d3f', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                          {fbExpanded === r.id ? 'Hide' : 'View'}
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: 11, color: '#374151' }}>—</span>
+                      )}
+                    </td>
                   </tr>
+                  {fbExpanded === r.id && (
+                    <tr>
+                      <td colSpan={6} style={{ padding: '0 12px 16px' }}>
+                        <div style={{ background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 10, padding: '16px 18px' }}>
+                          {fbDetailLoading === r.id ? (
+                            <div style={{ fontSize: 12, color: '#6b7280' }}>Loading feedback…</div>
+                          ) : fbDetailError ? (
+                            <div style={{ fontSize: 12, color: '#f87171' }}>{fbDetailError}</div>
+                          ) : (fbDetail[r.id]?.length ?? 0) === 0 ? (
+                            <div style={{ fontSize: 12, color: '#6b7280' }}>No answers recorded for this request.</div>
+                          ) : (
+                            fbDetail[r.id].map(fb => (
+                              <div key={fb.id} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {fb.q3_collab_rating != null && (
+                                  <div style={{ fontSize: 12, color: '#9ca3af' }}>
+                                    Collaboration rating:{' '}
+                                    <span style={{ color: '#fbbf24' }}>{'★'.repeat(fb.q3_collab_rating)}{'☆'.repeat(Math.max(0, 5 - fb.q3_collab_rating))}</span>
+                                    <span style={{ color: '#6b7280' }}> ({fb.q3_collab_rating}/5)</span>
+                                  </div>
+                                )}
+                                {[
+                                  ['Greatest strengths', fb.q1_strengths],
+                                  ['Area to improve', fb.q2_improvements],
+                                  ['Collaboration & communication', fb.q3_collab_text],
+                                  ['Additional comments', fb.additional_comments],
+                                ].filter(([, v]) => v && String(v).trim()).map(([label, value]) => (
+                                  <div key={label as string}>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{label}</div>
+                                    <div style={{ fontSize: 13, color: '#d1d5db', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{value}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

@@ -4418,7 +4418,8 @@ export function PerformanceReviewForm() {
                 const res = await fetch(`/api/peer-feedback?requestor_id=${empId}&year=2026`)
                 if (res.ok) {
                   const json = await res.json()
-                  setPf360Data(Array.isArray(json) ? json : (json.data ?? []))
+                  // The route returns { feedback: [...] }; `data` was never a key it sends.
+                  setPf360Data(Array.isArray(json) ? json : (json.feedback ?? json.data ?? []))
                 }
               } catch { /* offline */ }
               setPf360Loading(false)

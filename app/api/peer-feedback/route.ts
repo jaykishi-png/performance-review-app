@@ -67,7 +67,9 @@ export async function GET(req: NextRequest) {
 
     // Determine if caller is manager of requestor, or admin. Peer feedback is
     // manager-managed: the employee it is about cannot read it.
-    const isAdmin = callerRole === 'admin'
+    // /admin admits dev_admin too, so this must match or the admin portal's own
+    // feedback view 403s for that role.
+    const isAdmin = callerRole === 'admin' || callerRole === 'dev_admin'
 
     let isManager = false
     if (!isAdmin) {
@@ -103,7 +105,9 @@ export async function GET(req: NextRequest) {
 
   // ---- ?requestor_id=UUID (manager/admin view) ----
   if (requestorId) {
-    const isAdmin = callerRole === 'admin'
+    // /admin admits dev_admin too, so this must match or the admin portal's own
+    // feedback view 403s for that role.
+    const isAdmin = callerRole === 'admin' || callerRole === 'dev_admin'
     let isManager = false
 
     if (!isAdmin) {
@@ -138,13 +142,34 @@ export async function GET(req: NextRequest) {
       .select('id, request_id, reviewer_id, q1_strengths, q2_improvements, q3_collab_rating, q3_collab_text, additional_comments, created_at')
       .in('request_id', requestIds)
 
+    // Resolve reviewer names here rather than making the client do it — the
+    // views render "who said this", and an id alone leaves them showing Unknown.
+    const reviewerIds = [...new Set((feedbackList ?? []).map(f => (f as { reviewer_id: string }).reviewer_id))]
+    const { data: reviewers } = reviewerIds.length
+      ? await svc.from('profiles').select('id, name, email').in('id', reviewerIds)
+      : { data: [] }
+    const reviewerById = new Map(
+      ((reviewers ?? []) as { id: string; name: string | null; email: string }[]).map(p => [p.id, p])
+    )
+
     const sanitised = (feedbackList ?? []).map(f => {
       const fb = f as typeof f & { request_id: string; reviewer_id: string }
-      if (isAnonymousMap[fb.request_id] && user.id === requestorId) {
+      const isAnonymous = !!isAnonymousMap[fb.request_id]
+
+      // An anonymous reviewer is never revealed to the person the feedback is
+      // about; managers and admins see the name.
+      if (isAnonymous && user.id === requestorId) {
         const { reviewer_id: _rid, ...rest } = fb
-        return rest
+        return { ...rest, is_anonymous: true, reviewer_name: null, reviewer_email: null }
       }
-      return fb
+
+      const reviewer = reviewerById.get(fb.reviewer_id)
+      return {
+        ...fb,
+        is_anonymous: isAnonymous,
+        reviewer_name: reviewer?.name ?? null,
+        reviewer_email: reviewer?.email ?? null,
+      }
     })
 
     return NextResponse.json({ feedback: sanitised })
