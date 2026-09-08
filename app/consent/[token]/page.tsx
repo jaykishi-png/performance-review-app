@@ -195,7 +195,7 @@ export default function ConsentPage() {
             )}
             <a
               href={portalUrl}
-              style={{ marginTop: 20, display: 'inline-block', padding: '12px 28px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', borderRadius: 10, fontWeight: 600, fontSize: 14, textDecoration: 'none' }}
+              style={{ marginTop: 20, display: 'inline-block', padding: '12px 28px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', borderRadius: 10, fontWeight: 600, fontSize: 14, textDecoration: 'none' }}
             >
               {portalLabel} →
             </a>
@@ -216,7 +216,7 @@ export default function ConsentPage() {
             </p>
             <a
               href={portalUrl}
-              style={{ marginTop: 20, display: 'inline-block', padding: '12px 28px', background: '#1e293b', color: '#e2e8f0', border: '1px solid #374151', borderRadius: 10, fontWeight: 600, fontSize: 14, textDecoration: 'none' }}
+              style={{ marginTop: 20, display: 'inline-block', padding: '12px 28px', background: 'var(--surface-raised)', color: 'var(--text)', border: '1px solid var(--border-strong)', borderRadius: 10, fontWeight: 600, fontSize: 14, textDecoration: 'none' }}
             >
               {portalLabel} →
             </a>
@@ -328,11 +328,11 @@ export default function ConsentPage() {
 
 const styles: Record<string, React.CSSProperties> = {
   card: {
-    backgroundColor: '#131620',
-    border: '1px solid #1e2235',
+    backgroundColor: 'var(--surface)',
+    border: '1px solid var(--surface-raised)',
     borderRadius: 16,
     padding: '32px 28px',
-    color: '#e2e8f0',
+    color: 'var(--text)',
     boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
   },
   centered: {
@@ -345,8 +345,8 @@ const styles: Record<string, React.CSSProperties> = {
   spinner: {
     width: 36,
     height: 36,
-    border: '3px solid #1e2235',
-    borderTop: '3px solid #6366f1',
+    border: '3px solid var(--surface-raised)',
+    borderTop: '3px solid var(--brand)',
     borderRadius: '50%',
     animation: 'spin 0.8s linear infinite',
     marginBottom: 16,
@@ -354,12 +354,12 @@ const styles: Record<string, React.CSSProperties> = {
   heading: {
     fontSize: 20,
     fontWeight: 600,
-    color: '#f1f5f9',
+    color: 'var(--text-strong)',
     margin: '0 0 8px',
   },
   mutedText: {
     fontSize: 14,
-    color: '#8892a4',
+    color: 'var(--text-secondary)',
     margin: 0,
     lineHeight: 1.6,
   },
@@ -376,7 +376,7 @@ const styles: Record<string, React.CSSProperties> = {
   title: {
     fontSize: 20,
     fontWeight: 700,
-    color: '#f1f5f9',
+    color: 'var(--text-strong)',
     margin: 0,
   },
   meetingInfo: {
@@ -385,20 +385,20 @@ const styles: Record<string, React.CSSProperties> = {
   names: {
     fontSize: 17,
     fontWeight: 600,
-    color: '#c7d2fe',
+    color: 'var(--brand-text)',
     marginBottom: 6,
   },
   meetingDate: {
     fontSize: 14,
-    color: '#8892a4',
+    color: 'var(--text-secondary)',
     marginBottom: 6,
   },
   quarterBadge: {
     display: 'inline-block',
     fontSize: 12,
-    color: '#6366f1',
-    backgroundColor: '#1e1f3a',
-    border: '1px solid #312e81',
+    color: 'var(--brand)',
+    backgroundColor: 'var(--brand-tint)',
+    border: '1px solid var(--brand-strong)',
     borderRadius: 6,
     padding: '2px 10px',
   },
@@ -406,8 +406,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     gap: 10,
     alignItems: 'flex-start',
-    backgroundColor: '#1c1500',
-    border: '1px solid #854d0e',
+    backgroundColor: 'var(--warning-bg)',
+    border: '1px solid var(--warning-text)',
     borderRadius: 10,
     padding: '14px 16px',
     marginBottom: 20,
@@ -419,22 +419,22 @@ const styles: Record<string, React.CSSProperties> = {
   },
   amberText: {
     fontSize: 13,
-    color: '#fbbf24',
+    color: 'var(--warning)',
     margin: 0,
     lineHeight: 1.6,
   },
   roleText: {
     fontSize: 14,
-    color: '#94a3b8',
+    color: 'var(--text-secondary)',
     marginBottom: 20,
     padding: '10px 14px',
-    backgroundColor: '#0f1420',
+    backgroundColor: 'var(--surface-inset)',
     borderRadius: 8,
-    border: '1px solid #1e2235',
+    border: '1px solid var(--surface-raised)',
   },
   statusBox: {
-    backgroundColor: '#0f1420',
-    border: '1px solid #1e2235',
+    backgroundColor: 'var(--surface-inset)',
+    border: '1px solid var(--surface-raised)',
     borderRadius: 10,
     overflow: 'hidden',
     marginBottom: 24,
@@ -447,21 +447,21 @@ const styles: Record<string, React.CSSProperties> = {
   },
   statusLabel: {
     fontSize: 14,
-    color: '#94a3b8',
+    color: 'var(--text-secondary)',
     fontWeight: 500,
   },
   statusGreen: {
     fontSize: 13,
-    color: '#4ade80',
+    color: 'var(--success)',
     fontWeight: 600,
   },
   statusPending: {
     fontSize: 13,
-    color: '#6b7280',
+    color: 'var(--text-muted)',
   },
   divider: {
     height: 1,
-    backgroundColor: '#1e2235',
+    backgroundColor: 'var(--surface-raised)',
     margin: '0 16px',
   },
   buttonGroup: {
@@ -474,7 +474,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '14px',
     borderRadius: 10,
     border: 'none',
-    background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+    background: 'linear-gradient(135deg, var(--success) 0%, var(--success) 100%)',
     color: '#fff',
     fontSize: 15,
     fontWeight: 600,
@@ -485,9 +485,9 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     padding: '12px',
     borderRadius: 10,
-    border: '1px solid #374151',
-    backgroundColor: '#111827',
-    color: '#9ca3af',
+    border: '1px solid var(--border-strong)',
+    backgroundColor: 'var(--surface-inset)',
+    color: 'var(--text-secondary)',
     fontSize: 14,
     fontWeight: 500,
     cursor: 'pointer',
@@ -496,20 +496,20 @@ const styles: Record<string, React.CSSProperties> = {
   successBox: {
     marginTop: 16,
     padding: '12px 16px',
-    backgroundColor: '#052e16',
-    border: '1px solid #166534',
+    backgroundColor: 'var(--success-bg)',
+    border: '1px solid var(--success-text)',
     borderRadius: 10,
-    color: '#4ade80',
+    color: 'var(--success)',
     fontSize: 14,
     textAlign: 'center' as const,
   },
   errorBox: {
     marginBottom: 16,
     padding: '12px 16px',
-    backgroundColor: '#1c0a0a',
-    border: '1px solid #7f1d1d',
+    backgroundColor: 'var(--danger-bg)',
+    border: '1px solid var(--danger-border)',
     borderRadius: 10,
-    color: '#f87171',
+    color: 'var(--danger)',
     fontSize: 13,
   },
 }

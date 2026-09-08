@@ -51,24 +51,24 @@ function ComparisonReportBlock({ report, renderComparisonReport }: { report: str
     <div style={{ borderRadius: 12, border: '1px solid rgba(124,58,237,0.3)', background: 'rgba(88,28,235,0.06)', padding: 20, marginBottom: 24 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#e9d5ff', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
             📄 Comparison Report
           </div>
-          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.5 }}>
             AI-generated report comparing the self-assessment and performance review — alignment areas, divergence, talking points, and action plan.
           </div>
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>Comparison Report</span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--brand-text)', textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>Comparison Report</span>
         <button
           onClick={() => { navigator.clipboard.writeText(report); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, padding: '5px 10px', borderRadius: 8, border: '1px solid #2a2d3a', background: '#0d0f1a', color: copied ? '#34d399' : '#9ca3af', cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-inset)', color: copied ? 'var(--success)' : 'var(--text-secondary)', cursor: 'pointer' }}
         >
           {copied ? '✓ Copied!' : '⎘ Copy'}
         </button>
       </div>
-      <div style={{ background: '#0b0d14', border: '1px solid #1e2030', borderRadius: 12, padding: 20 }}>
+      <div style={{ background: 'var(--page)', border: '1px solid var(--surface)', borderRadius: 12, padding: 20 }}>
         {renderComparisonReport(report)}
       </div>
     </div>
@@ -86,7 +86,7 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
   function renderComparisonReport(text: string) {
     const renderInline = (s: string) => s.split(/(\*\*[^*]+\*\*)/g).map((part, pi) =>
       part.startsWith('**') && part.endsWith('**')
-        ? <strong key={pi} style={{ color: '#e0e4f0', fontWeight: 600 }}>{part.slice(2, -2)}</strong>
+        ? <strong key={pi} style={{ color: 'var(--text)', fontWeight: 600 }}>{part.slice(2, -2)}</strong>
         : <span key={pi}>{part}</span>
     )
     const sections = text.split(/\n(?=## )/)
@@ -99,11 +99,11 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
           const heading = isHeading ? rawHeading.replace(/^##\s*/, '') : ''
           const bodyLines = isHeading ? lines.slice(1) : lines
           const hc =
-            heading.includes('AGREE') || heading.includes('ALIGN') ? '#34d399' :
-            heading.includes('DIFFER')                              ? '#fbbf24' :
-            heading.includes('TALKING')                             ? '#60a5fa' :
-            heading.includes('ACTION') || heading.includes('PLAN')  ? '#a78bfa' :
-            heading.includes('GOAL')                                ? '#22d3ee' : '#e5e7eb'
+            heading.includes('AGREE') || heading.includes('ALIGN') ? 'var(--success)' :
+            heading.includes('DIFFER')                              ? 'var(--warning)' :
+            heading.includes('TALKING')                             ? 'var(--info)' :
+            heading.includes('ACTION') || heading.includes('PLAN')  ? 'var(--brand-soft)' :
+            heading.includes('GOAL')                                ? 'var(--brand)' : 'var(--text)'
           const bc =
             heading.includes('AGREE') || heading.includes('ALIGN') ? 'rgba(52,211,153,0.15)' :
             heading.includes('DIFFER')                              ? 'rgba(251,191,36,0.15)' :
@@ -112,7 +112,7 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
             heading.includes('GOAL')                                ? 'rgba(34,211,238,0.15)'  : 'rgba(30,32,48,0.5)'
           const total = sections.length
           return (
-            <div key={idx} style={{ padding: '16px 20px', borderTop: idx === 0 ? 'none' : '1px solid #1a1d2e', background: idx % 2 === 0 ? '#0d0f1a' : '#0b0d17', borderRadius: idx === 0 ? '10px 10px 0 0' : idx === total - 1 ? '0 0 10px 10px' : '0' }}>
+            <div key={idx} style={{ padding: '16px 20px', borderTop: idx === 0 ? 'none' : '1px solid var(--surface-hover)', background: idx % 2 === 0 ? 'var(--surface-inset)' : 'var(--page)', borderRadius: idx === 0 ? '10px 10px 0 0' : idx === total - 1 ? '0 0 10px 10px' : '0' }}>
               {heading && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                   <div style={{ width: 3, height: 16, borderRadius: 2, background: hc, flexShrink: 0 }} />
@@ -126,8 +126,8 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
                   if (!trimmed) return <div key={li} style={{ height: 4 }} />
                   if (/^[-*]\s/.test(trimmed)) return (
                     <div key={li} style={{ display: 'flex', gap: 8 }}>
-                      <span style={{ color: '#a78bfa', flexShrink: 0, marginTop: 1 }}>•</span>
-                      <span style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.65 }}>{renderInline(trimmed.replace(/^[-*]\s+/, ''))}</span>
+                      <span style={{ color: 'var(--brand-text)', flexShrink: 0, marginTop: 1 }}>•</span>
+                      <span style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.65 }}>{renderInline(trimmed.replace(/^[-*]\s+/, ''))}</span>
                     </div>
                   )
                   if (/^\d+\.\s/.test(trimmed)) {
@@ -135,12 +135,12 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
                     const rest = trimmed.replace(/^\d+\.\s+/, '')
                     return (
                       <div key={li} style={{ display: 'flex', gap: 8 }}>
-                        <span style={{ color: '#a78bfa', flexShrink: 0, minWidth: 16, textAlign: 'right' as const, fontSize: 13 }}>{num}.</span>
-                        <span style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.65 }}>{renderInline(rest)}</span>
+                        <span style={{ color: 'var(--brand-text)', flexShrink: 0, minWidth: 16, textAlign: 'right' as const, fontSize: 13 }}>{num}.</span>
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.65 }}>{renderInline(rest)}</span>
                       </div>
                     )
                   }
-                  return <p key={li} style={{ margin: 0, fontSize: 13, color: '#9ca3af', lineHeight: 1.65 }}>{renderInline(trimmed)}</p>
+                  return <p key={li} style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.65 }}>{renderInline(trimmed)}</p>
                 })}
               </div>
             </div>
@@ -200,19 +200,19 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0c14', color: '#f0f2fa', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--page)', color: 'var(--text-strong)', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
       {/* Header */}
-      <div style={{ borderBottom: '1px solid #1e2130', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0d0f1a' }}>
+      <div style={{ borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-inset)' }}>
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Performance Review</div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#f0f2fa' }}>{review.employee_name}</div>
-          {review.employee_position && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 1 }}>{review.employee_position}</div>}
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Performance Review</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-strong)' }}>{review.employee_name}</div>
+          {review.employee_position && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{review.employee_position}</div>}
         </div>
         <div style={{ textAlign: 'right' }}>
           {bothSigned ? (
-            <div style={{ padding: '6px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 20, fontSize: 12, fontWeight: 700, color: '#34d399' }}>✓ Fully Signed</div>
+            <div style={{ padding: '6px 14px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 20, fontSize: 12, fontWeight: 700, color: 'var(--success)' }}>✓ Fully Signed</div>
           ) : (
-            <div style={{ padding: '6px 14px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 20, fontSize: 12, fontWeight: 700, color: '#f59e0b' }}>Awaiting Signatures</div>
+            <div style={{ padding: '6px 14px', background: 'var(--warning-bg)', border: '1px solid var(--warning-text)', borderRadius: 20, fontSize: 12, fontWeight: 700, color: 'var(--warning)' }}>Awaiting Signatures</div>
           )}
         </div>
       </div>
@@ -224,25 +224,25 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
             {/* Left: Self-Assessment */}
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ padding: '12px 16px', background: '#1a1430', border: '1px solid #4c1d95', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Self-Assessment</div>
-                {sa?.submitted_at && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Submitted {new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
+              <div style={{ padding: '12px 16px', background: 'var(--brand-tint)', border: '1px solid var(--brand-tint)', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--brand-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Self-Assessment</div>
+                {sa?.submitted_at && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Submitted {new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
               </div>
-              <div style={{ padding: 16, background: '#0d0f1a', border: '1px solid #4c1d95', borderRadius: '0 0 10px 10px' }}>
+              <div style={{ padding: 16, background: 'var(--surface-inset)', border: '1px solid var(--brand-tint)', borderRadius: '0 0 10px 10px' }}>
                 {!sa ? (
-                  <div style={{ textAlign: 'center', padding: 32, color: '#6b7280', fontSize: 13 }}>No self-assessment on file.</div>
+                  <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)', fontSize: 13 }}>No self-assessment on file.</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {sa.competencies && sa.competencies.filter(c => c.term).length > 0 && (
                       <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Competencies</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Competencies</div>
                         {sa.competencies.filter(c => c.term).map((c, i) => {
-                          const col = c.type === 'positive' ? '#10b981' : c.type === 'constructive' ? '#f97316' : '#818cf8'
+                          const col = c.type === 'positive' ? 'var(--success)' : c.type === 'constructive' ? 'var(--warning)' : 'var(--brand)'
                           return (
-                            <div key={i} style={{ background: '#13151f', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
-                              <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{c.term}</div>
+                            <div key={i} style={{ background: 'var(--surface)', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>{c.term}</div>
                               {c.examples.filter(e => e.trim()).map((ex, ei) => (
-                                <div key={ei} style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.5, marginBottom: 2 }}>{ex}</div>
+                                <div key={ei} style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 2 }}>{ex}</div>
                               ))}
                             </div>
                           )
@@ -251,43 +251,43 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
                     )}
                     {sa.goals_objectives && sa.goals_objectives.filter(g => g.description?.trim()).length > 0 && (
                       <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Goals &amp; Objectives</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Goals &amp; Objectives</div>
                         {sa.goals_objectives.filter(g => g.description?.trim()).map((g, i) => (
-                          <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
-                            <div style={{ fontSize: 12, color: '#e5e7eb', marginBottom: 4 }}>{g.description}</div>
-                            {g.outcome && <span style={{ fontSize: 11, fontWeight: 600, color: g.outcome === 'successful' ? '#34d399' : g.outcome === 'ongoing' ? '#f59e0b' : '#f87171' }}>{g.outcome}</span>}
-                            {g.reasoning && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{g.reasoning}</div>}
+                          <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                            <div style={{ fontSize: 12, color: 'var(--text)', marginBottom: 4 }}>{g.description}</div>
+                            {g.outcome && <span style={{ fontSize: 11, fontWeight: 600, color: g.outcome === 'successful' ? 'var(--success)' : g.outcome === 'ongoing' ? 'var(--warning)' : 'var(--danger)' }}>{g.outcome}</span>}
+                            {g.reasoning && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{g.reasoning}</div>}
                           </div>
                         ))}
                       </div>
                     )}
                     {sa.overall_rating != null && (
-                      <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Self Rating</span>
-                        <span style={{ fontSize: 16, fontWeight: 700, color: '#a78bfa' }}>{'★'.repeat(sa.overall_rating || 0)}{'☆'.repeat(5 - (sa.overall_rating || 0))}</span>
+                      <div style={{ padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Self Rating</span>
+                        <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--brand-text)' }}>{'★'.repeat(sa.overall_rating || 0)}{'☆'.repeat(5 - (sa.overall_rating || 0))}</span>
                       </div>
                     )}
                     {sa.next_year_goals && sa.next_year_goals.filter(g => g.goal?.trim()).length > 0 && (
                       <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Next Year&apos;s Goals</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Next Year&apos;s Goals</div>
                         {sa.next_year_goals.filter(g => g.goal?.trim()).map((g, i) => (
-                          <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 2 }}>{g.goal}</div>
-                            {g.objective && <div style={{ fontSize: 11, color: '#9ca3af' }}>{g.objective}</div>}
+                          <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>{g.goal}</div>
+                            {g.objective && <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{g.objective}</div>}
                           </div>
                         ))}
                       </div>
                     )}
                     {sa.strengths && (
-                      <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px' }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Strengths</div>
-                        <div style={{ fontSize: 12, color: '#e5e7eb' }}>{sa.strengths}</div>
+                      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Strengths</div>
+                        <div style={{ fontSize: 12, color: 'var(--text)' }}>{sa.strengths}</div>
                       </div>
                     )}
                     {sa.growth_areas && (
-                      <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px' }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Growth Areas</div>
-                        <div style={{ fontSize: 12, color: '#e5e7eb' }}>{sa.growth_areas}</div>
+                      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Growth Areas</div>
+                        <div style={{ fontSize: 12, color: 'var(--text)' }}>{sa.growth_areas}</div>
                       </div>
                     )}
                   </div>
@@ -297,16 +297,16 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
 
             {/* Right: Manager Review */}
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ padding: '12px 16px', background: '#0d1523', border: '1px solid #1e3a5f', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Performance Review</div>
-                {form.reviewDate ? <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Review Date: {String(form.reviewDate)}</div> : null}
+              <div style={{ padding: '12px 16px', background: 'var(--surface-inset)', border: '1px solid var(--info-border)', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--info)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Performance Review</div>
+                {form.reviewDate ? <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Review Date: {String(form.reviewDate)}</div> : null}
               </div>
-              <div style={{ padding: 16, background: '#0d0f1a', border: '1px solid #1e3a5f', borderRadius: '0 0 10px 10px' }}>
+              <div style={{ padding: 16, background: 'var(--surface-inset)', border: '1px solid var(--info-border)', borderRadius: '0 0 10px 10px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 14px' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{review.employee_name}</div>
-                    <div style={{ fontSize: 11, color: '#6b7280' }}>{review.employee_position}{form.appraisalPeriod ? ` · ${String(form.appraisalPeriod)}` : ''}</div>
-                    {form.supervisorName ? <div style={{ fontSize: 11, color: '#4b5563', marginTop: 2 }}>Supervisor: {String(form.supervisorName)}</div> : null}
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>{review.employee_name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{review.employee_position}{form.appraisalPeriod ? ` · ${String(form.appraisalPeriod)}` : ''}</div>
+                    {form.supervisorName ? <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>Supervisor: {String(form.supervisorName)}</div> : null}
                   </div>
                   {/* Competencies */}
                   {(
@@ -319,7 +319,7 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
                     ].filter(c => c.entry?.competency).length > 0
                   ) && (
                     <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Competencies</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Competencies</div>
                       {[
                         { entry: form.competencyOne as { competency?: string; examples?: string[] } | undefined, type: 'positive' },
                         { entry: form.competencyTwo as { competency?: string; examples?: string[] } | undefined, type: 'positive' },
@@ -327,12 +327,12 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
                         { entry: form.competencyFour as { competency?: string; examples?: string[] } | undefined, type: 'constructive' },
                         { entry: form.competencyFive as { competency?: string; examples?: string[] } | undefined, type: form.competencyFiveType as string || 'positive' },
                       ].filter(c => c.entry?.competency).map((c, i) => {
-                        const col = c.type === 'positive' ? '#10b981' : '#f97316'
+                        const col = c.type === 'positive' ? 'var(--success)' : 'var(--warning)'
                         return (
-                          <div key={i} style={{ background: '#13151f', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{c.entry!.competency}</div>
+                          <div key={i} style={{ background: 'var(--surface)', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>{c.entry!.competency}</div>
                             {(c.entry!.examples ?? []).filter(e => e.trim()).map((ex, ei) => (
-                              <div key={ei} style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.5, marginBottom: 2 }}>{ei + 1}. {ex}</div>
+                              <div key={ei} style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 2 }}>{ei + 1}. {ex}</div>
                             ))}
                           </div>
                         )
@@ -342,31 +342,31 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
                   {/* Goals */}
                   {(form.goals as Array<{ text: string; status?: string }> | undefined)?.filter(g => g.text.trim()).length ? (
                     <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Goals &amp; Objectives</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Goals &amp; Objectives</div>
                       {(form.goals as Array<{ text: string; status?: string }>).filter(g => g.text.trim()).map((g, i) => (
-                        <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
-                          <div style={{ fontSize: 12, color: '#e5e7eb', marginBottom: 2 }}>{g.text}</div>
-                          {g.status && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: g.status === 'successful' ? '#0d2b1f' : g.status === 'unsuccessful' ? '#1f0d0d' : '#1f1a0d', color: g.status === 'successful' ? '#34d399' : g.status === 'unsuccessful' ? '#f87171' : '#f59e0b' }}>{g.status}</span>}
+                        <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                          <div style={{ fontSize: 12, color: 'var(--text)', marginBottom: 2 }}>{g.text}</div>
+                          {g.status && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: g.status === 'successful' ? 'var(--success-bg)' : g.status === 'unsuccessful' ? 'var(--danger-bg)' : 'var(--warning-bg)', color: g.status === 'successful' ? 'var(--success)' : g.status === 'unsuccessful' ? 'var(--danger)' : 'var(--warning)' }}>{g.status}</span>}
                         </div>
                       ))}
                     </div>
                   ) : null}
                   {/* Overall Score */}
                   {(form.overallScore as number | undefined) ? (
-                    <div style={{ padding: '10px 14px', background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Overall Score</span>
-                      <span style={{ fontSize: 16, fontWeight: 700, color: '#60a5fa' }}>{'★'.repeat(form.overallScore as number)}{'☆'.repeat(5 - (form.overallScore as number))}</span>
-                      <span style={{ fontSize: 12, color: '#9ca3af' }}>{SCORE_LABELS[form.overallScore as number]}</span>
+                    <div style={{ padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Overall Score</span>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--info)' }}>{'★'.repeat(form.overallScore as number)}{'☆'.repeat(5 - (form.overallScore as number))}</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{SCORE_LABELS[form.overallScore as number]}</span>
                     </div>
                   ) : null}
                   {/* Next Goals */}
                   {(form.nextGoals as Array<{ text: string; targetDate?: string }> | undefined)?.filter(g => g.text.trim()).length ? (
                     <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Next Year&apos;s Goals</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Next Year&apos;s Goals</div>
                       {(form.nextGoals as Array<{ text: string; targetDate?: string }>).filter(g => g.text.trim()).map((g, i) => (
-                        <div key={i} style={{ background: '#13151f', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 2 }}>{g.text}</div>
-                          {g.targetDate && <div style={{ fontSize: 11, color: '#6b7280' }}>Target: {g.targetDate}</div>}
+                        <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>{g.text}</div>
+                          {g.targetDate && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Target: {g.targetDate}</div>}
                         </div>
                       ))}
                     </div>
@@ -383,20 +383,20 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
         )}
 
         {/* Signatures */}
-        <div style={{ background: '#0d1117', border: '1px solid #1e2130', borderRadius: 12, padding: '24px 28px' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#f0f2fa', marginBottom: 20 }}>Signatures</div>
+        <div style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 12, padding: '24px 28px' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 20 }}>Signatures</div>
 
           {bothSigned ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Manager</div>
-                <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Manager</div>
+                <div style={{ padding: '12px 14px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 8 }}>
                   <SignatureDisplay stored={managerSignature} date={managerSignedAt ?? ''} />
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Employee</div>
-                <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Employee</div>
+                <div style={{ padding: '12px 14px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 8 }}>
                   <SignatureDisplay stored={employeeSignature} date={employeeSignedAt ?? ''} />
                 </div>
               </div>
@@ -406,9 +406,9 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
               {/* Manager signature section */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Manager</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Manager</div>
                   {managerSignedAt ? (
-                    <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                    <div style={{ padding: '12px 14px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 8 }}>
                       <SignatureDisplay stored={managerSignature} date={managerSignedAt} />
                     </div>
                   ) : isManager && signingAs !== 'employee' ? (
@@ -423,29 +423,29 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
                     ) : (
                       <button
                         onClick={() => setSigningAs('manager')}
-                        style={{ padding: '10px 20px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                        style={{ padding: '10px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                       >
                         ✍️ Sign as Manager
                       </button>
                     )
                   ) : (
-                    <div style={{ padding: '14px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b', marginBottom: 4 }}>Awaiting Manager Signature</div>
-                      <div style={{ fontSize: 11, color: '#6b7280' }}>The manager will sign this review from this link.</div>
+                    <div style={{ padding: '14px', background: 'var(--warning-bg)', border: '1px solid var(--warning-text)', borderRadius: 8 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--warning)', marginBottom: 4 }}>Awaiting Manager Signature</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>The manager will sign this review from this link.</div>
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Employee</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Employee</div>
                   {employeeSignedAt ? (
-                    <div style={{ padding: '12px 14px', background: '#0d2b1f', border: '1px solid #1a4a35', borderRadius: 8 }}>
+                    <div style={{ padding: '12px 14px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 8 }}>
                       <SignatureDisplay stored={employeeSignature} date={employeeSignedAt} />
                     </div>
                   ) : isEmployee && signingAs !== 'manager' ? (
                     signingAs === 'employee' ? (
                       <div>
-                        <p style={{ margin: '0 0 12px', fontSize: 13, color: '#9ca3af' }}>By signing, you acknowledge that you have reviewed this performance evaluation and discussed it with your manager.</p>
+                        <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-secondary)' }}>By signing, you acknowledge that you have reviewed this performance evaluation and discussed it with your manager.</p>
                         <SignaturePad
                           onSign={handleEmployeeSign}
                           loading={empSigLoading}
@@ -457,23 +457,23 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
                     ) : (
                       <button
                         onClick={() => setSigningAs('employee')}
-                        style={{ padding: '10px 20px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                        style={{ padding: '10px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                       >
                         ✍️ Sign &amp; Acknowledge
                       </button>
                     )
                   ) : (
-                    <div style={{ padding: '14px', background: '#1f1a0d', border: '1px solid #92400e', borderRadius: 8 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b', marginBottom: 4 }}>Awaiting Employee Signature</div>
-                      <div style={{ fontSize: 11, color: '#6b7280' }}>The employee will sign this review from this link.</div>
+                    <div style={{ padding: '14px', background: 'var(--warning-bg)', border: '1px solid var(--warning-text)', borderRadius: 8 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--warning)', marginBottom: 4 }}>Awaiting Employee Signature</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>The employee will sign this review from this link.</div>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Role indicator */}
-              <div style={{ fontSize: 12, color: '#4b5563', padding: '10px 14px', background: '#13151f', borderRadius: 8, border: '1px solid #1e2130' }}>
-                Signed in as <strong style={{ color: '#9ca3af' }}>{currentUserName}</strong>
+              <div style={{ fontSize: 12, color: 'var(--text-faint)', padding: '10px 14px', background: 'var(--surface)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                Signed in as <strong style={{ color: 'var(--text-secondary)' }}>{currentUserName}</strong>
                 {' '}({currentUserRole === 'manager' || currentUserRole === 'middle_manager' ? 'Manager' : currentUserRole === 'admin' ? 'Admin' : 'Employee'})
                 {' '}· Both parties must sign to complete the review.
               </div>

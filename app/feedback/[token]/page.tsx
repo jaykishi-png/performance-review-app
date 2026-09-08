@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Sparkles, Loader2 } from 'lucide-react';
+import { CalibrIcon, ThemeToggle } from '@/components/Brand';
 
 interface FeedbackRequest {
   id: string;
@@ -107,7 +108,7 @@ export default function FeedbackPage() {
       <div style={{ marginTop: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {state.error && (
-            <span style={{ fontSize: 11, color: '#f87171', flex: 1 }}>{state.error}</span>
+            <span style={{ fontSize: 11, color: 'var(--danger)', flex: 1 }}>{state.error}</span>
           )}
           <button
             type="button"
@@ -115,7 +116,7 @@ export default function FeedbackPage() {
             style={{
               marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5,
               background: 'none', border: 'none', cursor: 'pointer',
-              color: state.open ? '#a78bfa' : '#818cf8', fontSize: 12, fontWeight: 600, padding: 0,
+              color: state.open ? 'var(--brand-soft)' : 'var(--brand)', fontSize: 12, fontWeight: 600, padding: 0,
             }}
           >
             <Sparkles size={12} />
@@ -125,7 +126,7 @@ export default function FeedbackPage() {
 
         {state.open && (
           <div style={{ marginTop: 8, padding: '12px 14px', background: 'rgba(79,70,229,0.08)', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 10 }}>
-            <p style={{ margin: '0 0 8px', fontSize: 11, color: '#a78bfa' }}>
+            <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--brand-text)' }}>
               Jot down what you have observed — AI will turn it into feedback. It will not invent details you did not mention.
             </p>
             <textarea
@@ -134,7 +135,7 @@ export default function FeedbackPage() {
               onChange={(e) => setAiFor(f, { context: e.target.value })}
               onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) draftField(f); }}
               placeholder={placeholder}
-              style={{ ...styles.textarea, fontSize: 12, marginBottom: 8, background: '#0a0c14', border: '1px solid rgba(129,140,248,0.3)' }}
+              style={{ ...styles.textarea, fontSize: 12, marginBottom: 8, background: 'var(--page)', border: '1px solid rgba(129,140,248,0.3)' }}
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button
@@ -153,7 +154,7 @@ export default function FeedbackPage() {
                   ? <><Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> Drafting…</>
                   : <><Sparkles size={11} /> Draft</>}
               </button>
-              <span style={{ fontSize: 10, color: '#4b5563' }}>⌘↵ to submit</span>
+              <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>⌘↵ to submit</span>
             </div>
           </div>
         )}
@@ -201,7 +202,7 @@ export default function FeedbackPage() {
     wrapper: {
       width: '100%',
       minHeight: '100vh',
-      backgroundColor: '#0a0c14',
+      backgroundColor: 'var(--page)',
       display: 'flex',
       flexDirection: 'column' as const,
       alignItems: 'center',
@@ -211,8 +212,8 @@ export default function FeedbackPage() {
     card: {
       width: '100%',
       maxWidth: '600px',
-      backgroundColor: '#13151f',
-      border: '1px solid #1e2130',
+      backgroundColor: 'var(--surface)',
+      border: '1px solid var(--border)',
       borderRadius: '16px',
       padding: '40px 36px',
       boxSizing: 'border-box' as const,
@@ -221,12 +222,12 @@ export default function FeedbackPage() {
       display: 'inline-flex',
       alignItems: 'center',
       gap: '6px',
-      backgroundColor: '#1e2130',
-      border: '1px solid #2a2d3e',
+      backgroundColor: 'var(--border)',
+      border: '1px solid var(--border)',
       borderRadius: '20px',
       padding: '6px 14px',
       fontSize: '12px',
-      color: '#8b8fa8',
+      color: 'var(--text-secondary)',
       marginBottom: '28px',
       letterSpacing: '0.04em',
       textTransform: 'uppercase' as const,
@@ -234,41 +235,41 @@ export default function FeedbackPage() {
     heading: {
       fontSize: '22px',
       fontWeight: 700,
-      color: '#f0f2fa',
+      color: 'var(--text-strong)',
       margin: '0 0 6px',
       lineHeight: 1.3,
     },
     subheading: {
       fontSize: '14px',
-      color: '#8b8fa8',
+      color: 'var(--text-secondary)',
       margin: '0 0 24px',
     },
     callout: {
-      backgroundColor: '#1a1d2e',
-      border: '1px solid #2a2d3e',
-      borderLeft: '3px solid #4f46e5',
+      backgroundColor: 'var(--surface-hover)',
+      border: '1px solid var(--border)',
+      borderLeft: '3px solid var(--brand-strong)',
       borderRadius: '8px',
       padding: '12px 16px',
       marginBottom: '20px',
       fontSize: '14px',
-      color: '#c4c8e0',
+      color: 'var(--text)',
       lineHeight: 1.6,
     },
     anonBadge: {
       display: 'inline-flex',
       alignItems: 'center',
       gap: '6px',
-      backgroundColor: '#1a2535',
-      border: '1px solid #1e3a5f',
+      backgroundColor: 'var(--surface-hover)',
+      border: '1px solid var(--info-border)',
       borderRadius: '6px',
       padding: '6px 12px',
       fontSize: '13px',
-      color: '#60a5fa',
+      color: 'var(--info)',
       marginBottom: '28px',
     },
     divider: {
       height: '1px',
-      backgroundColor: '#1e2130',
+      backgroundColor: 'var(--border)',
       margin: '28px 0',
     },
     questionBlock: {
@@ -278,21 +279,21 @@ export default function FeedbackPage() {
       display: 'block',
       fontSize: '14px',
       fontWeight: 600,
-      color: '#c4c8e0',
+      color: 'var(--text)',
       marginBottom: '8px',
     },
     required: {
-      color: '#ef4444',
+      color: 'var(--danger)',
       marginLeft: '3px',
     },
     textarea: {
       width: '100%',
-      backgroundColor: '#0d0f1a',
-      border: '1px solid #1e2130',
+      backgroundColor: 'var(--surface-inset)',
+      border: '1px solid var(--border)',
       borderRadius: '8px',
       padding: '12px 14px',
       fontSize: '14px',
-      color: '#f0f2fa',
+      color: 'var(--text-strong)',
       resize: 'vertical' as const,
       outline: 'none',
       fontFamily: 'inherit',
@@ -308,7 +309,7 @@ export default function FeedbackPage() {
     star: (filled: boolean) => ({
       fontSize: '28px',
       cursor: 'pointer',
-      color: filled ? '#f59e0b' : '#2a2d3e',
+      color: filled ? 'var(--warning)' : 'var(--border)',
       transition: 'color 0.1s, transform 0.1s',
       userSelect: 'none' as const,
       lineHeight: 1,
@@ -317,8 +318,8 @@ export default function FeedbackPage() {
       width: '100%',
       padding: '14px',
       background: submitting
-        ? '#2a2d3e'
-        : 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
+        ? 'var(--border)'
+        : 'linear-gradient(135deg, var(--brand-strong) 0%, var(--brand) 100%)',
       color: '#fff',
       border: 'none',
       borderRadius: '10px',
@@ -330,12 +331,12 @@ export default function FeedbackPage() {
       letterSpacing: '0.01em',
     },
     errorBox: {
-      backgroundColor: '#1f0d0d',
-      border: '1px solid #7f1d1d',
+      backgroundColor: 'var(--danger-bg)',
+      border: '1px solid var(--danger-border)',
       borderRadius: '8px',
       padding: '12px 16px',
       fontSize: '14px',
-      color: '#fca5a5',
+      color: 'var(--danger-text)',
       marginBottom: '16px',
     },
     centeredState: {
@@ -358,15 +359,15 @@ export default function FeedbackPage() {
             style={{
               width: '40px',
               height: '40px',
-              border: '3px solid #1e2130',
-              borderTop: '3px solid #4f46e5',
+              border: '3px solid var(--border)',
+              borderTop: '3px solid var(--brand-strong)',
               borderRadius: '50%',
               animation: 'spin 0.8s linear infinite',
               marginBottom: '16px',
             }}
           />
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-          <p style={{ color: '#8b8fa8', fontSize: '14px', margin: 0 }}>Loading feedback form…</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0 }}>Loading feedback form…</p>
         </div>
       </div>
     );
@@ -377,8 +378,8 @@ export default function FeedbackPage() {
       <div style={styles.wrapper}>
         <div style={{ ...styles.card, ...styles.centeredState }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔗</div>
-          <h2 style={{ color: '#f0f2fa', margin: '0 0 10px', fontSize: '20px' }}>Link Not Found</h2>
-          <p style={{ color: '#8b8fa8', fontSize: '15px', margin: 0, lineHeight: 1.6 }}>
+          <h2 style={{ color: 'var(--text-strong)', margin: '0 0 10px', fontSize: '20px' }}>Link Not Found</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '15px', margin: 0, lineHeight: 1.6 }}>
             This feedback link is invalid or has expired.
           </p>
         </div>
@@ -391,9 +392,9 @@ export default function FeedbackPage() {
       <div style={styles.wrapper}>
         <div style={{ ...styles.card, ...styles.centeredState }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
-          <h2 style={{ color: '#f0f2fa', margin: '0 0 10px', fontSize: '20px' }}>Already Submitted</h2>
-          <p style={{ color: '#8b8fa8', fontSize: '15px', margin: 0, lineHeight: 1.6 }}>
-            You've already submitted feedback for <strong style={{ color: '#c4c8e0' }}>{request.requestor_name}</strong>. Thank you!
+          <h2 style={{ color: 'var(--text-strong)', margin: '0 0 10px', fontSize: '20px' }}>Already Submitted</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '15px', margin: 0, lineHeight: 1.6 }}>
+            You've already submitted feedback for <strong style={{ color: 'var(--text)' }}>{request.requestor_name}</strong>. Thank you!
           </p>
         </div>
       </div>
@@ -409,8 +410,8 @@ export default function FeedbackPage() {
               width: '72px',
               height: '72px',
               borderRadius: '50%',
-              backgroundColor: '#052e16',
-              border: '2px solid #166534',
+              backgroundColor: 'var(--success-bg)',
+              border: '2px solid var(--success-text)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -420,10 +421,10 @@ export default function FeedbackPage() {
           >
             ✓
           </div>
-          <h2 style={{ color: '#f0f2fa', margin: '0 0 10px', fontSize: '22px' }}>
+          <h2 style={{ color: 'var(--text-strong)', margin: '0 0 10px', fontSize: '22px' }}>
             Thank you for your feedback!
           </h2>
-          <p style={{ color: '#8b8fa8', fontSize: '15px', margin: 0, lineHeight: 1.6 }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '15px', margin: 0, lineHeight: 1.6 }}>
             Your response has been submitted.
           </p>
         </div>
@@ -438,9 +439,12 @@ export default function FeedbackPage() {
   return (
     <div style={styles.wrapper}>
       <div style={styles.card}>
-        {/* Brand badge */}
-        <div style={styles.brandBadge}>
-          <span>⭐</span> 360 Performance Review
+        {/* Brand badge + theme control */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={styles.brandBadge}>
+            <CalibrIcon size={14} /> 360 Performance Review
+          </div>
+          <ThemeToggle compact />
         </div>
 
         {/* Header */}
@@ -485,7 +489,7 @@ export default function FeedbackPage() {
                 </span>
               ))}
               {form.q3_collab_rating > 0 && (
-                <span style={{ fontSize: '13px', color: '#8b8fa8', alignSelf: 'center', marginLeft: '6px' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)', alignSelf: 'center', marginLeft: '6px' }}>
                   {['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][form.q3_collab_rating]}
                 </span>
               )}
@@ -497,8 +501,8 @@ export default function FeedbackPage() {
               placeholder="Add context about your rating..."
               value={form.q3_collab_text}
               onChange={(e) => setForm({ ...form, q3_collab_text: e.target.value })}
-              onFocus={(e) => (e.target.style.borderColor = '#4f46e5')}
-              onBlur={(e) => (e.target.style.borderColor = '#1e2130')}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--brand-strong)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--border)')}
             />
             {renderAiAssist('q3_collab_text', `e.g. "clear in standups, shares context early, sometimes quiet in bigger meetings"`)}
           </div>
@@ -515,8 +519,8 @@ export default function FeedbackPage() {
               placeholder="Describe specific strengths you've observed..."
               value={form.q1_strengths}
               onChange={(e) => setForm({ ...form, q1_strengths: e.target.value })}
-              onFocus={(e) => (e.target.style.borderColor = '#4f46e5')}
-              onBlur={(e) => (e.target.style.borderColor = '#1e2130')}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--brand-strong)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--border)')}
               required
             />
             {renderAiAssist('q1_strengths', `e.g. "always unblocks people fast, ran the launch checklist, calm under pressure"`)}
@@ -534,8 +538,8 @@ export default function FeedbackPage() {
               placeholder="Be specific and constructive..."
               value={form.q2_improvements}
               onChange={(e) => setForm({ ...form, q2_improvements: e.target.value })}
-              onFocus={(e) => (e.target.style.borderColor = '#4f46e5')}
-              onBlur={(e) => (e.target.style.borderColor = '#1e2130')}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--brand-strong)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--border)')}
               required
             />
             {renderAiAssist('q2_improvements', `e.g. "takes on too much at once, updates can come late, would help to flag blockers sooner"`)}
@@ -545,7 +549,7 @@ export default function FeedbackPage() {
           <div style={styles.questionBlock}>
             <label style={styles.label}>
               Anything else you'd like to share?
-              <span style={{ color: '#6b7280', marginLeft: '6px', fontWeight: 400, fontSize: '12px' }}>Optional</span>
+              <span style={{ color: 'var(--text-muted)', marginLeft: '6px', fontWeight: 400, fontSize: '12px' }}>Optional</span>
             </label>
             <textarea
               rows={3}
@@ -553,8 +557,8 @@ export default function FeedbackPage() {
               placeholder="Any additional thoughts..."
               value={form.additional_comments}
               onChange={(e) => setForm({ ...form, additional_comments: e.target.value })}
-              onFocus={(e) => (e.target.style.borderColor = '#4f46e5')}
-              onBlur={(e) => (e.target.style.borderColor = '#1e2130')}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--brand-strong)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--border)')}
             />
             {renderAiAssist('additional_comments', `e.g. "stepped up while the team was short-handed this quarter"`)}
           </div>
@@ -576,7 +580,7 @@ export default function FeedbackPage() {
       </div>
 
       {/* Footer */}
-      <p style={{ color: '#3a3d52', fontSize: '12px', marginTop: '24px', textAlign: 'center' }}>
+      <p style={{ color: 'var(--text-faint)', fontSize: '12px', marginTop: '24px', textAlign: 'center' }}>
         Secure & confidential · Powered by your performance review platform
       </p>
     </div>

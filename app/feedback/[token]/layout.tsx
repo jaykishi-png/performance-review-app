@@ -19,13 +19,13 @@ export default function FeedbackLayout({
         margin: 0,
         padding: 0,
         minHeight: '100vh',
-        backgroundColor: '#0a0c14',
+        backgroundColor: 'var(--page)',
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'flex-start',
-        color: '#f0f2fa',
+        color: 'var(--text-strong)',
       }}
     >
       <link rel="preconnect" href="https://fonts.googleapis.com" />

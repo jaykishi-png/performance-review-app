@@ -22,7 +22,7 @@ type Props = {
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  admin: '#818cf8', dev_admin: '#f472b6', manager: '#34d399', employee: '#60a5fa', pending: '#f59e0b',
+  admin: 'var(--brand)', dev_admin: 'var(--danger)', manager: 'var(--success)', employee: 'var(--info)', pending: 'var(--warning)',
 }
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin', dev_admin: 'Dev Admin', manager: 'Manager', employee: 'Employee', pending: 'Pending',
@@ -91,38 +91,38 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
   })
   const tab = (active: boolean): React.CSSProperties => ({
     padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
-    background: active ? '#6366f1' : 'transparent', color: active ? '#fff' : '#94a3b8', fontWeight: 600, fontSize: 14,
+    background: active ? 'var(--brand)' : 'transparent', color: active ? '#fff' : 'var(--text-secondary)', fontWeight: 600, fontSize: 14,
   })
   const card: React.CSSProperties = {
-    background: '#1e293b', borderRadius: 12, padding: '20px 24px', border: '1px solid #1e3a5f',
+    background: 'var(--surface-raised)', borderRadius: 12, padding: '20px 24px', border: '1px solid var(--info-border)',
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f172a', color: '#e2e8f0', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--page)', color: 'var(--text)', fontFamily: 'system-ui, sans-serif' }}>
       {/* Header */}
-      <div style={{ background: '#1e293b', borderBottom: '1px solid #1e3a5f', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ background: 'var(--surface-raised)', borderBottom: '1px solid var(--info-border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 20, color: '#f1f5f9' }}>Dev Admin Console</div>
-          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{currentUser.email}</div>
+          <div style={{ fontWeight: 800, fontSize: 20, color: 'var(--text-strong)' }}>Dev Admin Console</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{currentUser.email}</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={pill('#f472b6')}>Dev Admin</span>
+          <span style={pill('var(--danger)')}>Dev Admin</span>
           <button onClick={() => router.push('/admin')}
-            style={{ padding: '6px 14px', background: '#1e293b', color: '#818cf8', border: '1px solid #334155', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+            style={{ padding: '6px 14px', background: 'var(--surface-raised)', color: 'var(--brand)', border: '1px solid var(--border-strong)', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
             Admin View
           </button>
           <button
             onClick={async () => { await fetch('/api/auth/signout', { method: 'POST' }); router.push('/login') }}
-            style={{ padding: '6px 14px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+            style={{ padding: '6px 14px', background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
             Sign out
           </button>
         </div>
       </div>
 
       {/* Content restriction banner */}
-      <div style={{ background: '#1e1a2e', borderBottom: '1px solid #4a2060', padding: '10px 32px', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ color: '#f472b6', fontSize: 14 }}>🔒</span>
-        <span style={{ color: '#c084fc', fontSize: 13 }}>
+      <div style={{ background: 'var(--brand-tint)', borderBottom: '1px solid var(--brand-tint)', padding: '10px 32px', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ color: 'var(--danger)', fontSize: 14 }}>🔒</span>
+        <span style={{ color: 'var(--brand-text)', fontSize: 13 }}>
           <strong>Dev Admin access:</strong> Review document content is hidden for this role. You can see metadata, system stats, users, and audit logs only.
         </span>
       </div>
@@ -136,7 +136,7 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
             </button>
           ))}
           <button onClick={() => setShowInviteModal(true)}
-            style={{ marginLeft: 'auto', padding: '8px 16px', background: '#059669', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
+            style={{ marginLeft: 'auto', padding: '8px 16px', background: 'var(--success)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
             + Invite User
           </button>
         </div>
@@ -150,19 +150,19 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
                 { label: 'Self Assessments (metadata only)', value: stats.selfReviewCount },
               ].map(s => (
                 <div key={s.label} style={card}>
-                  <div style={{ fontSize: 32, fontWeight: 800, color: '#f1f5f9' }}>{s.value}</div>
-                  <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>{s.label}</div>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-strong)' }}>{s.value}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>{s.label}</div>
                 </div>
               ))}
             </div>
             <div style={card}>
-              <div style={{ fontWeight: 700, marginBottom: 12, color: '#f1f5f9' }}>Recent Audit Events</div>
+              <div style={{ fontWeight: 700, marginBottom: 12, color: 'var(--text-strong)' }}>Recent Audit Events</div>
               {recentAuditLogs.length === 0 ? (
-                <div style={{ color: '#475569' }}>No audit logs yet.</div>
+                <div style={{ color: 'var(--text-faint)' }}>No audit logs yet.</div>
               ) : recentAuditLogs.slice(0, 10).map(log => (
-                <div key={log.id} style={{ padding: '8px 0', borderBottom: '1px solid #1e3a5f', display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ color: '#94a3b8' }}><strong style={{ color: '#e2e8f0' }}>{log.action}</strong> on {log.target_type}</span>
-                  <span style={{ color: '#475569' }}>{new Date(log.created_at).toLocaleString()}</span>
+                <div key={log.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--info-border)', display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: 'var(--text-secondary)' }}><strong style={{ color: 'var(--text)' }}>{log.action}</strong> on {log.target_type}</span>
+                  <span style={{ color: 'var(--text-faint)' }}>{new Date(log.created_at).toLocaleString()}</span>
                 </div>
               ))}
             </div>
@@ -171,34 +171,34 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
 
         {activeTab === 'users' && (
           <div style={card}>
-            <div style={{ fontWeight: 700, marginBottom: 16, color: '#f1f5f9' }}>User Management</div>
+            <div style={{ fontWeight: 700, marginBottom: 16, color: 'var(--text-strong)' }}>User Management</div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #1e3a5f' }}>
+                  <tr style={{ borderBottom: '1px solid var(--info-border)' }}>
                     {['Name', 'Email', 'Role', 'Status', 'Actions'].map(h => (
-                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>{h}</th>
+                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-muted)', fontWeight: 600 }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {users.map(u => (
-                    <tr key={u.id} style={{ borderBottom: '1px solid #1e293b' }}>
-                      <td style={{ padding: '10px 12px', color: '#e2e8f0' }}>{u.name || '—'}</td>
-                      <td style={{ padding: '10px 12px', color: '#94a3b8' }}>{u.email}</td>
+                    <tr key={u.id} style={{ borderBottom: '1px solid var(--border-strong)' }}>
+                      <td style={{ padding: '10px 12px', color: 'var(--text)' }}>{u.name || '—'}</td>
+                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{u.email}</td>
                       <td style={{ padding: '10px 12px' }}>
                         {editingUser === u.id ? (
                           <select value={editRole} onChange={e => setEditRole(e.target.value)}
-                            style={{ background: '#0f172a', color: '#e2e8f0', border: '1px solid #334155', borderRadius: 6, padding: '4px 8px' }}>
+                            style={{ background: 'var(--page)', color: 'var(--text)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '4px 8px' }}>
                             <option value="manager">Manager</option>
                             <option value="employee">Employee</option>
                           </select>
                         ) : (
-                          <span style={pill(ROLE_COLORS[u.role] ?? '#64748b')}>{ROLE_LABELS[u.role] ?? u.role}</span>
+                          <span style={pill(ROLE_COLORS[u.role] ?? 'var(--text-muted)')}>{ROLE_LABELS[u.role] ?? u.role}</span>
                         )}
                       </td>
                       <td style={{ padding: '10px 12px' }}>
-                        <span style={pill(u.is_active ? '#34d399' : '#ef4444')}>{u.is_active ? 'Active' : 'Inactive'}</span>
+                        <span style={pill(u.is_active ? 'var(--success)' : 'var(--danger)')}>{u.is_active ? 'Active' : 'Inactive'}</span>
                       </td>
                       <td style={{ padding: '10px 12px' }}>
                         <div style={{ display: 'flex', gap: 6 }}>
@@ -206,24 +206,24 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
                             editingUser === u.id ? (
                               <>
                                 <button onClick={() => handleRoleChange(u.id)} disabled={saving}
-                                  style={{ padding: '4px 10px', background: '#059669', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
+                                  style={{ padding: '4px 10px', background: 'var(--success)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
                                   {saving ? '...' : 'Save'}
                                 </button>
                                 <button onClick={() => setEditingUser(null)}
-                                  style={{ padding: '4px 10px', background: '#475569', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
+                                  style={{ padding: '4px 10px', background: 'var(--surface-raised)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
                                   Cancel
                                 </button>
                               </>
                             ) : (
                               <button onClick={() => { setEditingUser(u.id); setEditRole(u.role) }}
-                                style={{ padding: '4px 10px', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
+                                style={{ padding: '4px 10px', background: 'var(--surface-raised)', color: 'var(--text-secondary)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
                                 Edit Role
                               </button>
                             )
                           )}
                           {u.id !== currentUser.id && (
                             <button onClick={() => handleDeactivate(u.id, u.is_active)}
-                              style={{ padding: '4px 10px', background: u.is_active ? '#7f1d1d' : '#14532d', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
+                              style={{ padding: '4px 10px', background: u.is_active ? 'var(--danger-border)' : 'var(--success-text)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
                               {u.is_active ? 'Deactivate' : 'Reactivate'}
                             </button>
                           )}
@@ -239,16 +239,16 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
 
         {activeTab === 'logs' && (
           <div style={card}>
-            <div style={{ fontWeight: 700, marginBottom: 16, color: '#f1f5f9' }}>Audit Logs (Technical)</div>
+            <div style={{ fontWeight: 700, marginBottom: 16, color: 'var(--text-strong)' }}>Audit Logs (Technical)</div>
             {recentAuditLogs.length === 0 ? (
-              <div style={{ color: '#475569' }}>No audit logs found.</div>
+              <div style={{ color: 'var(--text-faint)' }}>No audit logs found.</div>
             ) : recentAuditLogs.map(log => (
-              <div key={log.id} style={{ padding: '10px 0', borderBottom: '1px solid #1e3a5f', fontSize: 13 }}>
+              <div key={log.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--info-border)', fontSize: 13 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <strong style={{ color: '#e2e8f0' }}>{log.action}</strong>
-                  <span style={{ color: '#475569' }}>{new Date(log.created_at).toLocaleString()}</span>
+                  <strong style={{ color: 'var(--text)' }}>{log.action}</strong>
+                  <span style={{ color: 'var(--text-faint)' }}>{new Date(log.created_at).toLocaleString()}</span>
                 </div>
-                <div style={{ color: '#64748b', marginTop: 2 }}>Target: {log.target_type} · Actor: {log.actor_user_id}</div>
+                <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>Target: {log.target_type} · Actor: {log.actor_user_id}</div>
               </div>
             ))}
           </div>
@@ -263,20 +263,20 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
               { title: 'Auth Config', items: ['Provider: Supabase', 'OAuth: Google', 'Consent screen: check Google Cloud Console'] },
             ].map(section => (
               <div key={section.title} style={card}>
-                <div style={{ fontWeight: 700, marginBottom: 12, color: '#f1f5f9' }}>{section.title}</div>
+                <div style={{ fontWeight: 700, marginBottom: 12, color: 'var(--text-strong)' }}>{section.title}</div>
                 {section.items.map(item => (
-                  <div key={item} style={{ padding: '6px 0', borderBottom: '1px solid #1e3a5f', fontSize: 13, color: '#94a3b8' }}>{item}</div>
+                  <div key={item} style={{ padding: '6px 0', borderBottom: '1px solid var(--info-border)', fontSize: 13, color: 'var(--text-secondary)' }}>{item}</div>
                 ))}
               </div>
             ))}
             <div style={{ ...card, gridColumn: '1 / -1' }}>
-              <div style={{ fontWeight: 700, marginBottom: 12, color: '#f1f5f9' }}>Pending Invites ({invites.length})</div>
+              <div style={{ fontWeight: 700, marginBottom: 12, color: 'var(--text-strong)' }}>Pending Invites ({invites.length})</div>
               {invites.length === 0 ? (
-                <div style={{ color: '#475569', fontSize: 13 }}>No pending invites.</div>
+                <div style={{ color: 'var(--text-faint)', fontSize: 13 }}>No pending invites.</div>
               ) : invites.map(inv => (
-                <div key={inv.id} style={{ padding: '8px 0', borderBottom: '1px solid #1e3a5f', display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ color: '#e2e8f0' }}>{inv.email}</span>
-                  <span style={{ color: '#64748b' }}>{inv.role} · expires {new Date(inv.expires_at).toLocaleDateString()}</span>
+                <div key={inv.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--info-border)', display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: 'var(--text)' }}>{inv.email}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{inv.role} · expires {new Date(inv.expires_at).toLocaleDateString()}</span>
                 </div>
               ))}
             </div>
@@ -287,21 +287,21 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
       {/* Invite Modal */}
       {showInviteModal && (
         <div style={{ position: 'fixed', inset: 0, background: '#00000088', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: '#1e293b', borderRadius: 16, padding: 32, width: 420, border: '1px solid #1e3a5f' }}>
-            <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#f1f5f9' }}>Invite User</h2>
-            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#64748b' }}>Dev Admin can invite Manager or Employee only.</p>
+          <div style={{ background: 'var(--surface-raised)', borderRadius: 16, padding: 32, width: 420, border: '1px solid var(--info-border)' }}>
+            <h2 style={{ margin: '0 0 20px', fontSize: 18, color: 'var(--text-strong)' }}>Invite User</h2>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-muted)' }}>Dev Admin can invite Manager or Employee only.</p>
             <form onSubmit={handleInvite}>
               <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 13, color: '#94a3b8', display: 'block', marginBottom: 4 }}>Email</label>
+                <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Email</label>
                 <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} required type="email"
-                  style={{ width: '100%', padding: '8px 12px', background: '#0f172a', color: '#e2e8f0', border: '1px solid #334155', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
+                  style={{ width: '100%', padding: '8px 12px', background: 'var(--page)', color: 'var(--text)', border: '1px solid var(--border-strong)', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 13, color: '#94a3b8', display: 'block', marginBottom: 4 }}>Role</label>
+                <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Role</label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {(['employee', 'manager'] as const).map(r => (
                     <button type="button" key={r} onClick={() => setInviteRole(r)}
-                      style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: '2px solid', borderColor: inviteRole === r ? '#6366f1' : '#334155', background: inviteRole === r ? '#6366f133' : 'transparent', color: inviteRole === r ? '#a5b4fc' : '#94a3b8', fontWeight: 600, fontSize: 13, cursor: 'pointer', textTransform: 'capitalize' }}>
+                      style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: '2px solid', borderColor: inviteRole === r ? 'var(--brand)' : 'var(--text-faint)', background: inviteRole === r ? '#6366f133' : 'transparent', color: inviteRole === r ? 'var(--brand)' : 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer', textTransform: 'capitalize' }}>
                       {r}
                     </button>
                   ))}
@@ -309,9 +309,9 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
               </div>
               {inviteRole === 'employee' && (
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ fontSize: 13, color: '#94a3b8', display: 'block', marginBottom: 4 }}>Manager (optional)</label>
+                  <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Manager (optional)</label>
                   <select value={inviteManagerId} onChange={e => setInviteManagerId(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', background: '#0f172a', color: '#e2e8f0', border: '1px solid #334155', borderRadius: 8, fontSize: 14 }}>
+                    style={{ width: '100%', padding: '8px 12px', background: 'var(--page)', color: 'var(--text)', border: '1px solid var(--border-strong)', borderRadius: 8, fontSize: 14 }}>
                     <option value="">No manager</option>
                     {managers.map(m => <option key={m.id} value={m.id}>{m.name || m.email}</option>)}
                   </select>
@@ -319,11 +319,11 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
               )}
               <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
                 <button type="submit" disabled={inviteLoading}
-                  style={{ flex: 1, padding: '10px 0', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 15 }}>
+                  style={{ flex: 1, padding: '10px 0', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 15 }}>
                   {inviteLoading ? 'Sending...' : 'Send Invite'}
                 </button>
                 <button type="button" onClick={() => setShowInviteModal(false)}
-                  style={{ padding: '10px 20px', background: '#334155', color: '#94a3b8', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+                  style={{ padding: '10px 20px', background: 'var(--surface-raised)', color: 'var(--text-secondary)', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
                   Cancel
                 </button>
               </div>

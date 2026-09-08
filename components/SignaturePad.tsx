@@ -30,12 +30,12 @@ export function SignatureDisplay({ stored, date }: { stored: string | null | und
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {dataUrl && (
-        <div style={{ background: '#fff', borderRadius: 6, padding: '4px 8px', display: 'inline-block', border: '1px solid #1e2130' }}>
+        <div style={{ background: '#fff', borderRadius: 6, padding: '4px 8px', display: 'inline-block', border: '1px solid var(--border)' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={dataUrl} alt={`Signature of ${name}`} style={{ height: 48, maxWidth: 260, objectFit: 'contain', display: 'block' }} />
         </div>
       )}
-      <div style={{ fontSize: 12, color: '#34d399' }}>
+      <div style={{ fontSize: 12, color: 'var(--success)' }}>
         ✓ {name}{date ? ` · ${new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
       </div>
     </div>
@@ -52,7 +52,7 @@ async function renderTypedSignature(name: string): Promise<string> {
   ctx.fillRect(0, 0, canvas.width, canvas.height)
 
   // Dashed baseline
-  ctx.strokeStyle = '#9ca3af'
+  ctx.strokeStyle = 'var(--text-secondary)'
   ctx.lineWidth = 1
   ctx.setLineDash([4, 4])
   ctx.beginPath()
@@ -66,7 +66,7 @@ async function renderTypedSignature(name: string): Promise<string> {
 
   const baseSize = 58
   ctx.font = `${baseSize}px "Dancing Script", "Brush Script MT", "Segoe Script", cursive`
-  ctx.fillStyle = '#1f2937'
+  ctx.fillStyle = 'var(--surface-inset)'
   ctx.textBaseline = 'alphabetic'
 
   // Scale down if the text overflows
@@ -125,7 +125,7 @@ export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sig
     if (!ctx) return
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.strokeStyle = '#9ca3af'
+    ctx.strokeStyle = 'var(--text-secondary)'
     ctx.lineWidth = 1
     ctx.setLineDash([4, 4])
     ctx.beginPath()
@@ -151,7 +151,7 @@ export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sig
   function drawTo(pos: { x: number; y: number }) {
     const ctx = canvasRef.current?.getContext('2d')
     if (!ctx || !lastPos.current) return
-    ctx.strokeStyle = '#1f2937'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    ctx.strokeStyle = 'var(--surface-inset)'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
     ctx.beginPath(); ctx.moveTo(lastPos.current.x, lastPos.current.y); ctx.lineTo(pos.x, pos.y); ctx.stroke()
     lastPos.current = pos
     setHasDrawn(true)
@@ -189,9 +189,9 @@ export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sig
 
   // ── Tab switcher styles ───────────────────────────────────────────────────
   const tabStyle = (active: boolean): React.CSSProperties => ({
-    flex: 1, padding: '7px 0', background: active ? '#1e1f3a' : 'transparent',
-    border: 'none', borderBottom: active ? '2px solid #4f46e5' : '2px solid transparent',
-    color: active ? '#a5b4fc' : '#6b7280', fontSize: 12, fontWeight: active ? 600 : 400,
+    flex: 1, padding: '7px 0', background: active ? 'var(--brand-tint)' : 'transparent',
+    border: 'none', borderBottom: active ? '2px solid var(--brand-strong)' : '2px solid transparent',
+    color: active ? 'var(--brand)' : 'var(--text-muted)', fontSize: 12, fontWeight: active ? 600 : 400,
     cursor: 'pointer', transition: 'all 0.15s',
   })
 
@@ -199,7 +199,7 @@ export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sig
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
       {/* Mode tabs */}
-      <div style={{ display: 'flex', background: '#0d0f1a', borderRadius: 8, border: '1px solid #1e2130', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', background: 'var(--surface-inset)', borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>
         <button type="button" style={tabStyle(mode === 'draw')} onClick={() => setMode('draw')}>✍️ Draw</button>
         <button type="button" style={tabStyle(mode === 'type')} onClick={() => setMode('type')}>Aa  Type</button>
       </div>
@@ -207,7 +207,7 @@ export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sig
       {mode === 'draw' ? (
         <>
           {/* Canvas */}
-          <div style={{ position: 'relative', background: '#ffffff', border: '1px solid #2a2d3a', borderRadius: 10, overflow: 'hidden' }}>
+          <div style={{ position: 'relative', background: '#ffffff', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
             <canvas
               ref={canvasRef}
               width={560} height={140}
@@ -216,11 +216,11 @@ export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sig
               onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
             />
             <button onClick={drawBaseline} type="button"
-              style={{ position: 'absolute', top: 8, right: 8, background: '#1e2130', border: '1px solid #2a2d3a', borderRadius: 6, padding: '3px 9px', fontSize: 11, color: '#6b7280', cursor: 'pointer' }}>
+              style={{ position: 'absolute', top: 8, right: 8, background: 'var(--border)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 9px', fontSize: 11, color: 'var(--text-muted)', cursor: 'pointer' }}>
               Clear
             </button>
             {!hasDrawn && (
-              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: 12, color: '#374151', pointerEvents: 'none', userSelect: 'none' }}>
+              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: 12, color: 'var(--text-faint)', pointerEvents: 'none', userSelect: 'none' }}>
                 Draw your signature here
               </div>
             )}
@@ -228,31 +228,31 @@ export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sig
 
           {/* Printed name */}
           <div>
-            <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Full Name (printed)</div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Full Name (printed)</div>
             <input type="text" value={typedName} onChange={e => setTypedName(e.target.value)}
               placeholder="Type your full legal name"
-              style={{ width: '100%', background: '#0a0c14', border: '1px solid #2a2d3a', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: '#e5e7eb', outline: 'none', boxSizing: 'border-box' }} />
+              style={{ width: '100%', background: 'var(--page)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }} />
           </div>
         </>
       ) : (
         <>
           {/* Type input */}
           <div>
-            <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Type your signature</div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Type your signature</div>
             <input type="text" value={typedSig} onChange={e => setTypedSig(e.target.value)}
               placeholder="Your full name"
-              style={{ width: '100%', background: '#0a0c14', border: '1px solid #2a2d3a', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: '#e5e7eb', outline: 'none', boxSizing: 'border-box' }} />
+              style={{ width: '100%', background: 'var(--page)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }} />
           </div>
 
           {/* Cursive preview */}
-          <div style={{ position: 'relative', background: '#ffffff', border: '1px solid #2a2d3a', borderRadius: 10, height: 116, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+          <div style={{ position: 'relative', background: '#ffffff', border: '1px solid var(--border)', borderRadius: 10, height: 116, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
             {/* baseline */}
-            <div style={{ position: 'absolute', bottom: 24, left: 16, right: 16, borderBottom: '1px dashed #2a2d3a' }} />
+            <div style={{ position: 'absolute', bottom: 24, left: 16, right: 16, borderBottom: '1px dashed var(--border)' }} />
             <div style={{
               paddingLeft: 20, paddingBottom: 8, width: '100%', overflow: 'hidden', whiteSpace: 'nowrap',
               fontFamily: '"Dancing Script", "Brush Script MT", "Segoe Script", cursive',
               fontSize: typedSig.length > 20 ? 'clamp(24px, 3.5vw, 40px)' : 48,
-              color: typedSig ? '#1f2937' : '#9ca3af',
+              color: typedSig ? 'var(--surface-inset)' : 'var(--text-secondary)',
               userSelect: 'none', pointerEvents: 'none',
             }}>
               {typedSig || 'Preview'}
@@ -261,17 +261,17 @@ export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sig
         </>
       )}
 
-      {error && <p style={{ margin: 0, fontSize: 12, color: '#f87171' }}>{error}</p>}
+      {error && <p style={{ margin: 0, fontSize: 12, color: 'var(--danger)' }}>{error}</p>}
 
       <div style={{ display: 'flex', gap: 8 }}>
         {onCancel && (
           <button type="button" onClick={onCancel}
-            style={{ flex: 1, padding: '10px', background: 'transparent', color: '#6b7280', border: '1px solid #2a2d3e', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>
+            style={{ flex: 1, padding: '10px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>
             Cancel
           </button>
         )}
         <button type="button" onClick={handleSubmit} disabled={!canSubmit}
-          style={{ flex: 2, padding: '10px 20px', background: canSubmit ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : '#1e2130', color: canSubmit ? '#fff' : '#4b5563', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed' }}>
+          style={{ flex: 2, padding: '10px 20px', background: canSubmit ? 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))' : 'var(--border)', color: canSubmit ? '#fff' : 'var(--text-faint)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed' }}>
           {loading || typeRendering ? 'Signing…' : buttonLabel}
         </button>
       </div>

@@ -39,12 +39,12 @@ const CI_YEAR = 2026
 const QUARTERS = [{ label: 'Q1', n: 1 }, { label: 'Q2', n: 2 }, { label: 'Q3', n: 3 }, { label: 'Q4', n: 4 }]
 const PULSE_EMOJIS: Record<number, string> = { 1: '😔', 2: '😕', 3: '😐', 4: '🙂', 5: '😄' }
 const PULSE_LABELS = ['', 'Struggling', 'Below Expectations', 'On Track', 'Going Well', 'Thriving']
-const PULSE_COLORS = ['', '#f87171', '#fb923c', '#fbbf24', '#34d399', '#34d399']
+const PULSE_COLORS = ['', 'var(--danger)', 'var(--warning)', 'var(--warning)', 'var(--success)', 'var(--success)']
 const GOAL_STATUSES: { value: GoalProgress['checkin_status']; label: string; color: string; bg: string }[] = [
-  { value: 'on_track',  label: 'On Track',  color: '#34d399', bg: 'rgba(52,211,153,0.12)' },
-  { value: 'completed', label: 'Completed', color: '#818cf8', bg: 'rgba(129,140,248,0.12)' },
-  { value: 'at_risk',   label: 'At Risk',   color: '#fbbf24', bg: 'rgba(251,191,36,0.12)' },
-  { value: 'blocked',   label: 'Blocked',   color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+  { value: 'on_track',  label: 'On Track',  color: 'var(--success)', bg: 'rgba(52,211,153,0.12)' },
+  { value: 'completed', label: 'Completed', color: 'var(--brand)', bg: 'rgba(129,140,248,0.12)' },
+  { value: 'at_risk',   label: 'At Risk',   color: 'var(--warning)', bg: 'rgba(251,191,36,0.12)' },
+  { value: 'blocked',   label: 'Blocked',   color: 'var(--danger)', bg: 'rgba(248,113,113,0.12)' },
 ]
 
 export default function ManagerDashboard({ currentUser, directReports, reviews, selfAssessments }: Props) {
@@ -81,14 +81,14 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
     ...unreviewedEmployees.map(dr => ({
       name: dr.name || dr.email,
       action: saSubmittedIds.has(dr.id) ? 'Self-assessment submitted — ready for review' : 'No review started yet',
-      color: saSubmittedIds.has(dr.id) ? '#6366f1' : '#f87171',
+      color: saSubmittedIds.has(dr.id) ? 'var(--brand)' : 'var(--danger)',
       cta: 'Start Review',
       ctaFn: () => router.push('/performance-review'),
     })),
     ...pendingSignatureReviews.map(r => ({
       name: r.employee_name,
       action: 'Waiting for employee signature',
-      color: '#fbbf24',
+      color: 'var(--warning)',
     })),
   ]
 
@@ -150,40 +150,40 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
   }
 
   const card: React.CSSProperties = {
-    background: '#1e293b', borderRadius: 12, padding: '20px 24px', border: '1px solid #1e3a5f',
+    background: 'var(--surface-raised)', borderRadius: 12, padding: '20px 24px', border: '1px solid var(--info-border)',
   }
   const tab = (active: boolean): React.CSSProperties => ({
     padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
-    background: active ? '#6366f1' : 'transparent', color: active ? '#fff' : '#94a3b8', fontWeight: 600, fontSize: 14,
+    background: active ? 'var(--brand)' : 'transparent', color: active ? '#fff' : 'var(--text-secondary)', fontWeight: 600, fontSize: 14,
   })
   const sectionLabel = (text: string) => (
-    <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>{text}</div>
+    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>{text}</div>
   )
 
   const statCard = (label: string, value: React.ReactNode, sub: string, accent: string) => (
-    <div style={{ background: '#1e293b', borderRadius: 12, padding: '20px 24px', border: '1px solid #1e3a5f' }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>{label}</div>
+    <div style={{ background: 'var(--surface-raised)', borderRadius: 12, padding: '20px 24px', border: '1px solid var(--info-border)' }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>{label}</div>
       <div style={{ fontSize: 34, fontWeight: 800, color: accent, lineHeight: 1, marginBottom: 6 }}>{value}</div>
-      <div style={{ fontSize: 12, color: '#64748b' }}>{sub}</div>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{sub}</div>
     </div>
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f172a', color: '#e2e8f0', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--page)', color: 'var(--text)', fontFamily: 'system-ui, sans-serif' }}>
 
       {/* ── Header ── */}
-      <div style={{ background: '#1e293b', borderBottom: '1px solid #1e3a5f', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ background: 'var(--surface-raised)', borderBottom: '1px solid var(--info-border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 20, color: '#f1f5f9' }}>Manager Portal</div>
-          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{currentUser.name || currentUser.email}</div>
+          <div style={{ fontWeight: 800, fontSize: 20, color: 'var(--text-strong)' }}>Manager Portal</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{currentUser.name || currentUser.email}</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => router.push('/performance-review')}
-            style={{ padding: '8px 16px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
+            style={{ padding: '8px 16px', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
             + New Review
           </button>
           <button onClick={async () => { await fetch('/api/auth/signout', { method: 'POST' }); router.push('/login') }}
-            style={{ padding: '8px 16px', background: 'transparent', color: '#94a3b8', border: '1px solid #1e3a5f', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
+            style={{ padding: '8px 16px', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--info-border)', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
             Sign out
           </button>
         </div>
@@ -191,7 +191,7 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
 
       <div style={{ padding: '24px 32px' }}>
         {/* ── Tabs ── */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: '#1e293b', padding: 4, borderRadius: 10, border: '1px solid #1e3a5f', width: 'fit-content' }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'var(--surface-raised)', padding: 4, borderRadius: 10, border: '1px solid var(--info-border)', width: 'fit-content' }}>
           <button style={tab(activeTab === 'dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
           <button style={tab(activeTab === 'team')} onClick={() => setActiveTab('team')}>My Team ({directReports.length})</button>
           <button style={tab(activeTab === 'reviews')} onClick={() => setActiveTab('reviews')}>Reviews ({reviews.length})</button>
@@ -203,10 +203,10 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
           <div>
             {/* Welcome */}
             <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: '#f1f5f9' }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-strong)' }}>
                 Welcome back{currentUser.name ? `, ${currentUser.name.split(' ')[0]}` : ''}
               </div>
-              <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
                 Here&apos;s your team&apos;s performance overview
               </div>
             </div>
@@ -215,30 +215,30 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
               {statCard(
                 'Team Size',
-                <span style={{ color: '#f1f5f9' }}>{directReports.length}</span>,
+                <span style={{ color: 'var(--text-strong)' }}>{directReports.length}</span>,
                 'Active employees',
-                '#f1f5f9'
+                'var(--text-strong)'
               )}
               {statCard(
                 'Self-Assessments',
                 <>
-                  <span style={{ color: saSubmittedCount > 0 ? '#34d399' : '#f1f5f9' }}>{saSubmittedCount}</span>
-                  <span style={{ fontSize: 16, color: '#475569', fontWeight: 600 }}>/{directReports.length}</span>
+                  <span style={{ color: saSubmittedCount > 0 ? 'var(--success)' : 'var(--text-strong)' }}>{saSubmittedCount}</span>
+                  <span style={{ fontSize: 16, color: 'var(--text-faint)', fontWeight: 600 }}>/{directReports.length}</span>
                 </>,
                 'Submitted this cycle',
-                '#34d399'
+                'var(--success)'
               )}
               {statCard(
                 'In Progress',
-                <span style={{ color: reviewsInProgress > 0 ? '#fbbf24' : '#f1f5f9' }}>{reviewsInProgress}</span>,
+                <span style={{ color: reviewsInProgress > 0 ? 'var(--warning)' : 'var(--text-strong)' }}>{reviewsInProgress}</span>,
                 'Reviews underway',
-                '#fbbf24'
+                'var(--warning)'
               )}
               {statCard(
                 'Completed',
-                <span style={{ color: reviewsComplete > 0 ? '#818cf8' : '#f1f5f9' }}>{reviewsComplete}</span>,
+                <span style={{ color: reviewsComplete > 0 ? 'var(--brand)' : 'var(--text-strong)' }}>{reviewsComplete}</span>,
                 'Reviews finalized',
-                '#818cf8'
+                'var(--brand)'
               )}
             </div>
 
@@ -248,27 +248,27 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
               {/* Action Items */}
               <div style={card}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                  <AlertCircle size={16} color="#fbbf24" />
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>Action Items</div>
+                  <AlertCircle size={16} color="var(--warning)" />
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-strong)' }}>Action Items</div>
                   {actionItems.length > 0 && (
-                    <span style={{ padding: '1px 7px', borderRadius: 99, background: '#fbbf2420', color: '#fbbf24', fontSize: 11, fontWeight: 700, marginLeft: 'auto' }}>
+                    <span style={{ padding: '1px 7px', borderRadius: 99, background: '#fbbf2420', color: 'var(--warning)', fontSize: 11, fontWeight: 700, marginLeft: 'auto' }}>
                       {actionItems.length}
                     </span>
                   )}
                 </div>
                 {actionItems.length === 0 ? (
-                  <div style={{ color: '#34d399', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0' }}>
+                  <div style={{ color: 'var(--success)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0' }}>
                     <CheckCircle2 size={16} /> All caught up — nothing pending!
                   </div>
                 ) : actionItems.map((item, i) => (
-                  <div key={i} style={{ padding: '12px 0', borderBottom: i < actionItems.length - 1 ? '1px solid #1e3a5f' : 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div key={i} style={{ padding: '12px 0', borderBottom: i < actionItems.length - 1 ? '1px solid var(--info-border)' : 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{ width: 7, height: 7, borderRadius: '50%', background: item.color, flexShrink: 0, marginTop: 2 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
-                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{item.action}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{item.action}</div>
                     </div>
                     {item.cta && item.ctaFn && (
-                      <button onClick={item.ctaFn} style={{ padding: '4px 10px', background: '#1e3a5f', color: '#93c5fd', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 600, flexShrink: 0 }}>
+                      <button onClick={item.ctaFn} style={{ padding: '4px 10px', background: 'var(--info-border)', color: 'var(--info)', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 600, flexShrink: 0 }}>
                         {item.cta}
                       </button>
                     )}
@@ -279,36 +279,36 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
               {/* Team Overview */}
               <div style={card}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                  <Users size={16} color="#6366f1" />
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>Team Overview</div>
+                  <Users size={16} color="var(--brand)" />
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-strong)' }}>Team Overview</div>
                 </div>
                 {directReports.length === 0 ? (
-                  <div style={{ color: '#475569', fontSize: 13, padding: '12px 0' }}>
+                  <div style={{ color: 'var(--text-faint)', fontSize: 13, padding: '12px 0' }}>
                     No direct reports assigned yet. Ask your admin to assign employees.
                   </div>
                 ) : directReports.map((dr, i) => {
                   const sa = saMap[dr.id]
                   const rev = reviews.find(r => r.employee_id === dr.id)
                   return (
-                    <div key={dr.id} style={{ padding: '10px 0', borderBottom: i < directReports.length - 1 ? '1px solid #1e3a5f' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <div key={dr.id} style={{ padding: '10px 0', borderBottom: i < directReports.length - 1 ? '1px solid var(--info-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dr.name || dr.email}</div>
-                        <div style={{ fontSize: 11, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dr.email}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dr.name || dr.email}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dr.email}</div>
                       </div>
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                         {sa ? (
-                          <span style={{ padding: '2px 7px', borderRadius: 99, background: sa.status === 'submitted' ? '#6366f122' : '#f59e0b22', color: sa.status === 'submitted' ? '#818cf8' : '#f59e0b', fontSize: 10, fontWeight: 700 }}>
+                          <span style={{ padding: '2px 7px', borderRadius: 99, background: sa.status === 'submitted' ? '#6366f122' : '#f59e0b22', color: sa.status === 'submitted' ? 'var(--brand)' : 'var(--warning)', fontSize: 10, fontWeight: 700 }}>
                             SA {sa.status}
                           </span>
                         ) : (
-                          <span style={{ padding: '2px 7px', borderRadius: 99, background: '#47556922', color: '#64748b', fontSize: 10, fontWeight: 700 }}>No SA</span>
+                          <span style={{ padding: '2px 7px', borderRadius: 99, background: '#47556922', color: 'var(--text-muted)', fontSize: 10, fontWeight: 700 }}>No SA</span>
                         )}
                         {rev ? (
-                          <span style={{ padding: '2px 7px', borderRadius: 99, background: rev.drive_url ? '#34d39922' : '#fbbf2422', color: rev.drive_url ? '#34d399' : '#fbbf24', fontSize: 10, fontWeight: 700 }}>
+                          <span style={{ padding: '2px 7px', borderRadius: 99, background: rev.drive_url ? '#34d39922' : '#fbbf2422', color: rev.drive_url ? 'var(--success)' : 'var(--warning)', fontSize: 10, fontWeight: 700 }}>
                             {rev.drive_url ? 'Done' : `Step ${rev.step}/${rev.max_step}`}
                           </span>
                         ) : (
-                          <span style={{ padding: '2px 7px', borderRadius: 99, background: '#f8711122', color: '#fb923c', fontSize: 10, fontWeight: 700 }}>No Review</span>
+                          <span style={{ padding: '2px 7px', borderRadius: 99, background: '#f8711122', color: 'var(--warning)', fontSize: 10, fontWeight: 700 }}>No Review</span>
                         )}
                       </div>
                     </div>
@@ -322,33 +322,33 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
               <div style={card}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <FileText size={16} color="#6366f1" />
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>Recent Reviews</div>
+                    <FileText size={16} color="var(--brand)" />
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-strong)' }}>Recent Reviews</div>
                   </div>
-                  <button onClick={() => setActiveTab('reviews')} style={{ fontSize: 12, color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>View all →</button>
+                  <button onClick={() => setActiveTab('reviews')} style={{ fontSize: 12, color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>View all →</button>
                 </div>
                 {reviews.slice(0, 5).map((r, i) => (
-                  <div key={r.id} style={{ padding: '12px 0', borderBottom: i < Math.min(reviews.length, 5) - 1 ? '1px solid #1e3a5f' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                  <div key={r.id} style={{ padding: '12px 0', borderBottom: i < Math.min(reviews.length, 5) - 1 ? '1px solid var(--info-border)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{r.employee_name}</div>
-                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{r.employee_name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                         {r.employee_position} · Step {r.step}/{r.max_step} · {new Date(r.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
                       {r.manager_signed_at && !r.employee_signed_at && (
-                        <span style={{ fontSize: 10, color: '#fbbf24', background: '#fbbf2420', border: '1px solid #fbbf2440', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>Awaiting Signature</span>
+                        <span style={{ fontSize: 10, color: 'var(--warning)', background: '#fbbf2420', border: '1px solid #fbbf2440', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>Awaiting Signature</span>
                       )}
                       {r.employee_signed_at && (
-                        <span style={{ fontSize: 10, color: '#34d399', background: '#34d39920', border: '1px solid #34d39940', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>Signed</span>
+                        <span style={{ fontSize: 10, color: 'var(--success)', background: '#34d39920', border: '1px solid #34d39940', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>Signed</span>
                       )}
                       {r.drive_url && (
-                        <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ padding: '3px 8px', background: '#065f46', color: '#34d399', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none' }}>
+                        <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ padding: '3px 8px', background: 'var(--success-text)', color: 'var(--success)', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none' }}>
                           Drive
                         </a>
                       )}
                       <button onClick={() => router.push('/performance-review')}
-                        style={{ padding: '3px 10px', background: '#1e3a5f', color: '#93c5fd', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
+                        style={{ padding: '3px 10px', background: 'var(--info-border)', color: 'var(--info)', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
                         Open
                       </button>
                     </div>
@@ -361,10 +361,10 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
             {reviews.length === 0 && directReports.length > 0 && (
               <div style={{ ...card, textAlign: 'center', padding: '40px 24px' }}>
                 <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9', marginBottom: 6 }}>No reviews yet</div>
-                <div style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>Start a performance review for one of your team members.</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 6 }}>No reviews yet</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Start a performance review for one of your team members.</div>
                 <button onClick={() => router.push('/performance-review')}
-                  style={{ padding: '10px 24px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
+                  style={{ padding: '10px 24px', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
                   + New Review
                 </button>
               </div>
@@ -373,8 +373,8 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
             {directReports.length === 0 && (
               <div style={{ ...card, textAlign: 'center', padding: '40px 24px' }}>
                 <div style={{ fontSize: 36, marginBottom: 12 }}>👥</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9', marginBottom: 6 }}>No team members yet</div>
-                <div style={{ fontSize: 13, color: '#64748b' }}>Ask your admin to assign employees to your team.</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 6 }}>No team members yet</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Ask your admin to assign employees to your team.</div>
               </div>
             )}
           </div>
@@ -383,7 +383,7 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
         {/* ── MY TEAM ── */}
         {activeTab === 'team' && (
           directReports.length === 0 ? (
-            <div style={{ ...card, color: '#475569', textAlign: 'center' }}>
+            <div style={{ ...card, color: 'var(--text-faint)', textAlign: 'center' }}>
               No direct reports assigned yet. Ask your admin to assign employees to your team.
             </div>
           ) : (
@@ -392,20 +392,20 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
                 const sa = saMap[r.id]
                 return (
                   <div key={r.id} style={card}>
-                    <div style={{ fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>{r.name || r.email}</div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>{r.email}</div>
+                    <div style={{ fontWeight: 700, color: 'var(--text-strong)', marginBottom: 4 }}>{r.name || r.email}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>{r.email}</div>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <span style={{ padding: '2px 8px', borderRadius: 99, background: '#34d39922', color: '#34d399', fontSize: 11, fontWeight: 700 }}>Active</span>
+                      <span style={{ padding: '2px 8px', borderRadius: 99, background: '#34d39922', color: 'var(--success)', fontSize: 11, fontWeight: 700 }}>Active</span>
                       {sa ? (
-                        <span style={{ padding: '2px 8px', borderRadius: 99, background: sa.status === 'submitted' ? '#6366f122' : '#f59e0b22', color: sa.status === 'submitted' ? '#818cf8' : '#f59e0b', fontSize: 11, fontWeight: 700 }}>
+                        <span style={{ padding: '2px 8px', borderRadius: 99, background: sa.status === 'submitted' ? '#6366f122' : '#f59e0b22', color: sa.status === 'submitted' ? 'var(--brand)' : 'var(--warning)', fontSize: 11, fontWeight: 700 }}>
                           Self-assessment: {sa.status}
                         </span>
                       ) : (
-                        <span style={{ padding: '2px 8px', borderRadius: 99, background: '#47556922', color: '#64748b', fontSize: 11, fontWeight: 700 }}>No self-assessment</span>
+                        <span style={{ padding: '2px 8px', borderRadius: 99, background: '#47556922', color: 'var(--text-muted)', fontSize: 11, fontWeight: 700 }}>No self-assessment</span>
                       )}
                     </div>
                     <button onClick={() => router.push('/performance-review')}
-                      style={{ marginTop: 12, width: '100%', padding: '8px 0', background: '#1e3a5f', color: '#93c5fd', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                      style={{ marginTop: 12, width: '100%', padding: '8px 0', background: 'var(--info-border)', color: 'var(--info)', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
                       Start Review
                     </button>
                   </div>
@@ -419,24 +419,24 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
         {activeTab === 'reviews' && (
           <div style={card}>
             {reviews.length === 0 ? (
-              <div style={{ color: '#475569', textAlign: 'center' }}>No reviews yet. Click + New Review to start.</div>
+              <div style={{ color: 'var(--text-faint)', textAlign: 'center' }}>No reviews yet. Click + New Review to start.</div>
             ) : reviews.map((r, i) => (
-              <div key={r.id} style={{ padding: '12px 0', borderBottom: i < reviews.length - 1 ? '1px solid #1e3a5f' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div key={r.id} style={{ padding: '12px 0', borderBottom: i < reviews.length - 1 ? '1px solid var(--info-border)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontWeight: 600, color: '#e2e8f0' }}>{r.employee_name}</div>
-                  <div style={{ fontSize: 12, color: '#64748b' }}>
+                  <div style={{ fontWeight: 600, color: 'var(--text)' }}>{r.employee_name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                     {r.employee_position} · Step {r.step}/{r.max_step} · Updated {new Date(r.updated_at).toLocaleDateString()}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {r.drive_url && (
                     <a href={r.drive_url} target="_blank" rel="noopener noreferrer"
-                      style={{ padding: '4px 10px', background: '#065f46', color: '#34d399', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+                      style={{ padding: '4px 10px', background: 'var(--success-text)', color: 'var(--success)', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
                       Drive
                     </a>
                   )}
                   <button onClick={() => router.push('/performance-review')}
-                    style={{ padding: '4px 10px', background: '#1e3a5f', color: '#93c5fd', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                    style={{ padding: '4px 10px', background: 'var(--info-border)', color: 'var(--info)', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
                     Open
                   </button>
                 </div>
@@ -450,19 +450,19 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
           <div>
             {!ciEmployee ? (
               <div>
-                <div style={{ fontSize: 14, color: '#94a3b8', marginBottom: 16 }}>Select a team member to view or fill in their quarterly check-in.</div>
+                <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>Select a team member to view or fill in their quarterly check-in.</div>
                 {directReports.length === 0 ? (
-                  <div style={{ ...card, color: '#475569', textAlign: 'center' }}>No direct reports assigned yet.</div>
+                  <div style={{ ...card, color: 'var(--text-faint)', textAlign: 'center' }}>No direct reports assigned yet.</div>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
                     {directReports.map(r => (
                       <button key={r.id} onClick={() => setCiEmployee(r)}
-                        style={{ ...card, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #1e3a5f', transition: 'border-color 0.15s' }}>
+                        style={{ ...card, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid var(--info-border)', transition: 'border-color 0.15s' }}>
                         <div>
-                          <div style={{ fontWeight: 700, color: '#f1f5f9', fontSize: 14 }}>{r.name || r.email}</div>
-                          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{r.email}</div>
+                          <div style={{ fontWeight: 700, color: 'var(--text-strong)', fontSize: 14 }}>{r.name || r.email}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{r.email}</div>
                         </div>
-                        <div style={{ fontSize: 20, color: '#475569' }}>→</div>
+                        <div style={{ fontSize: 20, color: 'var(--text-faint)' }}>→</div>
                       </button>
                     ))}
                   </div>
@@ -473,12 +473,12 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
                 {/* Back + header */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                   <button onClick={() => setCiEmployee(null)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'transparent', border: '1px solid #1e3a5f', color: '#94a3b8', padding: '6px 12px', borderRadius: 7, cursor: 'pointer', fontSize: 13 }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'transparent', border: '1px solid var(--info-border)', color: 'var(--text-secondary)', padding: '6px 12px', borderRadius: 7, cursor: 'pointer', fontSize: 13 }}>
                     <ChevronLeft size={14} /> Back
                   </button>
                   <div>
-                    <div style={{ fontWeight: 700, color: '#f1f5f9', fontSize: 16 }}>{ciEmployee.name || ciEmployee.email}</div>
-                    <div style={{ fontSize: 12, color: '#64748b' }}>Quarterly Check-in · {CI_YEAR}</div>
+                    <div style={{ fontWeight: 700, color: 'var(--text-strong)', fontSize: 16 }}>{ciEmployee.name || ciEmployee.email}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Quarterly Check-in · {CI_YEAR}</div>
                   </div>
                 </div>
 
@@ -486,14 +486,14 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
                 <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
                   {QUARTERS.map(q => (
                     <button key={q.n} onClick={() => setCiActiveQ(q.n)}
-                      style={{ padding: '7px 18px', borderRadius: 8, border: `1px solid ${ciActiveQ === q.n ? '#6366f1' : '#1e3a5f'}`, background: ciActiveQ === q.n ? '#6366f1' : 'transparent', color: ciActiveQ === q.n ? '#fff' : '#94a3b8', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                      style={{ padding: '7px 18px', borderRadius: 8, border: `1px solid ${ciActiveQ === q.n ? 'var(--brand)' : 'var(--info-border)'}`, background: ciActiveQ === q.n ? 'var(--brand)' : 'transparent', color: ciActiveQ === q.n ? '#fff' : 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                       {q.label}
                     </button>
                   ))}
                 </div>
 
                 {ciLoading ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#64748b', fontSize: 13 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-muted)', fontSize: 13 }}>
                     <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Loading…
                   </div>
                 ) : (
@@ -501,17 +501,17 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
 
                     {/* ── LEFT: Employee's check-in (read-only) ── */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                      <div style={{ ...card, background: '#13151f', border: '1px solid #1e2130' }}>
+                      <div style={{ ...card, background: 'var(--surface)', border: '1px solid var(--border)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>
+                          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-strong)' }}>
                             {ciEmployee.name?.split(' ')[0] || 'Employee'}&apos;s Check-in
                           </h3>
                           {ciData?.employee_submitted_at ? (
-                            <span style={{ fontSize: 11, color: '#34d399', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: 11, color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 4 }}>
                               <CheckCircle2 size={12} /> {new Date(ciData.employee_submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                             </span>
                           ) : (
-                            <span style={{ fontSize: 11, color: '#475569', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: 11, color: 'var(--text-faint)', display: 'flex', alignItems: 'center', gap: 4 }}>
                               <Clock size={12} /> Not submitted
                             </span>
                           )}
@@ -531,39 +531,39 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
                             {ciData.employee_update && (
                               <div>
                                 {sectionLabel('Update')}
-                                <p style={{ margin: 0, fontSize: 13, color: '#94a3b8', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{ciData.employee_update}</p>
+                                <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{ciData.employee_update}</p>
                               </div>
                             )}
                           </>
                         ) : (
-                          <div style={{ color: '#475569', fontSize: 13 }}>Employee hasn&apos;t submitted their check-in yet.</div>
+                          <div style={{ color: 'var(--text-faint)', fontSize: 13 }}>Employee hasn&apos;t submitted their check-in yet.</div>
                         )}
                       </div>
 
                       {/* Employee goal progress */}
-                      <div style={{ ...card, background: '#13151f', border: '1px solid #1e2130' }}>
-                        <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>
+                      <div style={{ ...card, background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                        <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--text-strong)' }}>
                           {ciEmployee.name?.split(' ')[0] || 'Employee'}&apos;s Goal Progress
                         </h3>
                         {employeeGoals.length === 0 ? (
-                          <div style={{ fontSize: 13, color: '#475569', fontStyle: 'italic' }}>No goals set.</div>
+                          <div style={{ fontSize: 13, color: 'var(--text-faint)', fontStyle: 'italic' }}>No goals set.</div>
                         ) : employeeGoals.map((g, gi) => {
                           const savedProgress = (ciData?.employee_goal_progress ?? []).find(p => p.id === g.id)
                           const statusMeta = GOAL_STATUSES.find(s => s.value === savedProgress?.checkin_status)
                           return (
-                            <div key={g.id} style={{ marginBottom: gi < employeeGoals.length - 1 ? 14 : 0, paddingBottom: gi < employeeGoals.length - 1 ? 14 : 0, borderBottom: gi < employeeGoals.length - 1 ? '1px solid #1e2130' : 'none' }}>
+                            <div key={g.id} style={{ marginBottom: gi < employeeGoals.length - 1 ? 14 : 0, paddingBottom: gi < employeeGoals.length - 1 ? 14 : 0, borderBottom: gi < employeeGoals.length - 1 ? '1px solid var(--border)' : 'none' }}>
                               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
-                                <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600, lineHeight: 1.4 }}>{g.title}</div>
+                                <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600, lineHeight: 1.4 }}>{g.title}</div>
                                 {statusMeta ? (
                                   <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 12, flexShrink: 0, background: statusMeta.bg, color: statusMeta.color }}>{statusMeta.label}</span>
                                 ) : (
-                                  <span style={{ fontSize: 11, color: '#475569' }}>—</span>
+                                  <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>—</span>
                                 )}
                               </div>
                               {savedProgress?.notes && (
-                                <p style={{ margin: 0, fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>{savedProgress.notes}</p>
+                                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>{savedProgress.notes}</p>
                               )}
-                              <div style={{ marginTop: 4, fontSize: 11, color: '#475569' }}>
+                              <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text-faint)' }}>
                                 {g.target_date && `Target: ${g.target_date}`}
                               </div>
                             </div>
@@ -574,11 +574,11 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
 
                     {/* ── RIGHT: Manager's response ── */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                      <div style={{ ...card, background: '#13151f', border: '1px solid #1e2130' }}>
+                      <div style={{ ...card, background: 'var(--surface)', border: '1px solid var(--border)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>My Response</h3>
+                          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-strong)' }}>My Response</h3>
                           {mgrSubmittedAt && (
-                            <span style={{ fontSize: 11, color: '#818cf8', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: 11, color: 'var(--brand)', display: 'flex', alignItems: 'center', gap: 4 }}>
                               <CheckCircle2 size={12} /> Submitted {new Date(mgrSubmittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                             </span>
                           )}
@@ -588,7 +588,7 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
                         <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
                           {[1,2,3,4,5].map(n => (
                             <button key={n} onClick={() => { if (!mgrSubmittedAt) setMgrPulse(n) }}
-                              style={{ width: 44, height: 44, borderRadius: 9, border: `2px solid ${mgrPulse === n ? '#6366f1' : '#1e3a5f'}`, background: mgrPulse === n ? 'rgba(99,102,241,0.18)' : 'transparent', fontSize: 20, cursor: mgrSubmittedAt ? 'default' : 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              style={{ width: 44, height: 44, borderRadius: 9, border: `2px solid ${mgrPulse === n ? 'var(--brand)' : 'var(--info-border)'}`, background: mgrPulse === n ? 'rgba(99,102,241,0.18)' : 'transparent', fontSize: 20, cursor: mgrSubmittedAt ? 'default' : 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                               title={`${n} — ${PULSE_LABELS[n]}`}>
                               {PULSE_EMOJIS[n]}
                             </button>
@@ -600,16 +600,16 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
                         {sectionLabel('Notes to employee')}
                         <textarea value={mgrUpdate} onChange={e => { if (!mgrSubmittedAt) setMgrUpdate(e.target.value) }}
                           disabled={!!mgrSubmittedAt} placeholder="Share your observations, feedback, and any priorities for next quarter…"
-                          rows={4} style={{ width: '100%', background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 8, padding: '10px 12px', color: '#e2e8f0', fontSize: 13, resize: 'vertical', boxSizing: 'border-box', outline: 'none', opacity: mgrSubmittedAt ? 0.6 : 1 }} />
+                          rows={4} style={{ width: '100%', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 13, resize: 'vertical', boxSizing: 'border-box', outline: 'none', opacity: mgrSubmittedAt ? 0.6 : 1 }} />
 
                         {!mgrSubmittedAt && (
                           <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
                             <button onClick={saveMgrDraft} disabled={ciSaving}
-                              style={{ padding: '8px 18px', background: 'transparent', color: ciSavedFlash ? '#34d399' : '#94a3b8', border: `1px solid ${ciSavedFlash ? '#34d399' : '#1e3a5f'}`, borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              style={{ padding: '8px 18px', background: 'transparent', color: ciSavedFlash ? 'var(--success)' : 'var(--text-secondary)', border: `1px solid ${ciSavedFlash ? 'var(--success)' : 'var(--info-border)'}`, borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                               {ciSavedFlash ? <><Check size={12} /> Saved</> : ciSaving ? <><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Saving…</> : 'Save Draft'}
                             </button>
                             <button onClick={submitMgrCheckin} disabled={ciSaving || mgrPulse === 0}
-                              style={{ padding: '8px 20px', background: mgrPulse === 0 ? '#1e3a5f' : '#6366f1', color: mgrPulse === 0 ? '#475569' : '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: mgrPulse === 0 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              style={{ padding: '8px 20px', background: mgrPulse === 0 ? 'var(--info-border)' : 'var(--brand)', color: mgrPulse === 0 ? 'var(--text-faint)' : '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: mgrPulse === 0 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                               <Send size={12} /> Submit Response
                             </button>
                           </div>
@@ -618,22 +618,22 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
 
                       {/* Manager goal assessment */}
                       {employeeGoals.length > 0 && (
-                        <div style={{ ...card, background: '#13151f', border: '1px solid #1e2130' }}>
-                          <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>My Goal Assessment</h3>
+                        <div style={{ ...card, background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                          <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--text-strong)' }}>My Goal Assessment</h3>
                           {mgrGoalProgress.map((g, gi) => (
-                            <div key={g.id} style={{ marginBottom: gi < mgrGoalProgress.length - 1 ? 16 : 0, paddingBottom: gi < mgrGoalProgress.length - 1 ? 16 : 0, borderBottom: gi < mgrGoalProgress.length - 1 ? '1px solid #1e2130' : 'none' }}>
-                              <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600, marginBottom: 8, lineHeight: 1.4 }}>{g.title}</div>
+                            <div key={g.id} style={{ marginBottom: gi < mgrGoalProgress.length - 1 ? 16 : 0, paddingBottom: gi < mgrGoalProgress.length - 1 ? 16 : 0, borderBottom: gi < mgrGoalProgress.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                              <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600, marginBottom: 8, lineHeight: 1.4 }}>{g.title}</div>
                               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                                 {GOAL_STATUSES.map(s => (
                                   <button key={s.value} onClick={() => { if (!mgrSubmittedAt) setMgrGoalProgress(prev => prev.map((p, i) => i === gi ? { ...p, checkin_status: s.value } : p)) }}
-                                    style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: mgrSubmittedAt ? 'default' : 'pointer', border: `1px solid ${g.checkin_status === s.value ? s.color : 'transparent'}`, background: g.checkin_status === s.value ? s.bg : '#0d0f1a', color: g.checkin_status === s.value ? s.color : '#475569', transition: 'all 0.15s' }}>
+                                    style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: mgrSubmittedAt ? 'default' : 'pointer', border: `1px solid ${g.checkin_status === s.value ? s.color : 'transparent'}`, background: g.checkin_status === s.value ? s.bg : 'var(--surface-inset)', color: g.checkin_status === s.value ? s.color : 'var(--text-faint)', transition: 'all 0.15s' }}>
                                     {s.label}
                                   </button>
                                 ))}
                               </div>
                               <textarea value={g.notes} onChange={e => { if (!mgrSubmittedAt) setMgrGoalProgress(prev => prev.map((p, i) => i === gi ? { ...p, notes: e.target.value } : p)) }}
                                 disabled={!!mgrSubmittedAt} placeholder="Notes on this goal…" rows={2}
-                                style={{ width: '100%', background: '#0d0f1a', border: '1px solid #1e2130', borderRadius: 7, padding: '8px 10px', color: mgrSubmittedAt ? '#475569' : '#e2e8f0', fontSize: 12, resize: 'vertical', boxSizing: 'border-box', outline: 'none' }} />
+                                style={{ width: '100%', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 7, padding: '8px 10px', color: mgrSubmittedAt ? 'var(--text-faint)' : 'var(--text)', fontSize: 12, resize: 'vertical', boxSizing: 'border-box', outline: 'none' }} />
                             </div>
                           ))}
                         </div>

@@ -1,1 +1,185 @@
 @import "tailwindcss";
+
+/* ─── Calibr design tokens ──────────────────────────────────────────────────
+ *
+ * Align People. Unlock Potential.
+ *
+ * The portals are styled with inline styles, so every colour is referenced as
+ * var(--token). The token names describe a ROLE, not a shade, which is what
+ * lets one set of styles serve both themes: --surface is "the colour a card
+ * sits on", dark in one theme and white in the other.
+ *
+ * Brand palette (from the brand guidelines):
+ *   Primary Teal #14B8A6   Teal Dark #0F766E   Charcoal #0F172A
+ *   Slate #64748B          Light Gray #E2E8F0  Off White #F8FAFC
+ *
+ * Status colours (success / warning / danger / info) stay outside the brand
+ * palette on purpose: they signal state, and recolouring them to teal would
+ * lose the meaning that makes them useful.
+ * ------------------------------------------------------------------------- */
+
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+
+  /* Brand */
+  --brand: #14b8a6;
+  --brand-strong: #0f766e;
+  --brand-soft: #99f6e4;
+  /* Accent TEXT. Separate from --brand-soft, which is a background tint: one
+     value cannot be both a pale fill and readable type in both themes. */
+  --brand-text: #0f766e;
+  --brand-tint: #f0fdfa;
+  --brand-contrast: #ffffff;
+  --brand-gradient: linear-gradient(135deg, #14b8a6, #0f766e);
+
+  /* Surfaces */
+  --page: #f8fafc;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f1f5f9;
+  --surface-hover: #f1f5f9;
+  --surface-inset: #f8fafc;
+
+  /* Lines */
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --border-subtle: #eef2f6;
+
+  /* Text */
+  --text: #0f172a;
+  --text-strong: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+  --text-on-brand: #ffffff;
+
+  /* Status */
+  --success: #0f766e;
+  --success-text: #065f46;
+  --success-bg: #ecfdf5;
+  --success-border: #a7f3d0;
+
+  --warning: #b45309;
+  --warning-text: #92400e;
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
+
+  --danger: #dc2626;
+  --danger-text: #991b1b;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+
+  --info: #0369a1;
+  --info-bg: #f0f9ff;
+  --info-border: #bae6fd;
+
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* Brand — lifted slightly so teal keeps its punch on near-black */
+  --brand: #2dd4bf;
+  --brand-strong: #14b8a6;
+  --brand-soft: #134e4a;
+  --brand-text: #5eead4;
+  --brand-tint: #0c2624;
+  --brand-contrast: #052e2b;
+  --brand-gradient: linear-gradient(135deg, #14b8a6, #0f766e);
+
+  /* Surfaces */
+  --page: #0a0f14;
+  --surface: #111820;
+  --surface-raised: #16202a;
+  --surface-sunken: #0c1218;
+  --surface-hover: #1a242f;
+  --surface-inset: #0c1218;
+
+  /* Lines */
+  --border: #1e2a35;
+  --border-strong: #2b3a47;
+  --border-subtle: #17212a;
+
+  /* Text */
+  --text: #e8eef4;
+  --text-strong: #f8fafc;
+  --text-secondary: #a3b2c2;
+  --text-muted: #7d8b9a;
+  --text-faint: #5b6874;
+  --text-on-brand: #052e2b;
+
+  /* Status */
+  --success: #34d399;
+  --success-text: #6ee7b7;
+  --success-bg: #0d2b23;
+  --success-border: #1a4a3c;
+
+  --warning: #fbbf24;
+  --warning-text: #fcd34d;
+  --warning-bg: #2a1f0d;
+  --warning-border: #4a3a1a;
+
+  --danger: #f87171;
+  --danger-text: #fca5a5;
+  --danger-bg: #2b1315;
+  --danger-border: #5c2a2a;
+
+  --info: #60a5fa;
+  --info-bg: #0f2337;
+  --info-border: #1e3a5f;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* ─── Typography ───────────────────────────────────────────────────────────
+ * Inter, per the brand guidelines. The scale below matches the sheet's
+ * H1 48/56 · H2 32/40 · H3 24/32 · H4 20/28 · Body 16/24 · Small 14/20 ·
+ * Caption 12/16.
+ * ----------------------------------------------------------------------- */
+
+:root {
+  --font-sans: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  --text-h1: 700 48px/56px var(--font-sans);
+  --text-h2: 700 32px/40px var(--font-sans);
+  --text-h3: 600 24px/32px var(--font-sans);
+  --text-h4: 600 20px/28px var(--font-sans);
+  --text-body: 400 16px/24px var(--font-sans);
+  --text-small: 400 14px/20px var(--font-sans);
+  --text-caption: 400 12px/16px var(--font-sans);
+}
+
+html {
+  background: var(--page);
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Themed form controls and scrollbars, so native chrome follows the theme */
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--brand);
+  color: var(--text-on-brand);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
