@@ -18,7 +18,7 @@ export default function ForbiddenPage() {
       <button
         onClick={() => router.push('/')}
         style={{
-          marginTop: 8, padding: '10px 24px', background: 'var(--brand)', color: '#fff',
+          marginTop: 8, padding: '10px 24px', background: 'var(--brand-strong)', color: '#fff',
           border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 16, fontWeight: 600,
         }}
       >

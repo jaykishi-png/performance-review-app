@@ -2514,16 +2514,16 @@ function StepOutput({
         <div className="space-y-4">
           <div className="flex items-end gap-10">
             <div className="space-y-1 flex-1">
-              <div className="h-px bg-gray-700 w-56" />
+              <div className="h-px w-56" style={{ background: 'var(--border)' }} />
               <p className="text-[10px] text-gray-600">Employee Name</p>
             </div>
             <div className="space-y-1 w-32">
-              <div className="h-px bg-gray-700 w-32" />
+              <div className="h-px w-32" style={{ background: 'var(--border)' }} />
               <p className="text-[10px] text-gray-600">Date Signed</p>
             </div>
           </div>
           <div className="space-y-1">
-            <div className="h-px bg-gray-700 w-56" />
+            <div className="h-px w-56" style={{ background: 'var(--border)' }} />
             <p className="text-[10px] text-gray-600">Employee Signature</p>
           </div>
           <div className="pt-2 border-t border-[var(--surface)]">

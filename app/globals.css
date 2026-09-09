@@ -2,19 +2,28 @@
 
 /* ─── Tailwind palette remap ───────────────────────────────────────────────
  * One section of the manager portal predates the inline-style approach and
- * colours itself with Tailwind utilities — 400 of them, all still on the old
- * indigo/violet brand and none of them theme-aware.
+ * colours itself with Tailwind utilities. Tailwind's palette is a fixed ramp,
+ * so those classes cannot follow a theme: the section was written for dark mode,
+ * where gray-200 is bright type and gray-600 is dim. On a light background that
+ * inverts — pale type on a pale card, which is why the comparison report was
+ * unreadable.
  *
- * Rather than rewrite 400 call sites, redefine the palette entries those
- * utilities compile against. text-purple-400 now emits Calibr teal and follows
- * light/dark, with no change to the JSX.
+ * Rather than rewrite ~400 call sites, redefine the palette entries those
+ * utilities compile against, mapping each shade to the token for the ROLE it
+ * plays. Because the role tokens already invert per theme, text-gray-200 is
+ * bright on dark and dark on light with no change to the JSX.
  *
- * Only the BRAND hues are remapped. The greys and semantic hues are left as
- * Tailwind ships them: remapping those blind risks contrast regressions in
- * screens behind SSO that I cannot inspect.
+ * The greys are mapped against their dark-mode meaning (100 brightest → 700
+ * dimmest), which is how this section uses them. Semantic families keep their
+ * meaning and only gain theme-awareness — a shade used for type maps to the
+ * readable `-text` variant, a shade used for a fill maps to the fill.
  * ---------------------------------------------------------------------- */
 
 @theme {
+  /* Brand: indigo/violet/purple all become Calibr teal */
+  --color-purple-50: var(--brand-tint);
+  --color-purple-100: var(--brand-tint);
+  --color-purple-200: var(--brand-text);
   --color-purple-300: var(--brand-text);
   --color-purple-400: var(--brand);
   --color-purple-500: var(--brand);
@@ -22,7 +31,11 @@
   --color-purple-700: var(--brand-strong);
   --color-purple-800: var(--brand-deep);
   --color-purple-900: var(--brand-deep);
+  --color-purple-950: var(--brand-tint);
 
+  --color-indigo-50: var(--brand-tint);
+  --color-indigo-100: var(--brand-tint);
+  --color-indigo-200: var(--brand-text);
   --color-indigo-300: var(--brand-text);
   --color-indigo-400: var(--brand);
   --color-indigo-500: var(--brand);
@@ -30,7 +43,11 @@
   --color-indigo-700: var(--brand-strong);
   --color-indigo-800: var(--brand-deep);
   --color-indigo-900: var(--brand-deep);
+  --color-indigo-950: var(--brand-tint);
 
+  --color-violet-50: var(--brand-tint);
+  --color-violet-100: var(--brand-tint);
+  --color-violet-200: var(--brand-text);
   --color-violet-300: var(--brand-text);
   --color-violet-400: var(--brand);
   --color-violet-500: var(--brand);
@@ -38,6 +55,61 @@
   --color-violet-700: var(--brand-strong);
   --color-violet-800: var(--brand-deep);
   --color-violet-900: var(--brand-deep);
+  --color-violet-950: var(--brand-tint);
+
+  --color-cyan-400: var(--brand);
+  --color-cyan-900: var(--brand-tint);
+
+  /* Greys → the text ramp, so type inverts with the theme */
+  --color-gray-50: var(--text-strong);
+  --color-gray-100: var(--text-strong);
+  --color-gray-200: var(--text);
+  --color-gray-300: var(--text-secondary);
+  --color-gray-400: var(--text-secondary);
+  --color-gray-500: var(--text-muted);
+  --color-gray-600: var(--text-faint);
+  --color-gray-700: var(--text-faint);
+
+  /* Success */
+  --color-emerald-300: var(--success-text);
+  --color-emerald-400: var(--success-text);
+  --color-emerald-500: var(--success-text);
+  --color-emerald-600: var(--success);
+  --color-emerald-700: var(--success-border);
+  --color-emerald-800: var(--success-border);
+  --color-emerald-900: var(--success-bg);
+  --color-emerald-950: var(--success-bg);
+  --color-green-400: var(--success-text);
+  --color-green-500: var(--success);
+
+  /* Danger */
+  --color-red-300: var(--danger-text);
+  --color-red-400: var(--danger-text);
+  --color-red-500: var(--danger);
+  --color-red-800: var(--danger-border);
+  --color-red-900: var(--danger-bg);
+  --color-red-950: var(--danger-bg);
+
+  /* Warning — amber and orange share the warning role */
+  --color-amber-200: var(--warning-text);
+  --color-amber-300: var(--warning-text);
+  --color-amber-400: var(--warning-text);
+  --color-amber-500: var(--warning-text);
+  --color-amber-700: var(--warning-border);
+  --color-amber-800: var(--warning-border);
+  --color-amber-900: var(--warning-bg);
+  --color-amber-950: var(--warning-bg);
+  --color-orange-400: var(--warning-text);
+  --color-orange-500: var(--warning-text);
+  --color-orange-700: var(--warning-border);
+  --color-orange-900: var(--warning-bg);
+
+  /* Info */
+  --color-blue-300: var(--info);
+  --color-blue-400: var(--info);
+  --color-blue-700: var(--info-border);
+  --color-blue-800: var(--info-border);
+  --color-blue-900: var(--info-bg);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

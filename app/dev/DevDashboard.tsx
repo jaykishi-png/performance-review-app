@@ -319,7 +319,7 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
               )}
               <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
                 <button type="submit" disabled={inviteLoading}
-                  style={{ flex: 1, padding: '10px 0', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 700, fontSize: 16 }}>
+                  style={{ flex: 1, padding: '10px 0', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 700, fontSize: 16 }}>
                   {inviteLoading ? 'Sending...' : 'Send Invite'}
                 </button>
                 <button type="button" onClick={() => setShowInviteModal(false)}

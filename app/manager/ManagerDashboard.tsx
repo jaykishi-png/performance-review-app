@@ -179,7 +179,7 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => router.push('/performance-review')}
-            style={{ padding: '8px 16px', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
+            style={{ padding: '8px 16px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
             + New Review
           </button>
           <button onClick={async () => { await fetch('/api/auth/signout', { method: 'POST' }); router.push('/login') }}
@@ -364,7 +364,7 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
                 <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 6 }}>No reviews yet</div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Start a performance review for one of your team members.</div>
                 <button onClick={() => router.push('/performance-review')}
-                  style={{ padding: '10px 24px', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
+                  style={{ padding: '10px 24px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
                   + New Review
                 </button>
               </div>
