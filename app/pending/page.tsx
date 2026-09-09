@@ -37,14 +37,14 @@ export default function PendingPage() {
         padding: '48px 40px',
         background: 'var(--surface)',
         border: '1px solid var(--border)',
-        borderRadius: 16,
+        borderRadius: 'var(--radius-xl)',
         textAlign: 'center',
       }}>
-        <div style={{ fontSize: 40, marginBottom: 20 }}>⏳</div>
-        <h1 style={{ margin: '0 0 12px', fontSize: 22, fontWeight: 700, color: 'var(--text-strong)' }}>
+        <div style={{ fontSize: 36, marginBottom: 20 }}>⏳</div>
+        <h1 style={{ margin: '0 0 12px', fontSize: 20, fontWeight: 700, color: 'var(--text-strong)' }}>
           Access Pending
         </h1>
-        <p style={{ margin: '0 0 8px', fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+        <p style={{ margin: '0 0 8px', fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
           Your account is being set up.
         </p>
         <p style={{ margin: '0 0 32px', fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6 }}>
@@ -56,7 +56,7 @@ export default function PendingPage() {
           Checking for access…
         </div>
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-        <a href="/api/auth/signout" style={{ padding: '10px 24px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, cursor: 'pointer', textDecoration: 'none' }}>
+        <a href="/api/auth/signout" style={{ padding: '10px 24px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 14, cursor: 'pointer', textDecoration: 'none' }}>
           Sign out
         </a>
       </div>

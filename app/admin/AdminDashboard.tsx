@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Users, FileText, RefreshCw, BarChart2,
   ClipboardList, Settings, ChevronLeft, ChevronRight,
   Plus, LogOut, ExternalLink, Bell, Star, TrendingUp, BookMarked, Trash2, Pencil,
+  House, ClipboardCheck, RefreshCcw, ChartNoAxesCombined, UserRoundCheck, Files,
 } from 'lucide-react'
 import { CalibrIcon, ThemeToggle } from '@/components/Brand'
 
@@ -111,16 +112,16 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 const NAV: { id: Page; label: string; icon: React.FC<{ size: number; color?: string }> }[] = [
-  { id: 'dashboard', label: 'Dashboard',      icon: LayoutDashboard },
-  { id: 'users',     label: 'Users',          icon: Users           },
-  { id: 'reviews',   label: 'Reviews',        icon: FileText        },
-  { id: 'cycles',    label: 'Review Cycles',  icon: RefreshCw       },
-  { id: 'analytics', label: 'Analytics',      icon: BarChart2       },
-  { id: 'feedback',  label: '360 Feedback',   icon: Star            },
-  { id: 'pip',       label: 'PIPs',           icon: TrendingUp      },
-  { id: 'audit',     label: 'Audit Log',      icon: ClipboardList   },
-  { id: 'competencies', label: 'Competencies', icon: BookMarked    },
-  { id: 'settings',  label: 'Settings',       icon: Settings        },
+  { id: 'dashboard', label: 'Dashboard',      icon: House                },
+  { id: 'users',     label: 'Users',          icon: Users                },
+  { id: 'reviews',   label: 'Reviews',        icon: ClipboardCheck       },
+  { id: 'cycles',    label: 'Review Cycles',  icon: RefreshCcw           },
+  { id: 'analytics', label: 'Analytics',      icon: ChartNoAxesCombined  },
+  { id: 'feedback',  label: '360 Feedback',   icon: UserRoundCheck       },
+  { id: 'pip',       label: 'PIPs',           icon: ClipboardList        },
+  { id: 'audit',     label: 'Audit Log',      icon: Files                },
+  { id: 'competencies', label: 'Competencies', icon: BookMarked          },
+  { id: 'settings',  label: 'Settings',       icon: Settings             },
 ]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -237,7 +238,7 @@ const STATUS_META = {
 
 function Redacted({ children }: { children?: React.ReactNode }) {
   return (
-    <span style={{ background: 'var(--page)', color: 'transparent', borderRadius: 3, userSelect: 'none', cursor: 'default', display: 'inline-block', lineHeight: 1.4, WebkitUserSelect: 'none' }}>
+    <span style={{ background: 'var(--page)', color: 'transparent', borderRadius: 'var(--radius-sm)', userSelect: 'none', cursor: 'default', display: 'inline-block', lineHeight: 1.4, WebkitUserSelect: 'none' }}>
       {children ?? '████████████████'}
     </span>
   )
@@ -269,7 +270,7 @@ function PipAdminPanel({ isDevAdmin }: { isDevAdmin?: boolean }) {
           { label: 'Escalated', value: escalated.length, color: 'var(--danger)' },
           { label: 'Completed', value: completed.length, color: 'var(--success)' },
         ].map(s => (
-          <div key={s.label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px' }}>
+          <div key={s.label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px' }}>
             <div style={{ fontSize: 28, fontWeight: 700, color: s.color, marginBottom: 4 }}>{s.value}</div>
             <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{s.label}</div>
           </div>
@@ -279,11 +280,11 @@ function PipAdminPanel({ isDevAdmin }: { isDevAdmin?: boolean }) {
       {pipLoading ? (
         <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading…</div>
       ) : pipPlans.length === 0 ? (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 48, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 48, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
           No PIPs or coaching plans have been created yet.
         </div>
       ) : (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>{['Employee', 'Manager', 'Title', 'Start', 'Target', 'Milestones', 'Acknowledged', 'Status'].map(h => (
@@ -313,7 +314,7 @@ function PipAdminPanel({ isDevAdmin }: { isDevAdmin?: boolean }) {
                         : <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Pending</span>}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: statusBg[pip.status] || 'var(--surface)', color: statusColor[pip.status] || 'var(--text-muted)' }}>
+                      <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 600, background: statusBg[pip.status] || 'var(--surface)', color: statusColor[pip.status] || 'var(--text-muted)' }}>
                         {pip.status.charAt(0).toUpperCase() + pip.status.slice(1)}
                       </span>
                     </td>
@@ -869,9 +870,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
   // ── Styles ────────────────────────────────────────────────────────────────
 
-  const inp: React.CSSProperties = { width: '100%', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', boxSizing: 'border-box', fontFamily: 'inherit', outline: 'none' }
+  const inp: React.CSSProperties = { width: '100%', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '8px 12px', fontSize: 13, color: 'var(--text)', boxSizing: 'border-box', fontFamily: 'inherit', outline: 'none' }
   const lbl: React.CSSProperties = { display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }
-  const card: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '18px 20px', marginBottom: 12 }
+  const card: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '18px 20px', marginBottom: 12 }
   const th: React.CSSProperties = { padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--border)' }
   const td: React.CSSProperties = { padding: '12px 16px', fontSize: 13, borderBottom: '1px solid var(--surface-inset)' }
 
@@ -879,7 +880,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     width: '100%', display: 'flex', alignItems: 'center', gap: 8,
     padding: collapsed ? '8px' : '7px 10px',
     justifyContent: collapsed ? 'center' : 'flex-start',
-    borderRadius: 8, border: active ? '1px solid rgba(129,140,248,0.3)' : '1px solid transparent',
+    borderRadius: 'var(--radius-md)', border: active ? '1px solid rgba(129,140,248,0.3)' : '1px solid transparent',
     background: active ? 'var(--brand-tint)' : 'transparent',
     cursor: 'pointer', marginBottom: 2, transition: 'all 0.15s',
     fontSize: 12, fontWeight: active ? 600 : 400, color: active ? 'var(--brand-soft)' : 'var(--text-secondary)',
@@ -991,7 +992,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             { label: 'Reviews Due (90d)', value: upcomingReviews.length, color: urgentCount > 0 ? 'var(--warning)' : 'var(--text-strong)', border: urgentCount > 0 ? 'var(--warning-text)' : 'var(--border)' },
             { label: 'Pending Access',    value: users.filter(u => u.role === 'pending').length + invites.length, color: 'var(--text-strong)', border: 'var(--border)' },
           ].map(s => (
-            <div key={s.label} style={{ background: 'var(--surface)', border: `1px solid ${s.border}`, borderRadius: 12, padding: '18px 20px' }}>
+            <div key={s.label} style={{ background: 'var(--surface)', border: `1px solid ${s.border}`, borderRadius: 'var(--radius-lg)', padding: '18px 20px' }}>
               <div style={{ fontSize: 28, fontWeight: 700, color: s.color, marginBottom: 4 }}>{s.value}</div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{s.label}</div>
             </div>
@@ -1008,8 +1009,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 { label: 'In Draft',    value: selfAssessments.filter(s => s.status === 'draft').length,     color: 'var(--brand)', bg: 'var(--surface)', border: 'rgba(129,140,248,0.3)' },
                 { label: 'Not Started', value: activeUsers.filter(u => u.role === 'employee' && !saMap[u.id]).length, color: 'var(--text-muted)', bg: 'var(--surface)', border: 'var(--border)' },
               ].map(s => (
-                <div key={s.label} style={{ padding: '10px 16px', background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10, textAlign: 'center', minWidth: 90 }}>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.value}</div>
+                <div key={s.label} style={{ padding: '10px 16px', background: s.bg, border: `1px solid ${s.border}`, borderRadius: 'var(--radius-lg)', textAlign: 'center', minWidth: 90 }}>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.value}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{s.label}</div>
                 </div>
               ))}
@@ -1022,7 +1023,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               <div style={{ fontSize: 13, color: 'var(--text-faint)' }}>No pending invites</div>
             ) : invites.slice(0, 3).map(inv => (
               <div key={inv.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <span style={{ padding: '1px 7px', borderRadius: 20, fontSize: 10, fontWeight: 600, background: `${ROLE_COLORS[inv.role] ?? 'var(--text-muted)'}20`, color: ROLE_COLORS[inv.role] ?? 'var(--text-muted)' }}>{ROLE_LABELS[inv.role] ?? inv.role}</span>
+                <span style={{ padding: '1px 7px', borderRadius: 'var(--radius-pill)', fontSize: 10, fontWeight: 600, background: `${ROLE_COLORS[inv.role] ?? 'var(--text-muted)'}20`, color: ROLE_COLORS[inv.role] ?? 'var(--text-muted)' }}>{ROLE_LABELS[inv.role] ?? inv.role}</span>
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{inv.email}</span>
                 <span style={{ fontSize: 11, color: 'var(--text-faint)', marginLeft: 'auto' }}>Expires {new Date(inv.expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
               </div>
@@ -1034,12 +1035,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         {/* Upcoming reviews */}
         <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-strong)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
           Upcoming Reviews
-          {urgentCount > 0 && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, background: '#92400e30', color: 'var(--warning)', fontWeight: 700 }}>{urgentCount} urgent</span>}
+          {urgentCount > 0 && <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 11, background: '#92400e30', color: 'var(--warning)', fontWeight: 700 }}>{urgentCount} urgent</span>}
         </div>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
           {upcomingReviews.length === 0 ? (
             <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: 32, marginBottom: 10 }}>📅</div>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>📅</div>
               <div style={{ fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>No upcoming reviews in the next 90 days</div>
               <div style={{ fontSize: 12 }}>Add start dates to users in the Users page to track anniversaries.</div>
             </div>
@@ -1053,13 +1054,13 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   return (
                     <tr key={u.id} style={{ background: isUrgent ? 'var(--warning-bg)' : 'transparent' }}>
                       <td style={td}><div style={{ fontWeight: 500, color: 'var(--text)' }}>{u.name || '—'}</div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{u.email}</div></td>
-                      <td style={td}><span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500, background: `${ROLE_COLORS[u.role]}18`, color: ROLE_COLORS[u.role] }}>{ROLE_LABELS[u.role]}</span></td>
+                      <td style={td}><span style={{ padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 500, background: `${ROLE_COLORS[u.role]}18`, color: ROLE_COLORS[u.role] }}>{ROLE_LABELS[u.role]}</span></td>
                       <td style={{ ...td, color: 'var(--text-secondary)' }}>{mgr ? (mgr.name || mgr.email) : <span style={{ color: 'var(--text-faint)' }}>Unassigned</span>}</td>
                       <td style={{ ...td, color: 'var(--text)', fontWeight: 500 }}>{new Date(u.start_date! + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                       <td style={{ ...td, color: 'var(--text)', fontWeight: 500 }}>{u.annDate}</td>
                       <td style={{ ...td, color: 'var(--text-secondary)' }}>Year {u.years}</td>
-                      <td style={td}><span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: isUrgent ? '#92400e30' : 'var(--border)', color: isUrgent ? 'var(--warning)' : 'var(--text-secondary)' }}>{u.daysUntil === 0 ? 'Today!' : `${u.daysUntil}d`}</span></td>
-                      <td style={td}><button onClick={() => copyReminder(u)} style={{ padding: '5px 12px', fontSize: 11, cursor: 'pointer', borderRadius: 6, background: reminderCopied === u.id ? 'var(--success-bg)' : 'transparent', color: reminderCopied === u.id ? 'var(--success)' : 'var(--text-muted)', border: `1px solid ${reminderCopied === u.id ? 'var(--success-border)' : 'var(--border)'}` }}>{reminderCopied === u.id ? '✓ Copied' : '📋 Copy Reminder'}</button></td>
+                      <td style={td}><span style={{ padding: '3px 10px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 600, background: isUrgent ? '#92400e30' : 'var(--border)', color: isUrgent ? 'var(--warning)' : 'var(--text-secondary)' }}>{u.daysUntil === 0 ? 'Today!' : `${u.daysUntil}d`}</span></td>
+                      <td style={td}><button onClick={() => copyReminder(u)} style={{ padding: '5px 12px', fontSize: 11, cursor: 'pointer', borderRadius: 'var(--radius-sm)', background: reminderCopied === u.id ? 'var(--success-bg)' : 'transparent', color: reminderCopied === u.id ? 'var(--success)' : 'var(--text-muted)', border: `1px solid ${reminderCopied === u.id ? 'var(--success-border)' : 'var(--border)'}` }}>{reminderCopied === u.id ? '✓ Copied' : '📋 Copy Reminder'}</button></td>
                     </tr>
                   )
                 })}
@@ -1080,7 +1081,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Manage roles, manager assignments, start dates, and access.</p>
           </div>
           <button onClick={() => { setShowInviteModal(true); setInviteLink('') }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
             <Plus size={14} /> Invite User
           </button>
         </div>
@@ -1095,7 +1096,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         </div>
 
         {/* Users table */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflowX: 'auto', marginBottom: 24 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflowX: 'auto', marginBottom: 24 }}>
           <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
             <thead><tr>{['Name / Email', 'Role', 'Position', 'Division', 'Pronouns', 'Manager', 'Start Date', 'Status', 'Actions'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
@@ -1111,12 +1112,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   <td style={td}>
                     {editingUser === u.id ? (
                       <select defaultValue={u.role} onChange={e => updateField(u.id, { role: e.target.value })} onBlur={() => setEditingUser(null)} autoFocus
-                        style={{ background: 'var(--surface-inset)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}>
+                        style={{ background: 'var(--surface-inset)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '4px 8px', fontSize: 12 }}>
                         {editRoleOptions.map(r => <option key={r} value={r}>{ROLE_LABELS[r] ?? r}</option>)}
                       </select>
                     ) : (
                       <span onClick={() => { const cantEdit = u.id === currentUser.id || (isDevAdmin && (u.role === 'admin' || u.role === 'dev_admin')); if (!cantEdit) setEditingUser(u.id) }}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500, background: `${ROLE_COLORS[u.role] ?? 'var(--text-muted)'}18`, color: ROLE_COLORS[u.role] ?? 'var(--text-muted)', cursor: u.id !== currentUser.id ? 'pointer' : 'default' }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 500, background: `${ROLE_COLORS[u.role] ?? 'var(--text-muted)'}18`, color: ROLE_COLORS[u.role] ?? 'var(--text-muted)', cursor: u.id !== currentUser.id ? 'pointer' : 'default' }}
                         title={u.id !== currentUser.id ? 'Click to edit' : ''}>
                         {ROLE_LABELS[u.role] || u.role}
                         {u.id !== currentUser.id && !(isDevAdmin && (u.role === 'admin' || u.role === 'dev_admin')) && <span style={{ fontSize: 9 }}>✏️</span>}
@@ -1131,7 +1132,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                         onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setEditingPosition(null) }}
                         autoFocus
                         placeholder="e.g. Video Editor"
-                        style={{ background: 'var(--surface-inset)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: 12, width: 140 }}
+                        style={{ background: 'var(--surface-inset)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '4px 8px', fontSize: 12, width: 140 }}
                       />
                     ) : (
                       <span onClick={() => setEditingPosition(u.id)}
@@ -1149,7 +1150,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                         onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setEditingDivision(null) }}
                         autoFocus
                         placeholder="e.g. Creative"
-                        style={{ background: 'var(--surface-inset)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: 12, width: 130 }}
+                        style={{ background: 'var(--surface-inset)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '4px 8px', fontSize: 12, width: 130 }}
                       />
                     ) : (
                       <span onClick={() => setEditingDivision(u.id)}
@@ -1166,7 +1167,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                         onBlur={e => { updateField(u.id, { pronouns: e.target.value || null }); setEditingPronouns(null) }}
                         onChange={e => { updateField(u.id, { pronouns: e.target.value || null }); setEditingPronouns(null) }}
                         autoFocus
-                        style={{ background: 'var(--surface-inset)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}
+                        style={{ background: 'var(--surface-inset)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '4px 8px', fontSize: 12 }}
                       >
                         <option value="">— None —</option>
                         <option value="he/him">he/him</option>
@@ -1184,7 +1185,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   <td style={td}>
                     {editingManager === u.id ? (
                       <select defaultValue={u.manager_id ?? ''} onChange={e => { updateField(u.id, { manager_id: e.target.value || null }); setEditingManager(null) }} onBlur={() => setEditingManager(null)} autoFocus
-                        style={{ background: 'var(--surface-inset)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}>
+                        style={{ background: 'var(--surface-inset)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '4px 8px', fontSize: 12 }}>
                         <option value="">— None —</option>
                         {users.filter(m => m.id !== u.id).map(m => <option key={m.id} value={m.id}>{m.name || m.email}</option>)}
                       </select>
@@ -1199,7 +1200,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   <td style={td}>
                     {editingStartDate === u.id ? (
                       <input type="date" defaultValue={u.start_date ?? ''} onBlur={e => updateField(u.id, { start_date: e.target.value || null })} autoFocus
-                        style={{ background: 'var(--surface-inset)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: 12 }} />
+                        style={{ background: 'var(--surface-inset)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '4px 8px', fontSize: 12 }} />
                     ) : (
                       <span onClick={() => setEditingStartDate(u.id)} style={{ fontSize: 12, cursor: 'pointer', color: u.start_date ? 'var(--text-secondary)' : 'var(--text-faint)' }} title="Click to set start date">
                         {u.start_date ? new Date(u.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : <span style={{ color: 'var(--warning)', fontSize: 11 }}>No date ✏️</span>}
@@ -1207,22 +1208,22 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                     )}
                   </td>
                   <td style={td}>
-                    <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500, background: u.is_active ? 'var(--success-bg)' : 'var(--warning-bg)', color: u.is_active ? 'var(--success)' : 'var(--warning)' }}>
+                    <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 500, background: u.is_active ? 'var(--success-bg)' : 'var(--warning-bg)', color: u.is_active ? 'var(--success)' : 'var(--warning)' }}>
                       {u.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td style={td}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button onClick={() => openProfile(u)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: 'var(--brand)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>
+                      <button onClick={() => openProfile(u)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: 'var(--brand)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 500 }}>
                         👤 Profile
                       </button>
                       {u.id !== currentUser.id && (
                         u.is_active ? (
-                          <button onClick={() => setConfirmDeactivateUser(u)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: 'var(--danger)', border: '1px solid var(--danger-border)', borderRadius: 6, cursor: 'pointer' }}>
+                          <button onClick={() => setConfirmDeactivateUser(u)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: 'var(--danger)', border: '1px solid var(--danger-border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>
                             Deactivate
                           </button>
                         ) : (
-                          <button onClick={() => toggleActive(u.id, false)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: 'var(--success)', border: '1px solid var(--success-bg)', borderRadius: 6, cursor: 'pointer' }}>
+                          <button onClick={() => toggleActive(u.id, false)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: 'var(--success)', border: '1px solid var(--success-bg)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>
                             Reactivate
                           </button>
                         )
@@ -1237,7 +1238,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
         {/* Pending Invites */}
         <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-strong)', marginBottom: 12 }}>Pending Invites ({invites.length})</div>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
           {invites.length === 0 ? (
             <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No pending invites</div>
           ) : (
@@ -1252,14 +1253,14 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   return (
                   <tr key={inv.id}>
                     <td style={{ ...td, color: 'var(--text)' }}>{inv.email}</td>
-                    <td style={td}><span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500, background: `${ROLE_COLORS[inv.role] ?? 'var(--text-muted)'}18`, color: ROLE_COLORS[inv.role] ?? 'var(--text-muted)' }}>{ROLE_LABELS[inv.role] ?? inv.role}</span></td>
+                    <td style={td}><span style={{ padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 500, background: `${ROLE_COLORS[inv.role] ?? 'var(--text-muted)'}18`, color: ROLE_COLORS[inv.role] ?? 'var(--text-muted)' }}>{ROLE_LABELS[inv.role] ?? inv.role}</span></td>
                     <td style={{ ...td, color: 'var(--text-muted)' }}>{new Date(inv.created_at).toLocaleDateString()}</td>
                     <td style={{ ...td, color: 'var(--text-muted)' }}>{new Date(inv.expires_at).toLocaleDateString()}</td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                         <button
                           onClick={() => { navigator.clipboard.writeText(inviteLink); setCopiedInviteId(inv.id); setTimeout(() => setCopiedInviteId(null), 2000) }}
-                          style={{ padding: '4px 12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, color: copiedInviteId === inv.id ? 'var(--success)' : 'var(--brand)', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}>
+                          style={{ padding: '4px 12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: copiedInviteId === inv.id ? 'var(--success)' : 'var(--brand)', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}>
                           {copiedInviteId === inv.id ? '✓ Copied!' : '📋 Copy Link'}
                         </button>
                         {resentInviteId === inv.id ? (
@@ -1268,7 +1269,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                           <button
                             onClick={() => resendInvite(inv)}
                             disabled={resendingInviteId === inv.id}
-                            style={{ padding: '4px 12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, color: resendingInviteId === inv.id ? 'var(--text-faint)' : 'var(--brand)', fontSize: 12, cursor: resendingInviteId === inv.id ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
+                            style={{ padding: '4px 12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: resendingInviteId === inv.id ? 'var(--text-faint)' : 'var(--brand)', fontSize: 12, cursor: resendingInviteId === inv.id ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
                             {resendingInviteId === inv.id ? 'Sending…' : '↩ Resend'}
                           </button>
                         )}
@@ -1319,8 +1320,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             { label: 'Exported',       value: counts.exported,     color: STATUS_META.exported.color,     bg: STATUS_META.exported.bg,     border: STATUS_META.exported.border,     filter: 'exported'     },
           ].map(s => (
             <div key={s.label} onClick={() => setReviewStatusFilter(s.filter as typeof reviewStatusFilter)}
-              style={{ background: s.bg, border: `1px solid ${reviewStatusFilter === s.filter ? s.color + '60' : s.border}`, borderRadius: 12, padding: '14px 14px', cursor: 'pointer', transition: 'all 0.15s', outline: reviewStatusFilter === s.filter ? `1px solid ${s.color}40` : 'none' }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: s.color, marginBottom: 3 }}>{s.value}</div>
+              style={{ background: s.bg, border: `1px solid ${reviewStatusFilter === s.filter ? s.color + '60' : s.border}`, borderRadius: 'var(--radius-lg)', padding: '14px 14px', cursor: 'pointer', transition: 'all 0.15s', outline: reviewStatusFilter === s.filter ? `1px solid ${s.color}40` : 'none' }}>
+              <div style={{ fontSize: 20, fontWeight: 700, color: s.color, marginBottom: 3 }}>{s.value}</div>
               <div style={{ fontSize: 10.5, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{s.label}</div>
             </div>
           ))}
@@ -1334,12 +1335,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <div style={{ marginBottom: 28 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                 <div style={{ height: 2, flex: 1, background: 'var(--warning-border)' }} />
-                <div style={{ padding: '4px 14px', background: 'var(--warning-bg)', border: '1px solid var(--warning-text)', borderRadius: 20, fontSize: 12, fontWeight: 700, color: 'var(--warning)' }}>
+                <div style={{ padding: '4px 14px', background: 'var(--warning-bg)', border: '1px solid var(--warning-text)', borderRadius: 'var(--radius-pill)', fontSize: 12, fontWeight: 700, color: 'var(--warning)' }}>
                   ⚠️ Pending Your Approval ({pendingApproval.length})
                 </div>
                 <div style={{ height: 2, flex: 1, background: 'var(--warning-border)' }} />
               </div>
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--warning-text)', borderRadius: 12, overflow: 'hidden', marginBottom: 8 }}>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--warning-text)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginBottom: 8 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>{['Employee', 'Position', 'Manager', 'Manager Signed', 'Drive Doc', 'Action'].map(h => (
@@ -1361,14 +1362,14 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                           <td style={{ padding: '10px 14px' }}>
                             {r.drive_url ? (
                               <a href={r.drive_url} target="_blank" rel="noopener noreferrer"
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', background: 'var(--surface-inset)', color: 'var(--brand)', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none', border: '1px solid var(--info-bg)' }}>
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', background: 'var(--surface-inset)', color: 'var(--brand)', borderRadius: 'var(--radius-sm)', fontSize: 11, fontWeight: 600, textDecoration: 'none', border: '1px solid var(--info-bg)' }}>
                                 Open Doc
                               </a>
                             ) : '—'}
                           </td>
                           <td style={{ padding: '10px 14px' }}>
                             <button onClick={() => approveReview(r.id)} disabled={isApproving}
-                              style={{ padding: '5px 14px', fontSize: 12, fontWeight: 600, background: isApproving ? 'var(--warning-bg)' : 'linear-gradient(135deg,var(--warning-text),var(--warning-text))', color: '#fff', border: 'none', borderRadius: 7, cursor: isApproving ? 'default' : 'pointer', opacity: isApproving ? 0.7 : 1 }}>
+                              style={{ padding: '5px 14px', fontSize: 12, fontWeight: 600, background: isApproving ? 'var(--warning-bg)' : 'linear-gradient(135deg,var(--warning-text),var(--warning-text))', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: isApproving ? 'default' : 'pointer', opacity: isApproving ? 0.7 : 1 }}>
                               {isApproving ? 'Approving…' : '✓ Approve & Release'}
                             </button>
                           </td>
@@ -1407,7 +1408,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           </div>
           {(reviewSearch || reviewStatusFilter !== 'all' || reviewManagerFilter !== 'all' || reviewDateFrom || reviewDateTo) && (
             <button onClick={() => { setReviewSearch(''); setReviewStatusFilter('all'); setReviewManagerFilter('all'); setReviewDateFrom(''); setReviewDateTo('') }}
-              style={{ padding: '8px 14px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, cursor: 'pointer' }}>
+              style={{ padding: '8px 14px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 12, cursor: 'pointer' }}>
               Clear filters
             </button>
           )}
@@ -1417,10 +1418,10 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         </div>
 
         {/* Table */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflowX: 'auto' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflowX: 'auto' }}>
           {filteredReviews.length === 0 ? (
             <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: 32, marginBottom: 10 }}>📝</div>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>📝</div>
               <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 4 }}>No reviews found</div>
               <div style={{ fontSize: 12 }}>{reviews.length === 0 ? 'No performance reviews have been created yet.' : 'Try adjusting your filters.'}</div>
             </div>
@@ -1466,8 +1467,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       {/* Progress bar */}
                       <td style={td}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 70, height: 5, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? 'var(--success)' : 'var(--brand-strong)', borderRadius: 3 }} />
+                          <div style={{ width: 70, height: 5, background: 'var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? 'var(--success)' : 'var(--brand-strong)', borderRadius: 'var(--radius-sm)' }} />
                           </div>
                           <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 28 }}>{pct}%</span>
                         </div>
@@ -1478,7 +1479,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
                       {/* Status badge */}
                       <td style={{ ...td, whiteSpace: 'nowrap' }}>
-                        <span style={{ padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>
+                        <span style={{ padding: '3px 9px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 600, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>
                           {sm.label}
                         </span>
                       </td>
@@ -1542,17 +1543,17 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                             <span style={{ fontSize: 11, color: 'var(--danger)' }}>Delete?</span>
                             <button onClick={() => deleteReview(r.id)} disabled={deleting}
-                              style={{ padding: '3px 8px', fontSize: 11, background: 'var(--danger-border)', color: 'var(--danger)', border: '1px solid var(--danger-border)', borderRadius: 5, cursor: 'pointer' }}>
+                              style={{ padding: '3px 8px', fontSize: 11, background: 'var(--danger-border)', color: 'var(--danger)', border: '1px solid var(--danger-border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>
                               {deleting ? '…' : 'Yes'}
                             </button>
                             <button onClick={() => setDeleteConfirm(null)}
-                              style={{ padding: '3px 8px', fontSize: 11, background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 5, cursor: 'pointer' }}>
+                              style={{ padding: '3px 8px', fontSize: 11, background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>
                               No
                             </button>
                           </div>
                         ) : !isDevAdmin && !isPlaceholder ? (
                           <button onClick={() => setDeleteConfirm(r.id)}
-                            style={{ padding: '4px 9px', fontSize: 11, background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 5, cursor: 'pointer' }}>
+                            style={{ padding: '4px 9px', fontSize: 11, background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>
                             Delete
                           </button>
                         ) : null}
@@ -1583,7 +1584,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
               const a = document.createElement('a'); a.href = `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`; a.download = 'reviews-export.csv'; a.click()
             }}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--surface)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--surface)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
               ↓ Export CSV ({filteredReviews.length} rows)
             </button>
           </div>
@@ -1601,12 +1602,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 <div style={{ marginBottom: 24 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                     <div style={{ height: 2, flex: 1, background: 'var(--success-border)' }} />
-                    <div style={{ padding: '4px 14px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 20, fontSize: 12, fontWeight: 700, color: 'var(--success)' }}>
+                    <div style={{ padding: '4px 14px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-pill)', fontSize: 12, fontWeight: 700, color: 'var(--success)' }}>
                       ✓ Fully Executed Reviews ({fullyExecuted.length})
                     </div>
                     <div style={{ height: 2, flex: 1, background: 'var(--success-border)' }} />
                   </div>
-                  <div style={{ background: 'var(--surface)', border: '1px solid var(--success-border)', borderRadius: 12, overflow: 'hidden' }}>
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr>{['Employee', 'Position', 'Manager', 'Mgr Signed', 'Emp Signed', 'Drive'].map(h => (
@@ -1626,7 +1627,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                               <td style={{ padding: '10px 14px' }}>
                                 {r.drive_url ? (
                                   <a href={r.drive_url} target="_blank" rel="noopener noreferrer"
-                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', background: 'var(--success-bg)', color: 'var(--success)', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none', border: '1px solid var(--success-border)' }}>
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', background: 'var(--success-bg)', color: 'var(--success)', borderRadius: 'var(--radius-sm)', fontSize: 11, fontWeight: 600, textDecoration: 'none', border: '1px solid var(--success-border)' }}>
                                     Open
                                   </a>
                                 ) : <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>—</span>}
@@ -1645,12 +1646,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                     <div style={{ height: 2, flex: 1, background: 'var(--warning-text)' }} />
-                    <div style={{ padding: '4px 14px', background: 'var(--warning-bg)', border: '1px solid var(--warning-text)', borderRadius: 20, fontSize: 12, fontWeight: 700, color: 'var(--warning)' }}>
+                    <div style={{ padding: '4px 14px', background: 'var(--warning-bg)', border: '1px solid var(--warning-text)', borderRadius: 'var(--radius-pill)', fontSize: 12, fontWeight: 700, color: 'var(--warning)' }}>
                       ⏳ Pending Employee Signature ({pendingEmpSig.length})
                     </div>
                     <div style={{ height: 2, flex: 1, background: 'var(--warning-text)' }} />
                   </div>
-                  <div style={{ background: 'var(--surface)', border: '1px solid var(--warning-text)', borderRadius: 12, overflow: 'hidden' }}>
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--warning-text)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr>{['Employee', 'Position', 'Manager', 'Mgr Signed', 'Employee Status', 'Drive'].map(h => (
@@ -1667,12 +1668,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                               <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text)' }}>{manager ? (manager.name || manager.email) : '—'}</td>
                               <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--success)' }}>✓ {r.manager_signed_at ? new Date(r.manager_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
                               <td style={{ padding: '10px 14px' }}>
-                                <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: 'var(--warning-bg)', color: 'var(--warning)', border: '1px solid var(--warning-text)' }}>Awaiting Signature</span>
+                                <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 700, background: 'var(--warning-bg)', color: 'var(--warning)', border: '1px solid var(--warning-text)' }}>Awaiting Signature</span>
                               </td>
                               <td style={{ padding: '10px 14px' }}>
                                 {r.drive_url ? (
                                   <a href={r.drive_url} target="_blank" rel="noopener noreferrer"
-                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', background: 'var(--success-bg)', color: 'var(--success)', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none', border: '1px solid var(--success-border)' }}>
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', background: 'var(--success-bg)', color: 'var(--success)', borderRadius: 'var(--radius-sm)', fontSize: 11, fontWeight: 600, textDecoration: 'none', border: '1px solid var(--success-border)' }}>
                                     Open
                                   </a>
                                 ) : <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>—</span>}
@@ -1738,12 +1739,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => { setShowTriggerModal(true); setTriggerError(null) }}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'transparent', color: 'var(--brand)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'transparent', color: 'var(--brand)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
               <Plus size={14} /> Trigger Cycle
             </button>
             {cyclesTab === 'manual' && (
               <button onClick={openNewCycle}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
                 <Plus size={14} /> New Cycle
               </button>
             )}
@@ -1751,13 +1752,13 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         </div>
 
         {/* Tab toggle */}
-        <div style={{ display: 'flex', gap: 4, background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 10, padding: 4, width: 'fit-content', marginBottom: 24 }}>
+        <div style={{ display: 'flex', gap: 4, background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 4, width: 'fit-content', marginBottom: 24 }}>
           {([['manual', 'Manual Cycles'], ['employee', 'Employee Cycles']] as const).map(([tab, label]) => (
             <button key={tab} onClick={() => setCyclesTab(tab)}
-              style={{ padding: '6px 16px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, background: cyclesTab === tab ? 'var(--border)' : 'transparent', color: cyclesTab === tab ? 'var(--text-strong)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              style={{ padding: '6px 16px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, background: cyclesTab === tab ? 'var(--border)' : 'transparent', color: cyclesTab === tab ? 'var(--text-strong)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
               {label}
               {tab === 'employee' && pendingConfirmCount > 0 && (
-                <span style={{ background: 'var(--danger)', color: 'var(--text-on-brand)', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{pendingConfirmCount}</span>
+                <span style={{ background: 'var(--danger)', color: 'var(--text-on-brand)', fontSize: 9, fontWeight: 700, borderRadius: 'var(--radius-lg)', padding: '1px 5px' }}>{pendingConfirmCount}</span>
               )}
             </button>
           ))}
@@ -1773,21 +1774,21 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 { title: 'Closed', value: closedCount, ...CYCLE_STATUS_META.closed },
                 { title: 'Total',  value: cycles.length, color: 'var(--text-strong)', bg: 'var(--surface)', border: 'var(--border)' },
               ].map(s => (
-                <div key={s.title} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10, padding: '12px 18px', minWidth: 80 }}>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.value}</div>
+                <div key={s.title} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 'var(--radius-lg)', padding: '12px 18px', minWidth: 80 }}>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.value}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{s.title}</div>
                 </div>
               ))}
             </div>
 
             {cycles.length === 0 ? (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '60px 32px', textAlign: 'center' }}>
-                <div style={{ fontSize: 40, marginBottom: 14 }}>🔄</div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>No manual cycles yet</div>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '60px 32px', textAlign: 'center' }}>
+                <div style={{ fontSize: 36, marginBottom: 14 }}>🔄</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>No manual cycles yet</div>
                 <p style={{ fontSize: 13, color: 'var(--text-faint)', maxWidth: 400, margin: '0 auto 20px', lineHeight: 1.7 }}>
                   Create a named cycle like &quot;2025 Annual Review&quot; to define org-wide review windows.
                 </p>
-                <button onClick={openNewCycle} style={{ padding: '9px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                <button onClick={openNewCycle} style={{ padding: '9px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                   + Create First Cycle
                 </button>
               </div>
@@ -1800,23 +1801,23 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   const revPercent = stats.totalEmployees > 0 ? Math.round((stats.reviewCount / stats.totalEmployees) * 100) : 0
                   const isDeleting = cycleDeleteConfirm === cycle.id
                   return (
-                    <div key={cycle.id} style={{ background: 'var(--surface)', border: `1px solid ${cycle.status === 'active' ? 'var(--success-border)' : 'var(--border)'}`, borderRadius: 12, padding: '20px 24px' }}>
+                    <div key={cycle.id} style={{ background: 'var(--surface)', border: `1px solid ${cycle.status === 'active' ? 'var(--success-border)' : 'var(--border)'}`, borderRadius: 'var(--radius-lg)', padding: '20px 24px' }}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
                             {cycle.status === 'active' && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--success)', display: 'inline-block', boxShadow: '0 0 6px var(--success)' }} />}
-                            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)' }}>{cycle.name}</span>
-                            <span style={{ padding: '2px 9px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>{sm.label.toUpperCase()}</span>
+                            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-strong)' }}>{cycle.name}</span>
+                            <span style={{ padding: '2px 9px', borderRadius: 'var(--radius-pill)', fontSize: 10, fontWeight: 700, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>{sm.label.toUpperCase()}</span>
                             {cycle.published_at && <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>Published {fmtDate(cycle.published_at.split('T')[0])}</span>}
                             {cycle.closed_at && <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>Closed {fmtDate(cycle.closed_at.split('T')[0])}</span>}
                           </div>
                           {cycle.description && <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{cycle.description}</p>}
                           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                            <div style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 14px', minWidth: 200 }}>
+                            <div style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '8px 14px', minWidth: 200 }}>
                               <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Self-Assessment Window</div>
                               <div style={{ fontSize: 12, color: 'var(--text)' }}>{fmtDateRange(cycle.sa_open, cycle.sa_close)}</div>
                             </div>
-                            <div style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 14px', minWidth: 200 }}>
+                            <div style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '8px 14px', minWidth: 200 }}>
                               <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Manager Review Window</div>
                               <div style={{ fontSize: 12, color: 'var(--text)' }}>{fmtDateRange(cycle.review_open, cycle.review_close)}</div>
                             </div>
@@ -1828,11 +1829,11 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                               { label: 'SAs Submitted', count: stats.saCount, total: stats.totalEmployees, pct: saPercent, color: 'var(--brand)' },
                               { label: 'Reviews Exported', count: stats.reviewCount, total: stats.totalEmployees, pct: revPercent, color: 'var(--success)' },
                             ].map(s => (
-                              <div key={s.label} style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', textAlign: 'center', minWidth: 100 }}>
+                              <div key={s.label} style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '8px 12px', textAlign: 'center', minWidth: 100 }}>
                                 <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 5 }}>{s.label}</div>
-                                <div style={{ fontSize: 15, fontWeight: 700, color: s.color, marginBottom: 4 }}>{s.count}<span style={{ fontSize: 10, color: 'var(--text-faint)', fontWeight: 400 }}>/{s.total}</span></div>
-                                <div style={{ width: '100%', height: 3, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
-                                  <div style={{ height: '100%', width: `${s.pct}%`, background: s.color, borderRadius: 2 }} />
+                                <div style={{ fontSize: 16, fontWeight: 700, color: s.color, marginBottom: 4 }}>{s.count}<span style={{ fontSize: 10, color: 'var(--text-faint)', fontWeight: 400 }}>/{s.total}</span></div>
+                                <div style={{ width: '100%', height: 3, background: 'var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                                  <div style={{ height: '100%', width: `${s.pct}%`, background: s.color, borderRadius: 'var(--radius-sm)' }} />
                                 </div>
                               </div>
                             ))}
@@ -1840,21 +1841,21 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                           {isDeleting ? (
                             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                               <span style={{ fontSize: 11, color: 'var(--danger)' }}>Delete?</span>
-                              <button onClick={() => deleteCycle(cycle.id)} style={{ padding: '4px 10px', fontSize: 11, background: 'var(--danger-border)', color: 'var(--danger)', border: '1px solid var(--danger-border)', borderRadius: 5, cursor: 'pointer' }}>Yes</button>
-                              <button onClick={() => setCycleDeleteConfirm(null)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 5, cursor: 'pointer' }}>No</button>
+                              <button onClick={() => deleteCycle(cycle.id)} style={{ padding: '4px 10px', fontSize: 11, background: 'var(--danger-border)', color: 'var(--danger)', border: '1px solid var(--danger-border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>Yes</button>
+                              <button onClick={() => setCycleDeleteConfirm(null)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>No</button>
                             </div>
                           ) : (
                             <div style={{ display: 'flex', gap: 6 }}>
                               {cycle.status === 'draft' && <>
-                                <button onClick={() => openEditCycle(cycle)} style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>Edit</button>
-                                <button onClick={() => cycleAction(cycle.id, 'publish')} style={{ padding: '5px 12px', fontSize: 11, background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>▶ Publish</button>
-                                <button onClick={() => setCycleDeleteConfirm(cycle.id)} style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>Delete</button>
+                                <button onClick={() => openEditCycle(cycle)} style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>Edit</button>
+                                <button onClick={() => cycleAction(cycle.id, 'publish')} style={{ padding: '5px 12px', fontSize: 11, background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 600 }}>▶ Publish</button>
+                                <button onClick={() => setCycleDeleteConfirm(cycle.id)} style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>Delete</button>
                               </>}
                               {cycle.status === 'active' && <>
-                                <button onClick={() => openEditCycle(cycle)} style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>Edit</button>
-                                <button onClick={() => cycleAction(cycle.id, 'close')} style={{ padding: '5px 12px', fontSize: 11, background: 'var(--warning-bg)', color: 'var(--warning)', border: '1px solid var(--warning-text)', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>■ Close</button>
+                                <button onClick={() => openEditCycle(cycle)} style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>Edit</button>
+                                <button onClick={() => cycleAction(cycle.id, 'close')} style={{ padding: '5px 12px', fontSize: 11, background: 'var(--warning-bg)', color: 'var(--warning)', border: '1px solid var(--warning-text)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 600 }}>■ Close</button>
                               </>}
-                              {cycle.status === 'closed' && <button onClick={() => cycleAction(cycle.id, 'reopen')} style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>Reopen</button>}
+                              {cycle.status === 'closed' && <button onClick={() => cycleAction(cycle.id, 'reopen')} style={{ padding: '5px 12px', fontSize: 11, background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>Reopen</button>}
                             </div>
                           )}
                         </div>
@@ -1877,23 +1878,23 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 { title: 'Complete',        value: employeeCycles.filter(c => c.phase === 'complete').length, color: 'var(--text-muted)', bg: 'var(--surface)', border: 'var(--border)' },
                 { title: 'Total',           value: employeeCycles.length, color: 'var(--text-strong)', bg: 'var(--surface)', border: 'var(--border)' },
               ].map(s => (
-                <div key={s.title} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10, padding: '12px 18px', minWidth: 100 }}>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.value}</div>
+                <div key={s.title} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 'var(--radius-lg)', padding: '12px 18px', minWidth: 100 }}>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.value}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{s.title}</div>
                 </div>
               ))}
             </div>
 
             {employeeCycles.length === 0 ? (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '60px 32px', textAlign: 'center' }}>
-                <div style={{ fontSize: 40, marginBottom: 14 }}>📅</div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>No employee cycles yet</div>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '60px 32px', textAlign: 'center' }}>
+                <div style={{ fontSize: 36, marginBottom: 14 }}>📅</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>No employee cycles yet</div>
                 <p style={{ fontSize: 13, color: 'var(--text-faint)', maxWidth: 420, margin: '0 auto', lineHeight: 1.7 }}>
                   Cycles are created automatically when an employee&apos;s anniversary is 30 days away. The daily cron job checks at 8am.
                 </p>
               </div>
             ) : (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
@@ -1929,7 +1930,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                               <button
                                 onClick={() => setEditingCyclePhase(editingCyclePhase === ec.id ? null : ec.id)}
                                 title="Click to change phase"
-                                style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: pm.bg, color: pm.color, border: `1px solid ${pm.border}`, width: 'fit-content', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                style={{ padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 10, fontWeight: 700, background: pm.bg, color: pm.color, border: `1px solid ${pm.border}`, width: 'fit-content', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                                 {pm.label} <span style={{ fontSize: 8, opacity: 0.7 }}>▼</span>
                               </button>
                               {/* Mini step dots */}
@@ -1940,7 +1941,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                               </div>
                               {/* Phase dropdown */}
                               {editingCyclePhase === ec.id && (
-                                <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 50, background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', marginTop: 4, minWidth: 140 }}>
+                                <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 50, background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', marginTop: 4, minWidth: 140 }}>
                                   {PHASES.map(p => {
                                     const meta = EMP_PHASE_META[p] ?? EMP_PHASE_META.pending
                                     const isCurrent = p === ec.phase
@@ -1980,12 +1981,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                               isConfirming ? (
                                 <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
                                   <span style={{ fontSize: 10, color: 'var(--danger)' }}>Confirm?</span>
-                                  <button onClick={() => confirmEmployeeCycleComplete(ec.id)} style={{ padding: '3px 8px', fontSize: 10, background: 'var(--brand-tint)', color: 'var(--danger)', border: '1px solid var(--brand-tint)', borderRadius: 5, cursor: 'pointer' }}>Yes</button>
-                                  <button onClick={() => setConfirmingCycle(null)} style={{ padding: '3px 8px', fontSize: 10, background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 5, cursor: 'pointer' }}>No</button>
+                                  <button onClick={() => confirmEmployeeCycleComplete(ec.id)} style={{ padding: '3px 8px', fontSize: 10, background: 'var(--brand-tint)', color: 'var(--danger)', border: '1px solid var(--brand-tint)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>Yes</button>
+                                  <button onClick={() => setConfirmingCycle(null)} style={{ padding: '3px 8px', fontSize: 10, background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>No</button>
                                 </div>
                               ) : (
                                 <button onClick={() => setConfirmingCycle(ec.id)}
-                                  style={{ padding: '5px 10px', fontSize: 11, background: 'var(--brand-tint)', color: 'var(--danger)', border: '1px solid var(--brand-tint)', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
+                                  style={{ padding: '5px 10px', fontSize: 11, background: 'var(--brand-tint)', color: 'var(--danger)', border: '1px solid var(--brand-tint)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 600 }}>
                                   ✓ Confirm Complete
                                 </button>
                               )
@@ -2012,8 +2013,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   }
 
   function renderCompetencies() {
-    const card: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '24px 28px', marginBottom: 20 }
-    const inputStyle: React.CSSProperties = { width: '100%', padding: '8px 10px', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--brand-text)', fontSize: 13, boxSizing: 'border-box' }
+    const card: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '24px 28px', marginBottom: 20 }
+    const inputStyle: React.CSSProperties = { width: '100%', padding: '8px 10px', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--brand-text)', fontSize: 13, boxSizing: 'border-box' }
     const labelStyle: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }
 
     async function addCompetency() {
@@ -2104,7 +2105,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               <input value={compNewDef} onChange={e => setCompNewDef(e.target.value)} placeholder="How this competency is demonstrated" style={inputStyle} />
             </div>
             <button onClick={addCompetency} disabled={!compNewName.trim() || compSaving}
-              style={{ padding: '9px 18px', background: !compNewName.trim() || compSaving ? 'var(--border)' : 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: !compNewName.trim() || compSaving ? 'var(--text-faint)' : '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: !compNewName.trim() || compSaving ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
+              style={{ padding: '9px 18px', background: !compNewName.trim() || compSaving ? 'var(--border)' : 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: !compNewName.trim() || compSaving ? 'var(--text-faint)' : '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: !compNewName.trim() || compSaving ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
               {compSaving ? 'Adding…' : 'Add'}
             </button>
           </div>
@@ -2118,7 +2119,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{activeCount} selectable{comps.length !== activeCount ? ` · ${comps.length - activeCount} hidden` : ''}</div>
             </div>
             <button onClick={loadComps} disabled={compsLoading}
-              style={{ padding: '6px 12px', background: 'var(--border)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: compsLoading ? 'default' : 'pointer' }}>
+              style={{ padding: '6px 12px', background: 'var(--border)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: compsLoading ? 'default' : 'pointer' }}>
               {compsLoading ? 'Loading…' : 'Refresh'}
             </button>
           </div>
@@ -2149,11 +2150,11 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                             await patchCompetency(row.id, { name: compEditName, definition: compEditDef })
                             setCompEditId(null)
                           }}
-                            style={{ padding: '7px 16px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                            style={{ padding: '7px 16px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                             Save
                           </button>
                           <button onClick={() => setCompEditId(null)}
-                            style={{ padding: '7px 16px', background: 'var(--border)', color: 'var(--text-secondary)', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                            style={{ padding: '7px 16px', background: 'var(--border)', color: 'var(--text-secondary)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                             Cancel
                           </button>
                         </div>
@@ -2163,22 +2164,22 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand-text)', marginBottom: 2 }}>
                             {row.name}
-                            {!row.is_active && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: 'var(--warning)', background: 'rgba(245,158,11,0.15)', padding: '2px 7px', borderRadius: 20 }}>HIDDEN</span>}
+                            {!row.is_active && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: 'var(--warning)', background: 'rgba(245,158,11,0.15)', padding: '2px 7px', borderRadius: 'var(--radius-pill)' }}>HIDDEN</span>}
                           </div>
                           <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>{row.definition || <span style={{ fontStyle: 'italic', color: 'var(--text-faint)' }}>No definition</span>}</div>
                         </div>
                         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                           <button title="Edit" onClick={() => { setCompEditId(row.id); setCompEditName(row.name); setCompEditDef(row.definition) }}
-                            style={{ padding: 6, background: 'var(--border)', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex' }}>
+                            style={{ padding: 6, background: 'var(--border)', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex' }}>
                             <Pencil size={13} color="var(--text-secondary)" />
                           </button>
                           <button title={row.is_active ? 'Hide from dropdowns' : 'Make selectable again'}
                             onClick={() => patchCompetency(row.id, { is_active: !row.is_active })}
-                            style={{ padding: '6px 10px', background: 'var(--border)', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                            style={{ padding: '6px 10px', background: 'var(--border)', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>
                             {row.is_active ? 'Hide' : 'Show'}
                           </button>
                           <button title="Delete" onClick={() => deleteCompetency(row)}
-                            style={{ padding: 6, background: 'var(--border)', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex' }}>
+                            style={{ padding: 6, background: 'var(--border)', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex' }}>
                             <Trash2 size={13} color="var(--danger)" />
                           </button>
                         </div>
@@ -2195,7 +2196,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   }
 
   function renderSettings() {
-    const sectionCard: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '24px 28px', marginBottom: 20 }
+    const sectionCard: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '24px 28px', marginBottom: 20 }
     const sectionTitle: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 4 }
     const sectionDesc: React.CSSProperties = { fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }
     const divider: React.CSSProperties = { height: 1, background: 'var(--border)', margin: '18px 0' }
@@ -2210,7 +2211,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           <button
             onClick={() => onChange(!checked)}
             style={{
-              width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', flexShrink: 0,
+              width: 44, height: 24, borderRadius: 'var(--radius-lg)', border: 'none', cursor: 'pointer', flexShrink: 0,
               background: checked ? 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))' : 'var(--border)',
               position: 'relative', transition: 'background 0.2s',
             }}
@@ -2238,7 +2239,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             )}
             <button
               onClick={saveSettings}
-              style={{ padding: '8px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              style={{ padding: '8px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
             >
               Save Settings
             </button>
@@ -2258,14 +2259,14 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               <button
                 onClick={saveDriveSettings}
                 disabled={driveSaving}
-                style={{ padding: '7px 16px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: driveSaving ? 'not-allowed' : 'pointer', opacity: driveSaving ? 0.7 : 1, whiteSpace: 'nowrap' }}
+                style={{ padding: '7px 16px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: driveSaving ? 'not-allowed' : 'pointer', opacity: driveSaving ? 0.7 : 1, whiteSpace: 'nowrap' }}
               >
                 {driveSaving ? 'Saving…' : 'Save Drive Settings'}
               </button>
             </div>
           </div>
 
-          <div style={{ background: 'var(--surface-inset)', border: '1px solid var(--success-bg)', borderRadius: 8, padding: '8px 14px', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+          <div style={{ background: 'var(--surface-inset)', border: '1px solid var(--success-bg)', borderRadius: 'var(--radius-md)', padding: '8px 14px', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
             <span style={{ color: 'var(--success)', fontSize: 13, flexShrink: 0 }}>ℹ</span>
             <span style={{ fontSize: 11, color: 'var(--success)', lineHeight: 1.5 }}>
               Paste any Google Drive folder URL from your Google account. Changes saved here apply immediately across the entire platform — all managers will export to this folder.
@@ -2283,7 +2284,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               />
               {settingsDriveFolderUrl && (
                 <a href={settingsDriveFolderUrl} target="_blank" rel="noopener noreferrer"
-                  style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '8px 12px', background: 'var(--success-bg)', color: 'var(--success)', borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid var(--success-border)', whiteSpace: 'nowrap' }}>
+                  style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '8px 12px', background: 'var(--success-bg)', color: 'var(--success)', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid var(--success-border)', whiteSpace: 'nowrap' }}>
                   <ExternalLink size={11} /> Open
                 </a>
               )}
@@ -2302,7 +2303,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               />
               {settingsSaDriveFolderUrl && (
                 <a href={settingsSaDriveFolderUrl} target="_blank" rel="noopener noreferrer"
-                  style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '8px 12px', background: 'var(--success-bg)', color: 'var(--success)', borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid var(--success-border)', whiteSpace: 'nowrap' }}>
+                  style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '8px 12px', background: 'var(--success-bg)', color: 'var(--success)', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid var(--success-border)', whiteSpace: 'nowrap' }}>
                   <ExternalLink size={11} /> Open
                 </a>
               )}
@@ -2381,7 +2382,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           </div>
           <div style={sectionDesc}>Connect a Gmail account to send invite and notification emails without domain verification.</div>
 
-          <div style={{ background: 'var(--surface-hover)', border: '1px solid var(--surface-hover)', borderRadius: 8, padding: '10px 16px', marginBottom: 20, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <div style={{ background: 'var(--surface-hover)', border: '1px solid var(--surface-hover)', borderRadius: 'var(--radius-md)', padding: '10px 16px', marginBottom: 20, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
             <span style={{ color: 'var(--brand)', fontSize: 14, flexShrink: 0 }}>ℹ</span>
             <span style={{ fontSize: 12, color: 'var(--brand)', lineHeight: 1.5 }}>
               Use a Gmail App Password — not your regular password. Generate one at{' '}
@@ -2427,7 +2428,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <button
               onClick={saveSmtpSettings}
               disabled={smtpSaving}
-              style={{ flex: 1, padding: '10px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: smtpSaving ? 0.6 : 1 }}
+              style={{ flex: 1, padding: '10px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: smtpSaving ? 0.6 : 1 }}
             >
               {smtpSaving ? 'Saving…' : 'Save Email Settings'}
             </button>
@@ -2442,18 +2443,18 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 } catch { setSmtpTestResult('✗ Network error') } finally { setSmtpTestSending(false) }
               }}
               disabled={smtpTestSending}
-              style={{ flex: 1, padding: '10px 20px', background: 'var(--surface-raised)', color: 'var(--text)', border: '1px solid var(--brand-strong)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: smtpTestSending ? 0.6 : 1 }}
+              style={{ flex: 1, padding: '10px 20px', background: 'var(--surface-raised)', color: 'var(--text)', border: '1px solid var(--brand-strong)', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: smtpTestSending ? 0.6 : 1 }}
             >
               {smtpTestSending ? 'Sending…' : '📧 Send Test Email'}
             </button>
           </div>
           {smtpTestResult && (
-            <div style={{ marginTop: 10, padding: '8px 14px', background: smtpTestResult.startsWith('✓') ? 'var(--success-bg)' : 'var(--danger-bg)', border: `1px solid ${smtpTestResult.startsWith('✓') ? 'var(--success)' : 'var(--danger)'}`, borderRadius: 8, fontSize: 13, color: smtpTestResult.startsWith('✓') ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
+            <div style={{ marginTop: 10, padding: '8px 14px', background: smtpTestResult.startsWith('✓') ? 'var(--success-bg)' : 'var(--danger-bg)', border: `1px solid ${smtpTestResult.startsWith('✓') ? 'var(--success)' : 'var(--danger)'}`, borderRadius: 'var(--radius-md)', fontSize: 13, color: smtpTestResult.startsWith('✓') ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
               {smtpTestResult}
             </div>
           )}
           {smtpSaved && (
-            <div style={{ marginTop: 10, padding: '8px 14px', background: 'var(--success-bg)', border: '1px solid var(--success)', borderRadius: 8, fontSize: 13, color: 'var(--success)', fontWeight: 600 }}>
+            <div style={{ marginTop: 10, padding: '8px 14px', background: 'var(--success-bg)', border: '1px solid var(--success)', borderRadius: 'var(--radius-md)', fontSize: 13, color: 'var(--success)', fontWeight: 600 }}>
               ✓ Settings saved successfully
             </div>
           )}
@@ -2519,7 +2520,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     }
 
     const statCard = (label: string, value: number | string, sub?: string) => (
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px', flex: 1, minWidth: 160 }}>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', flex: 1, minWidth: 160 }}>
         <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 4 }}>{value}</div>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>{label}</div>
         {sub && <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 4 }}>{sub}</div>}
@@ -2531,7 +2532,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     const statusBarColor: Record<string, string> = { not_started: 'var(--text-faint)', in_progress: 'var(--info)', complete: 'var(--success-text)', exported: 'var(--brand-strong)' }
 
     const statusPill = (st: string) => (
-      <span style={{ background: statusBgColor[st] || 'var(--border)', color: 'var(--text)', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 500 }}>
+      <span style={{ background: statusBgColor[st] || 'var(--border)', color: 'var(--text)', padding: '2px 8px', borderRadius: 'var(--radius-sm)', fontSize: 11, fontWeight: 500 }}>
         {statusLabel[st] || st}
       </span>
     )
@@ -2543,7 +2544,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: 'var(--text-strong)' }}>Analytics</h1>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Organization-wide performance data and reporting.</p>
           </div>
-          <button onClick={downloadCSV} style={{ padding: '9px 18px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={downloadCSV} style={{ padding: '9px 18px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             ⬇ Export CSV
           </button>
         </div>
@@ -2556,9 +2557,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         </div>
 
         {/* 360 Feedback Overview */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Star size={18} color="#fff" />
             </div>
             <div>
@@ -2568,15 +2569,15 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           </div>
           <button
             onClick={() => setPage('feedback' as Page)}
-            style={{ padding: '8px 20px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
+            style={{ padding: '8px 20px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
           >
             View 360 Feedback →
           </button>
         </div>
 
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', marginBottom: 24 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 16 }}>Review Status Distribution</div>
-          <div style={{ display: 'flex', height: 28, borderRadius: 8, overflow: 'hidden', marginBottom: 14 }}>
+          <div style={{ display: 'flex', height: 28, borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 14 }}>
             {(['not_started', 'in_progress', 'complete', 'exported'] as const).map(st => {
               const pct = (statusCounts[st] / totalReviews) * 100
               if (pct === 0) return null
@@ -2590,14 +2591,14 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
             {(['not_started', 'in_progress', 'complete', 'exported'] as const).map(st => (
               <div key={st} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
-                <div style={{ width: 12, height: 12, borderRadius: 3, background: statusBarColor[st] }} />
+                <div style={{ width: 12, height: 12, borderRadius: 'var(--radius-sm)', background: statusBarColor[st] }} />
                 {statusLabel[st]}: <strong style={{ color: 'var(--text-strong)', marginLeft: 2 }}>{statusCounts[st]}</strong>
               </div>
             ))}
           </div>
         </div>
 
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', marginBottom: 24 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 16 }}>Completion Rate by Manager</div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
@@ -2618,8 +2619,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                     <td style={{ padding: '8px 10px', color: 'var(--text-secondary)' }}>{row.exported}</td>
                     <td style={{ padding: '8px 10px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 60, height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-                          <div style={{ width: `${pct}%`, height: '100%', background: pct === 100 ? 'var(--success)' : pct > 50 ? 'var(--info)' : 'var(--warning)', borderRadius: 3 }} />
+                        <div style={{ width: 60, height: 6, background: 'var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                          <div style={{ width: `${pct}%`, height: '100%', background: pct === 100 ? 'var(--success)' : pct > 50 ? 'var(--info)' : 'var(--warning)', borderRadius: 'var(--radius-sm)' }} />
                         </div>
                         <span style={{ color: pct === 100 ? 'var(--success)' : 'var(--text-secondary)', fontWeight: 600 }}>{pct}%</span>
                       </div>
@@ -2635,12 +2636,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         </div>
 
 
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-strong)' }}>Self-Assessment Tracking</div>
-            <span style={{ background: 'var(--success-bg)', color: 'var(--success)', padding: '2px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600 }}>Submitted: {saSubmitted.length}</span>
-            <span style={{ background: 'var(--brand-tint)', color: 'var(--brand)', padding: '2px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600 }}>Draft: {saDraft}</span>
-            <span style={{ background: 'var(--border)', color: 'var(--text-muted)', padding: '2px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600 }}>Not Started: {saNotStarted}</span>
+            <span style={{ background: 'var(--success-bg)', color: 'var(--success)', padding: '2px 10px', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600 }}>Submitted: {saSubmitted.length}</span>
+            <span style={{ background: 'var(--brand-tint)', color: 'var(--brand)', padding: '2px 10px', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600 }}>Draft: {saDraft}</span>
+            <span style={{ background: 'var(--border)', color: 'var(--text-muted)', padding: '2px 10px', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600 }}>Not Started: {saNotStarted}</span>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
@@ -2713,7 +2714,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     return (
       <div style={{ padding: '24px 28px', maxWidth: 1200 }}>
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-strong)' }}>Quarterly Check-ins</h1>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-strong)' }}>Quarterly Check-ins</h1>
           <p style={{ margin: '6px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>Overview of manager and employee check-in submissions by quarter.</p>
         </div>
 
@@ -2724,7 +2725,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               key={q}
               onClick={() => setCheckinsQuarter(q)}
               style={{
-                padding: '6px 18px', borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none',
+                padding: '6px 18px', borderRadius: 'var(--radius-pill)', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none',
                 background: checkinsQuarter === q ? 'var(--brand)' : 'var(--border)',
                 color: checkinsQuarter === q ? '#fff' : 'var(--text-secondary)',
                 transition: 'background 0.15s',
@@ -2736,7 +2737,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         </div>
 
         {/* Summary row */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 20px', marginBottom: 20, display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 20px', marginBottom: 20, display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
             <span style={{ color: 'var(--brand)', fontWeight: 700 }}>{managerSubmitted}</span> manager check-in{managerSubmitted !== 1 ? 's' : ''} submitted
           </span>
@@ -2751,12 +2752,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading check-in data…</div>
         )}
         {checkinsError && (
-          <div style={{ padding: '16px', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 8, color: 'var(--danger)', fontSize: 13, marginBottom: 16 }}>{checkinsError}</div>
+          <div style={{ padding: '16px', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 'var(--radius-md)', color: 'var(--danger)', fontSize: 13, marginBottom: 16 }}>{checkinsError}</div>
         )}
 
         {/* Table */}
         {!checkinsLoading && (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -2837,7 +2838,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Full activity trail for compliance and security. Showing last 200 records.</p>
           </div>
           <button onClick={() => { setAuditLogs([]); fetchAuditLogs() }} disabled={auditLoading}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: 'transparent', color: auditLoading ? 'var(--text-faint)' : 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, cursor: auditLoading ? 'default' : 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: 'transparent', color: auditLoading ? 'var(--text-faint)' : 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 12, cursor: auditLoading ? 'default' : 'pointer' }}>
             {auditLoading ? '⟳ Loading…' : '↻ Refresh'}
           </button>
         </div>
@@ -2864,7 +2865,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           </div>
           {(auditSearch || auditActionFilter !== 'all' || auditDateFrom || auditDateTo) && (
             <button onClick={() => { setAuditSearch(''); setAuditActionFilter('all'); setAuditDateFrom(''); setAuditDateTo(''); setAuditPage(1) }}
-              style={{ padding: '8px 12px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, cursor: 'pointer' }}>
+              style={{ padding: '8px 12px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 12, cursor: 'pointer' }}>
               Clear
             </button>
           )}
@@ -2872,21 +2873,21 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         </div>
 
         {/* Table */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
           {auditLoading ? (
             <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Loading audit logs…</div>
           ) : auditError ? (
             <div style={{ padding: '60px', textAlign: 'center' }}>
-              <div style={{ fontSize: 32, marginBottom: 10 }}>⚠️</div>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>⚠️</div>
               <div style={{ fontSize: 14, color: 'var(--danger)', marginBottom: 8 }}>{auditError}</div>
               <button onClick={fetchAuditLogs}
-                style={{ padding: '7px 16px', background: 'var(--surface)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, cursor: 'pointer' }}>
+                style={{ padding: '7px 16px', background: 'var(--surface)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 12, cursor: 'pointer' }}>
                 Retry
               </button>
             </div>
           ) : filtered.length === 0 ? (
             <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: 32, marginBottom: 10 }}>📋</div>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>📋</div>
               <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 6 }}>
                 {auditLogs.length === 0 ? 'No audit log entries found' : 'No entries match your filters'}
               </div>
@@ -2920,13 +2921,13 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                             {log.actor_email ?? (log.actor_user_id.slice(0, 8) + '…')}
                           </div>
                           {log.metadata?.actor_role && (
-                            <span style={{ padding: '1px 6px', borderRadius: 10, fontSize: 9, fontWeight: 700, background: `${ROLE_COLORS[log.metadata.actor_role] ?? 'var(--text-muted)'}20`, color: ROLE_COLORS[log.metadata.actor_role] ?? 'var(--text-muted)', marginTop: 3, display: 'inline-block' }}>
+                            <span style={{ padding: '1px 6px', borderRadius: 'var(--radius-lg)', fontSize: 9, fontWeight: 700, background: `${ROLE_COLORS[log.metadata.actor_role] ?? 'var(--text-muted)'}20`, color: ROLE_COLORS[log.metadata.actor_role] ?? 'var(--text-muted)', marginTop: 3, display: 'inline-block' }}>
                               {ROLE_LABELS[log.metadata.actor_role] ?? log.metadata.actor_role}
                             </span>
                           )}
                         </td>
                         <td style={td}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: meta.bg, color: meta.color, border: `1px solid ${meta.border}`, whiteSpace: 'nowrap' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 600, background: meta.bg, color: meta.color, border: `1px solid ${meta.border}`, whiteSpace: 'nowrap' }}>
                             <span style={{ fontSize: 12 }}>{meta.icon}</span>
                             {meta.label}
                           </span>
@@ -2961,7 +2962,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
                   <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Showing {paginated.length} of {filtered.length}</span>
                   <button onClick={() => setAuditPage(p => p + 1)}
-                    style={{ padding: '7px 18px', background: 'var(--border)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    style={{ padding: '7px 18px', background: 'var(--border)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                     Load More
                   </button>
                 </div>
@@ -2997,7 +2998,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             { label: 'Pending', value: pending },
             { label: 'Response Rate', value: `${responseRate}%` },
           ].map(({ label, value }) => (
-            <div key={label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px', flex: 1, minWidth: 140 }}>
+            <div key={label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', flex: 1, minWidth: 140 }}>
               <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 4 }}>{value}</div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>{label}</div>
             </div>
@@ -3005,7 +3006,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         </div>
 
         {/* Table */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 16 }}>All Feedback Requests</div>
 
           {feedbackLoading && (
@@ -3016,7 +3017,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           )}
           {!feedbackLoading && !feedbackError && total === 0 && (
             <div style={{ textAlign: 'center', padding: '48px 0' }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>⭐</div>
+              <div style={{ fontSize: 28, marginBottom: 12 }}>⭐</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>No feedback requests yet</div>
               <div style={{ fontSize: 13, color: 'var(--text-faint)' }}>Managers send feedback requests from Peer Reviews in the manager portal.</div>
             </div>
@@ -3043,7 +3044,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       {r.reviewer?.name || r.reviewer?.email || '—'}
                     </td>
                     <td style={{ padding: '10px 12px' }}>
-                      <span style={{ background: statusBg[r.status] || 'var(--border)', color: statusColor[r.status] || 'var(--text-secondary)', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                      <span style={{ background: statusBg[r.status] || 'var(--border)', color: statusColor[r.status] || 'var(--text-secondary)', padding: '2px 8px', borderRadius: 'var(--radius-sm)', fontSize: 11, fontWeight: 600 }}>
                         {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
                       </span>
                     </td>
@@ -3058,7 +3059,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                     <td style={{ padding: '10px 12px', textAlign: 'right' }}>
                       {r.status === 'submitted' ? (
                         <button onClick={() => toggleFeedbackDetail(r.id)}
-                          style={{ padding: '4px 10px', background: 'var(--border)', color: 'var(--brand)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                          style={{ padding: '4px 10px', background: 'var(--border)', color: 'var(--brand)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                           {fbExpanded === r.id ? 'Hide' : 'View'}
                         </button>
                       ) : (
@@ -3069,7 +3070,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   {fbExpanded === r.id && (
                     <tr>
                       <td colSpan={6} style={{ padding: '0 12px 16px' }}>
-                        <div style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 18px' }}>
+                        <div style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '16px 18px' }}>
                           {fbDetailLoading === r.id ? (
                             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Loading feedback…</div>
                           ) : fbDetailError ? (
@@ -3093,7 +3094,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                                     </div>
                                   )}
                                   <button onClick={() => deleteFeedback(r)} disabled={fbDeleting === r.id}
-                                    style={{ marginLeft: 'auto', padding: '4px 10px', background: 'rgba(248,113,113,0.12)', color: 'var(--danger)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: fbDeleting === r.id ? 'default' : 'pointer', opacity: fbDeleting === r.id ? 0.6 : 1 }}>
+                                    style={{ marginLeft: 'auto', padding: '4px 10px', background: 'rgba(248,113,113,0.12)', color: 'var(--danger)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: 'var(--radius-sm)', fontSize: 11, fontWeight: 600, cursor: fbDeleting === r.id ? 'default' : 'pointer', opacity: fbDeleting === r.id ? 0.6 : 1 }}>
                                     {fbDeleting === r.id ? 'Deleting…' : 'Delete feedback'}
                                   </button>
                                 </div>
@@ -3130,9 +3131,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
       <div style={{ padding: '28px 32px', maxWidth: 760, margin: '0 auto' }}>
         <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: 'var(--text-strong)' }}>{title}</h1>
         <p style={{ margin: '0 0 28px', fontSize: 13, color: 'var(--text-muted)' }}>{description}</p>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '48px 32px', textAlign: 'center' }}>
-          <div style={{ fontSize: 40, marginBottom: 14 }}>{icon}</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>{title} — Coming Soon</div>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '48px 32px', textAlign: 'center' }}>
+          <div style={{ fontSize: 36, marginBottom: 14 }}>{icon}</div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>{title} — Coming Soon</div>
           <p style={{ fontSize: 13, color: 'var(--text-faint)', lineHeight: 1.7, maxWidth: 440, margin: '0 auto 24px' }}>
             This section will include:
           </p>
@@ -3154,7 +3155,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     <div style={{ display: 'flex', height: '100vh', background: 'var(--page)', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: 'var(--text-strong)', overflow: 'hidden' }}>
 
       {/* ── Sidebar ── */}
-      <aside style={{ width: collapsed ? 56 : 240, flexShrink: 0, background: 'var(--surface-inset)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', transition: 'width 0.2s ease', overflow: 'hidden' }}>
+      <aside style={{ width: collapsed ? 64 : 240, flexShrink: 0, background: 'var(--surface-inset)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', transition: 'width 0.2s ease', overflow: 'hidden' }}>
 
         {/* Logo */}
         <div style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: collapsed ? '0 12px' : '0 16px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
@@ -3162,7 +3163,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <CalibrIcon size={20} />
               <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em', color: 'var(--text-strong)', whiteSpace: 'nowrap' }}>Calibr</span>
-              <span style={{ padding: '2px 7px', borderRadius: 20, fontSize: 9, fontWeight: 700, background: isDevAdmin ? 'var(--brand-tint)' : 'var(--brand-tint)', color: isDevAdmin ? 'var(--danger)' : 'var(--brand)', whiteSpace: 'nowrap' }}>{isDevAdmin ? 'DEV' : 'ADMIN'}</span>
+              <span style={{ padding: '2px 7px', borderRadius: 'var(--radius-pill)', fontSize: 9, fontWeight: 700, background: isDevAdmin ? 'var(--brand-tint)' : 'var(--brand-tint)', color: isDevAdmin ? 'var(--danger)' : 'var(--brand)', whiteSpace: 'nowrap' }}>{isDevAdmin ? 'DEV' : 'ADMIN'}</span>
             </div>
           )}
           {collapsed && <CalibrIcon size={20} />}
@@ -3186,7 +3187,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 <Icon size={15} color={active ? 'var(--brand)' : 'var(--text-muted)'} />
                 {!collapsed && item.label}
                 {badge > 0 && !collapsed && (
-                  <span style={{ marginLeft: 'auto', background: item.id === 'dashboard' && urgentCount > 0 ? 'var(--warning)' : 'var(--brand-strong)', color: item.id === 'dashboard' && urgentCount > 0 ? 'var(--surface-inset)' : 'white', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{badge}</span>
+                  <span style={{ marginLeft: 'auto', background: item.id === 'dashboard' && urgentCount > 0 ? 'var(--warning)' : 'var(--brand-strong)', color: item.id === 'dashboard' && urgentCount > 0 ? 'var(--surface-inset)' : 'white', fontSize: 9, fontWeight: 700, borderRadius: 'var(--radius-lg)', padding: '1px 5px' }}>{badge}</span>
                 )}
               </button>
             )
@@ -3197,7 +3198,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         <div style={{ borderTop: '1px solid var(--border)', padding: '8px', flexShrink: 0 }}>
           {!isDevAdmin && (
             <a href="/performance-review" title={collapsed ? 'Manager View' : undefined}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '8px' : '8px 8px', borderRadius: 8, background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500, textDecoration: 'none', marginBottom: 2, justifyContent: collapsed ? 'center' : 'flex-start' }}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '8px' : '8px 8px', borderRadius: 'var(--radius-md)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500, textDecoration: 'none', marginBottom: 2, justifyContent: collapsed ? 'center' : 'flex-start' }}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--surface)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <ExternalLink size={14} color="var(--text-muted)" />
@@ -3215,7 +3216,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <ThemeToggle compact={collapsed} />
           </div>
           <button onClick={signOut} title={collapsed ? 'Sign out' : undefined}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '8px' : '8px 8px', borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, justifyContent: collapsed ? 'center' : 'flex-start' }}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '8px' : '8px 8px', borderRadius: 'var(--radius-md)', border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, justifyContent: collapsed ? 'center' : 'flex-start' }}
             onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-bg)'; e.currentTarget.style.color = 'var(--danger)' }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}>
             <LogOut size={14} />
@@ -3261,15 +3262,15 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
       {/* ── Invite Modal ── */}
       {showInviteModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }} onClick={e => { if (e.target === e.currentTarget) setShowInviteModal(false) }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '32px', width: 420 }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: '32px', width: 420 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-strong)' }}>Invite User</h2>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-strong)' }}>Invite User</h2>
             </div>
             <p style={{ margin: '0 0 24px', fontSize: 13, color: 'var(--text-muted)' }}>An invitation email will be sent. They sign in with their Google account.</p>
 
             {inviteLink ? (
               <>
-                <div style={{ background: inviteEmailSent ? 'var(--success-bg)' : 'var(--brand-tint)', border: `1px solid ${inviteEmailSent ? 'var(--success-border)' : 'var(--border-strong)'}`, borderRadius: 10, padding: '16px', marginBottom: 16 }}>
+                <div style={{ background: inviteEmailSent ? 'var(--success-bg)' : 'var(--brand-tint)', border: `1px solid ${inviteEmailSent ? 'var(--success-border)' : 'var(--border-strong)'}`, borderRadius: 'var(--radius-lg)', padding: '16px', marginBottom: 16 }}>
                   <div style={{ fontWeight: 600, fontSize: 14, color: inviteEmailSent ? 'var(--success)' : 'var(--brand)', marginBottom: 6 }}>
                     {inviteEmailSent ? '✓ Invitation email sent!' : '✓ Invite created'}
                   </div>
@@ -3277,13 +3278,13 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                     {inviteEmailSent ? `An email was sent to ${inviteEmail} with their invite link.` : 'Copy and share this link manually:'}
                   </div>
                   {!inviteEmailSent && (
-                    <div style={{ marginTop: 10, background: 'var(--surface-inset)', borderRadius: 6, padding: '8px 10px', fontSize: 11, color: 'var(--text-muted)', wordBreak: 'break-all', lineHeight: 1.6 }}>{inviteLink}</div>
+                    <div style={{ marginTop: 10, background: 'var(--surface-inset)', borderRadius: 'var(--radius-sm)', padding: '8px 10px', fontSize: 11, color: 'var(--text-muted)', wordBreak: 'break-all', lineHeight: 1.6 }}>{inviteLink}</div>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  {!inviteEmailSent && <button onClick={() => navigator.clipboard.writeText(inviteLink)} style={{ flex: 1, padding: '10px', background: 'var(--border)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Copy Link</button>}
+                  {!inviteEmailSent && <button onClick={() => navigator.clipboard.writeText(inviteLink)} style={{ flex: 1, padding: '10px', background: 'var(--border)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, cursor: 'pointer' }}>Copy Link</button>}
                   <button onClick={() => { setShowInviteModal(false); setInviteEmail(''); setInviteLink(''); setInviteManagerId(''); setInvitePosition(''); setInviteStartDate(''); setInviteEmailSent(false) }}
-                    style={{ flex: 1, padding: '10px', background: inviteEmailSent ? 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))' : 'transparent', color: inviteEmailSent ? '#fff' : 'var(--text-muted)', border: inviteEmailSent ? 'none' : '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontWeight: inviteEmailSent ? 600 : 400, cursor: 'pointer' }}>Done</button>
+                    style={{ flex: 1, padding: '10px', background: inviteEmailSent ? 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))' : 'transparent', color: inviteEmailSent ? '#fff' : 'var(--text-muted)', border: inviteEmailSent ? 'none' : '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: inviteEmailSent ? 600 : 400, cursor: 'pointer' }}>Done</button>
                 </div>
               </>
             ) : (
@@ -3297,7 +3298,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   <div style={{ display: 'flex', gap: 8 }}>
                     {inviteRoleOptions.map(r => (
                       <button key={r} onClick={() => { setInviteRole(r); if (r !== 'employee') setInviteManagerId('') }}
-                        style={{ flex: 1, padding: '10px 8px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: inviteRole === r ? `${ROLE_COLORS[r]}20` : 'var(--surface-inset)', color: inviteRole === r ? ROLE_COLORS[r] : 'var(--text-muted)', outline: inviteRole === r ? `1.5px solid ${ROLE_COLORS[r]}` : '1px solid var(--border)' }}>
+                        style={{ flex: 1, padding: '10px 8px', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: inviteRole === r ? `${ROLE_COLORS[r]}20` : 'var(--surface-inset)', color: inviteRole === r ? ROLE_COLORS[r] : 'var(--text-muted)', outline: inviteRole === r ? `1.5px solid ${ROLE_COLORS[r]}` : '1px solid var(--border)' }}>
                         {ROLE_LABELS[r]}
                       </button>
                     ))}
@@ -3323,9 +3324,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-                  <button onClick={() => { setShowInviteModal(false); setInviteEmail(''); setInviteManagerId(''); setInvitePosition(''); setInviteStartDate('') }} style={{ flex: 1, padding: '11px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={() => { setShowInviteModal(false); setInviteEmail(''); setInviteManagerId(''); setInvitePosition(''); setInviteStartDate('') }} style={{ flex: 1, padding: '11px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
                   <button onClick={sendInvite} disabled={!inviteEmail || inviteLoading}
-                    style={{ flex: 2, padding: '11px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: !inviteEmail || inviteLoading ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                    style={{ flex: 2, padding: '11px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: !inviteEmail || inviteLoading ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                     {inviteLoading ? 'Sending…' : '✉️ Send Invitation'}
                   </button>
                 </div>
@@ -3342,7 +3343,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         return (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
             onClick={e => { if (e.target === e.currentTarget) { setShowTriggerModal(false); setTriggerError(null) } }}>
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '32px', width: 460 }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: '32px', width: 460 }}>
               <h2 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: 'var(--text-strong)' }}>Trigger Review Cycle</h2>
               <p style={{ margin: '0 0 24px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
                 Manually start an annual review cycle for any user. The self-assessment window opens immediately.
@@ -3350,7 +3351,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>User</label>
               <select value={triggerEmployeeId} onChange={e => setTriggerEmployeeId(e.target.value)}
-                style={{ width: '100%', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: 'var(--text)', marginBottom: 16, boxSizing: 'border-box' as const }}>
+                style={{ width: '100%', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '9px 12px', fontSize: 13, color: 'var(--text)', marginBottom: 16, boxSizing: 'border-box' as const }}>
                 <option value=''>Select user…</option>
                 {eligible.map(u => (
                   <option key={u.id} value={u.id}>{u.name || u.email}{u.position ? ` — ${u.position}` : ''}{u.role !== 'employee' ? ` (${ROLE_LABELS[u.role] ?? u.role})` : ''}</option>
@@ -3359,26 +3360,26 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Self-assessment window (days)</label>
               <input type='number' min={1} max={60} value={triggerSaDays} onChange={e => setTriggerSaDays(Number(e.target.value))}
-                style={{ width: '100%', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: 'var(--text)', marginBottom: 6, boxSizing: 'border-box' as const }} />
+                style={{ width: '100%', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '9px 12px', fontSize: 13, color: 'var(--text)', marginBottom: 6, boxSizing: 'border-box' as const }} />
               <p style={{ margin: '0 0 20px', fontSize: 11, color: 'var(--text-faint)' }}>
                 SA closes in {triggerSaDays} days → manager review opens for 14 days → meeting/signing for 7 days
               </p>
 
               {triggerError && (
-                <div style={{ marginBottom: 16, padding: '8px 12px', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 8, fontSize: 12, color: 'var(--danger)' }}>{triggerError}</div>
+                <div style={{ marginBottom: 16, padding: '8px 12px', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 'var(--radius-md)', fontSize: 12, color: 'var(--danger)' }}>{triggerError}</div>
               )}
 
               {eligible.length === 0 && (
-                <div style={{ marginBottom: 16, padding: '8px 12px', background: 'var(--warning-bg)', border: '1px solid var(--warning-text)', borderRadius: 8, fontSize: 12, color: 'var(--warning)' }}>
+                <div style={{ marginBottom: 16, padding: '8px 12px', background: 'var(--warning-bg)', border: '1px solid var(--warning-text)', borderRadius: 'var(--radius-md)', fontSize: 12, color: 'var(--warning)' }}>
                   All active users already have an open review cycle.
                 </div>
               )}
 
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={() => { setShowTriggerModal(false); setTriggerError(null) }}
-                  style={{ flex: 1, padding: '11px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                  style={{ flex: 1, padding: '11px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
                 <button onClick={handleTriggerCycle} disabled={!triggerEmployeeId || triggeringCycle}
-                  style={{ flex: 1, padding: '11px', background: triggerEmployeeId && !triggeringCycle ? 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))' : 'var(--border)', color: triggerEmployeeId && !triggeringCycle ? '#fff' : 'var(--text-faint)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: triggerEmployeeId && !triggeringCycle ? 'pointer' : 'not-allowed' }}>
+                  style={{ flex: 1, padding: '11px', background: triggerEmployeeId && !triggeringCycle ? 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))' : 'var(--border)', color: triggerEmployeeId && !triggeringCycle ? '#fff' : 'var(--text-faint)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: triggerEmployeeId && !triggeringCycle ? 'pointer' : 'not-allowed' }}>
                   {triggeringCycle ? 'Creating…' : 'Trigger Cycle'}
                 </button>
               </div>
@@ -3391,8 +3392,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
       {showCycleModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
           onClick={e => { if (e.target === e.currentTarget) setShowCycleModal(false) }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '32px', width: 480 }}>
-            <h2 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: 'var(--text-strong)' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: '32px', width: 480 }}>
+            <h2 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 700, color: 'var(--text-strong)' }}>
               {editingCycle ? 'Edit Review Cycle' : 'New Review Cycle'}
             </h2>
             <p style={{ margin: '0 0 24px', fontSize: 13, color: 'var(--text-muted)' }}>
@@ -3439,11 +3440,11 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setShowCycleModal(false)}
-                style={{ flex: 1, padding: '11px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>
+                style={{ flex: 1, padding: '11px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, cursor: 'pointer' }}>
                 Cancel
               </button>
               <button onClick={saveCycle} disabled={!cycleName.trim() || cycleLoading}
-                style={{ flex: 2, padding: '11px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: !cycleName.trim() || cycleLoading ? 0.5 : 1 }}>
+                style={{ flex: 2, padding: '11px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: !cycleName.trim() || cycleLoading ? 0.5 : 1 }}>
                 {cycleLoading ? 'Saving…' : editingCycle ? 'Save Changes' : 'Create Cycle'}
               </button>
             </div>
@@ -3454,7 +3455,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
       {/* ── SA Viewer Modal ── */}
       {viewingSA && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={e => { if (e.target === e.currentTarget) setViewingSA(null) }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, width: '100%', maxWidth: 680, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: 680, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
@@ -3469,7 +3470,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {!isDevAdmin && saData?.drive_url && <a href={saData.drive_url} target="_blank" rel="noopener noreferrer" style={{ padding: '6px 12px', background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>Drive ↗</a>}
+                {!isDevAdmin && saData?.drive_url && <a href={saData.drive_url} target="_blank" rel="noopener noreferrer" style={{ padding: '6px 12px', background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>Drive ↗</a>}
                 <button onClick={() => setViewingSA(null)} style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--border)', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
               </div>
             </div>
@@ -3486,9 +3487,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       {saData.competencies.filter(c => c.term).map((c, i) => {
                         const color = c.type === 'positive' ? 'var(--success)' : c.type === 'constructive' ? 'var(--warning)' : 'var(--brand)'
                         return (
-                          <div key={i} style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderLeft: `3px solid ${color}`, borderRadius: 8, padding: '12px 14px', marginBottom: 8 }}>
+                          <div key={i} style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderLeft: `3px solid ${color}`, borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: 8 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                              <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: color + '20', color, border: `1px solid ${color}40` }}>{c.type === 'positive' ? 'Positive' : c.type === 'constructive' ? 'Constructive' : 'Choice'}</span>
+                              <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 10, fontWeight: 700, background: color + '20', color, border: `1px solid ${color}40` }}>{c.type === 'positive' ? 'Positive' : c.type === 'constructive' ? 'Constructive' : 'Choice'}</span>
                               <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{isDevAdmin ? <Redacted>{c.term}</Redacted> : c.term}</span>
                             </div>
                             {c.examples.filter((e: string) => e.trim()).map((ex: string, ei: number) => (
@@ -3503,7 +3504,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                     <div style={{ marginBottom: 24 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Goals & Objectives</div>
                       {saData.goals_objectives.filter((g: {description:string}) => g.description.trim()).map((g: {description:string;outcome:string;reasoning:string}, i: number) => (
-                        <div key={i} style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', marginBottom: 8 }}>
+                        <div key={i} style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: 8 }}>
                           <div style={{ fontSize: 13, color: 'var(--text)', marginBottom: 6 }}>{isDevAdmin ? <Redacted>{g.description}</Redacted> : g.description}</div>
                           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                             {g.outcome && <span style={{ fontSize: 11, color: g.outcome === 'successful' ? 'var(--success)' : g.outcome === 'ongoing' ? 'var(--warning)' : 'var(--danger)', fontWeight: 600 }}>{g.outcome === 'successful' ? '✓ Successful' : g.outcome === 'ongoing' ? '↻ Ongoing' : '✗ Unsuccessful'}</span>}
@@ -3517,7 +3518,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                     <div style={{ marginBottom: 8 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Next Year&apos;s Goals</div>
                       {saData.next_year_goals.filter((g: {goal:string}) => g.goal.trim()).map((g: {goal:string;objective:string}, i: number) => (
-                        <div key={i} style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', marginBottom: 8 }}>
+                        <div key={i} style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: 8 }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>{isDevAdmin ? <Redacted>{g.goal}</Redacted> : g.goal}</div>
                           {g.objective && <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{isDevAdmin ? <Redacted>{g.objective}</Redacted> : g.objective}</div>}
                         </div>
@@ -3534,44 +3535,44 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
       {/* ── Review viewer modal ── */}
       {viewingReview && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setViewingReview(null)}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 32, maxWidth: 760, width: '100%', maxHeight: '88vh', overflowY: 'auto', position: 'relative' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 32, maxWidth: 760, width: '100%', maxHeight: '88vh', overflowY: 'auto', position: 'relative' }} onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <div>
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--info)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Manager Review</div>
-                <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-strong)' }}>{viewingReview.employee_name}</span>
+                <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-strong)' }}>{viewingReview.employee_name}</span>
                 {viewingReview.employee_position && <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>· {viewingReview.employee_position}</span>}
               </div>
               <button onClick={() => setViewingReview(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
             </div>
             {/* Status pills */}
             <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-              {(() => { const status = reviewStatus(viewingReview); const sm = STATUS_META[status]; return <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>{sm.label}</span> })()}
+              {(() => { const status = reviewStatus(viewingReview); const sm = STATUS_META[status]; return <span style={{ padding: '3px 10px', borderRadius: 'var(--radius-pill)', fontSize: 12, fontWeight: 600, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>{sm.label}</span> })()}
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Step {Math.min(viewingReview.max_step, TOTAL_CONTENT_STEPS)}/{TOTAL_CONTENT_STEPS}</span>
-              <a href={`/sign/${viewingReview.id}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', background: 'var(--surface-inset)', color: 'var(--info)', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid var(--info-border)' }}>
+              <a href={`/sign/${viewingReview.id}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', background: 'var(--surface-inset)', color: 'var(--info)', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid var(--info-border)' }}>
                 View Full Review ↗
               </a>
               {!isDevAdmin && viewingReview.drive_url && (
-                <a href={viewingReview.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', background: 'var(--success-bg)', color: 'var(--success)', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid var(--success-border)' }}>
+                <a href={viewingReview.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', background: 'var(--success-bg)', color: 'var(--success)', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid var(--success-border)' }}>
                   Open in Drive ↗
                 </a>
               )}
             </div>
             {/* Meta grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-              <div style={{ background: 'var(--surface-inset)', borderRadius: 8, padding: '10px 14px' }}>
+              <div style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '10px 14px' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Manager</div>
                 <div style={{ fontSize: 13, color: 'var(--text)' }}>{users.find(u => u.id === viewingReview.user_id)?.name || '—'}</div>
               </div>
-              <div style={{ background: 'var(--surface-inset)', borderRadius: 8, padding: '10px 14px' }}>
+              <div style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '10px 14px' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Last Updated</div>
                 <div style={{ fontSize: 13, color: 'var(--text)' }}>{new Date(viewingReview.updated_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
               </div>
-              <div style={{ background: 'var(--surface-inset)', borderRadius: 8, padding: '10px 14px' }}>
+              <div style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '10px 14px' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Manager Signed</div>
                 <div style={{ fontSize: 13, color: viewingReview.manager_signed_at ? 'var(--success)' : 'var(--text-faint)' }}>{viewingReview.manager_signed_at ? new Date(viewingReview.manager_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not signed'}</div>
               </div>
-              <div style={{ background: 'var(--surface-inset)', borderRadius: 8, padding: '10px 14px' }}>
+              <div style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '10px 14px' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Employee Signed</div>
                 <div style={{ fontSize: 13, color: viewingReview.employee_signed_at ? 'var(--success)' : 'var(--text-faint)' }}>{viewingReview.employee_signed_at ? new Date(viewingReview.employee_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not signed'}</div>
               </div>
@@ -3581,12 +3582,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-faint)', fontSize: 13 }}>Loading review content…</div>
             )}
             {!reviewFormLoading && reviewFormError && (
-              <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 8, padding: '12px 16px', color: 'var(--danger)', fontSize: 13 }}>
+              <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 'var(--radius-md)', padding: '12px 16px', color: 'var(--danger)', fontSize: 13 }}>
                 Error loading review: {reviewFormError}
               </div>
             )}
             {!reviewFormLoading && !reviewFormError && !reviewFormData && (
-              <div style={{ background: 'var(--surface-inset)', borderRadius: 8, padding: '20px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 13 }}>
+              <div style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '20px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 13 }}>
                 No form data saved for this review yet.
               </div>
             )}
@@ -3614,9 +3615,9 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   {/* Header info */}
                   {(fd.supervisorName || fd.appraisalPeriod || fd.reviewDate) && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                      {fd.supervisorName && <div style={{ background: 'var(--surface-inset)', borderRadius: 7, padding: '9px 13px' }}><div style={{ fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Supervisor</div><div style={{ fontSize: 12, color: 'var(--text)' }}>{isDevAdmin ? <Redacted>{fd.supervisorName}</Redacted> : fd.supervisorName}</div></div>}
-                      {fd.appraisalPeriod && <div style={{ background: 'var(--surface-inset)', borderRadius: 7, padding: '9px 13px' }}><div style={{ fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Period</div><div style={{ fontSize: 12, color: 'var(--text)' }}>{isDevAdmin ? <Redacted>{fd.appraisalPeriod}</Redacted> : fd.appraisalPeriod}</div></div>}
-                      {fd.reviewDate && <div style={{ background: 'var(--surface-inset)', borderRadius: 7, padding: '9px 13px' }}><div style={{ fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Review Date</div><div style={{ fontSize: 12, color: 'var(--text)' }}>{isDevAdmin ? <Redacted>{fd.reviewDate}</Redacted> : fd.reviewDate}</div></div>}
+                      {fd.supervisorName && <div style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-sm)', padding: '9px 13px' }}><div style={{ fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Supervisor</div><div style={{ fontSize: 12, color: 'var(--text)' }}>{isDevAdmin ? <Redacted>{fd.supervisorName}</Redacted> : fd.supervisorName}</div></div>}
+                      {fd.appraisalPeriod && <div style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-sm)', padding: '9px 13px' }}><div style={{ fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Period</div><div style={{ fontSize: 12, color: 'var(--text)' }}>{isDevAdmin ? <Redacted>{fd.appraisalPeriod}</Redacted> : fd.appraisalPeriod}</div></div>}
+                      {fd.reviewDate && <div style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-sm)', padding: '9px 13px' }}><div style={{ fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Review Date</div><div style={{ fontSize: 12, color: 'var(--text)' }}>{isDevAdmin ? <Redacted>{fd.reviewDate}</Redacted> : fd.reviewDate}</div></div>}
                     </div>
                   )}
                   {/* Competencies */}
@@ -3625,7 +3626,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       {sectionHead('Part One — Competencies')}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         {competencies.map((c, ci) => (
-                          <div key={ci} style={{ background: 'var(--surface-inset)', borderRadius: 8, padding: '12px 16px' }}>
+                          <div key={ci} style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '12px 16px' }}>
                             <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{c.label}</div>
                             <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600, marginBottom: 8 }}>{isDevAdmin ? <Redacted>{c.data!.competency}</Redacted> : c.data!.competency}</div>
                             {c.data!.examples.filter(Boolean).map((ex, ei) => (
@@ -3645,19 +3646,19 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       {sectionHead('Part Two — Goals & Score')}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {fd.goals.filter(g => g.text).map((g, gi) => (
-                          <div key={gi} style={{ background: 'var(--surface-inset)', borderRadius: 8, padding: '12px 16px' }}>
+                          <div key={gi} style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '12px 16px' }}>
                             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: g.explanation ? 8 : 0 }}>
                               <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600, flex: 1 }}>{isDevAdmin ? <Redacted>{g.text}</Redacted> : g.text}</div>
-                              {g.status && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12, flexShrink: 0, background: g.status === 'Met' ? 'rgba(52,211,153,0.12)' : g.status === 'Exceeded' ? 'rgba(99,102,241,0.15)' : 'rgba(251,191,36,0.12)', color: g.status === 'Met' ? 'var(--success)' : g.status === 'Exceeded' ? 'var(--brand)' : 'var(--warning)' }}>{g.status}</span>}
+                              {g.status && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-lg)', flexShrink: 0, background: g.status === 'Met' ? 'rgba(52,211,153,0.12)' : g.status === 'Exceeded' ? 'rgba(99,102,241,0.15)' : 'rgba(251,191,36,0.12)', color: g.status === 'Met' ? 'var(--success)' : g.status === 'Exceeded' ? 'var(--brand)' : 'var(--warning)' }}>{g.status}</span>}
                             </div>
                             {g.explanation && <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{isDevAdmin ? <Redacted>{g.explanation}</Redacted> : g.explanation}</div>}
                           </div>
                         ))}
                         {fd.overallScore != null && fd.overallScore > 0 && (
-                          <div style={{ background: 'var(--surface-inset)', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 16 }}>
+                          <div style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 16 }}>
                             <div>
                               <div style={{ fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Overall Score</div>
-                              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--brand)' }}>{isDevAdmin ? <Redacted>{String(fd.overallScore)}</Redacted> : fd.overallScore}<span style={{ fontSize: 13, color: 'var(--text-faint)' }}>{isDevAdmin ? '' : '/5'}</span></div>
+                              <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--brand)' }}>{isDevAdmin ? <Redacted>{String(fd.overallScore)}</Redacted> : fd.overallScore}<span style={{ fontSize: 13, color: 'var(--text-faint)' }}>{isDevAdmin ? '' : '/5'}</span></div>
                             </div>
                             {fd.overallSummary && <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, flex: 1 }}>{isDevAdmin ? <Redacted>{fd.overallSummary}</Redacted> : fd.overallSummary}</div>}
                           </div>
@@ -3671,7 +3672,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       {sectionHead("Part Three — Next Year's Goals")}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {fd.nextGoals.filter(g => g.text).map((g, gi) => (
-                          <div key={gi} style={{ background: 'var(--surface-inset)', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                          <div key={gi} style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '12px 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                             <div style={{ display: 'flex', gap: 8 }}>
                               <span style={{ color: 'var(--brand)', flexShrink: 0, marginTop: 1 }}>•</span>
                               <span style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>{isDevAdmin ? <Redacted>{g.text}</Redacted> : g.text}</span>
@@ -3686,7 +3687,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               )
             })()}
             {!isDevAdmin && !reviewFormLoading && (!reviewFormData || reviewFormError) && viewingReview.drive_url && (
-              <div style={{ background: 'var(--surface-inset)', borderRadius: 8, padding: '14px 18px', marginTop: 4 }}>
+              <div style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '14px 18px', marginTop: 4 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Full Review Document</div>
                 <a href={viewingReview.drive_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: 'var(--success)', textDecoration: 'none' }}>Open in Google Drive ↗</a>
               </div>
@@ -3698,11 +3699,11 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
       {/* ── Comparison viewer modal ── */}
       {viewingComparison && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setViewingComparison(null)}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 32, maxWidth: 700, width: '100%', maxHeight: '88vh', overflowY: 'auto', position: 'relative' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 32, maxWidth: 700, width: '100%', maxHeight: '88vh', overflowY: 'auto', position: 'relative' }} onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <div>
-                <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-strong)' }}>Comparison Report</span>
+                <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-strong)' }}>Comparison Report</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>· {viewingComparison.employee_name}</span>
               </div>
               <button onClick={() => setViewingComparison(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
@@ -3731,7 +3732,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   <div key={idx} style={{ padding: '16px 20px', borderTop: idx === 0 ? 'none' : '1px solid var(--surface-hover)', background: idx % 2 === 0 ? 'var(--surface-inset)' : 'var(--page)', borderRadius: idx === 0 ? '10px 10px 0 0' : idx === (viewingComparison.comparison_report ?? '').split(/\n(?=## )/).length - 1 ? '0 0 10px 10px' : '0' }}>
                     {heading && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                        <div style={{ width: 3, height: 16, borderRadius: 2, background: hc, flexShrink: 0 }} />
+                        <div style={{ width: 3, height: 16, borderRadius: 'var(--radius-sm)', background: hc, flexShrink: 0 }} />
                         <span style={{ fontSize: 10, fontWeight: 800, color: hc, textTransform: 'uppercase', letterSpacing: '0.12em' }}>{heading}</span>
                         <div style={{ flex: 1, height: 1, background: bc }} />
                       </div>
@@ -3776,13 +3777,13 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
       {confirmDeactivateUser && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) setConfirmDeactivateUser(null) }}>
-          <div style={{ background: 'var(--surface-inset)', border: '1px solid var(--danger-bg)', borderRadius: 14, padding: '28px 32px', maxWidth: 440, width: '90%' }}>
+          <div style={{ background: 'var(--surface-inset)', border: '1px solid var(--danger-bg)', borderRadius: 'var(--radius-xl)', padding: '28px 32px', maxWidth: 440, width: '90%' }}>
             <div style={{ fontSize: 28, marginBottom: 10 }}>⚠️</div>
             <h2 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: 'var(--text-strong)' }}>Deactivate {confirmDeactivateUser.name || confirmDeactivateUser.email}?</h2>
             <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
               This will remove their access to the portal. Their data will be retained. You can reactivate them at any time.
             </p>
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginBottom: 20 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--warning)', marginBottom: 6 }}>Before deactivating, consider exporting their data</div>
               <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--text-muted)' }}>
                 Export all reviews, self-assessments, check-ins, 1:1 notes, PIPs, and audit logs as a PDF.
@@ -3790,18 +3791,18 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               <button
                 onClick={() => exportUserData(confirmDeactivateUser.id, confirmDeactivateUser.name || confirmDeactivateUser.email)}
                 disabled={exportingUserId === confirmDeactivateUser.id}
-                style={{ padding: '7px 14px', fontSize: 12, fontWeight: 600, background: 'var(--border)', color: exportingUserId === confirmDeactivateUser.id ? 'var(--text-faint)' : 'var(--brand)', border: '1px solid var(--border)', borderRadius: 7, cursor: exportingUserId === confirmDeactivateUser.id ? 'default' : 'pointer' }}>
+                style={{ padding: '7px 14px', fontSize: 12, fontWeight: 600, background: 'var(--border)', color: exportingUserId === confirmDeactivateUser.id ? 'var(--text-faint)' : 'var(--brand)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: exportingUserId === confirmDeactivateUser.id ? 'default' : 'pointer' }}>
                 {exportingUserId === confirmDeactivateUser.id ? '⏳ Exporting…' : '⬇ Export User Data'}
               </button>
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button onClick={() => setConfirmDeactivateUser(null)}
-                style={{ padding: '9px 20px', fontSize: 13, fontWeight: 500, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer' }}>
+                style={{ padding: '9px 20px', fontSize: 13, fontWeight: 500, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
                 Cancel
               </button>
               <button
                 onClick={async () => { await toggleActive(confirmDeactivateUser.id, true); setConfirmDeactivateUser(null) }}
-                style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, background: 'var(--danger-border)', color: 'var(--danger)', border: '1px solid var(--danger-border)', borderRadius: 8, cursor: 'pointer' }}>
+                style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, background: 'var(--danger-border)', color: 'var(--danger)', border: '1px solid var(--danger-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
                 Deactivate
               </button>
             </div>
@@ -3815,7 +3816,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           <div style={{ width: 640, maxWidth: '95vw', background: 'var(--surface-inset)', borderLeft: '1px solid var(--border)', height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             {/* Header */}
             <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
-              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, color: 'white', flexShrink: 0 }}>
                 {(profileUser.name || profileUser.email).charAt(0).toUpperCase()}
               </div>
               <div style={{ flex: 1 }}>
@@ -3826,7 +3827,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 onClick={() => exportUserData(profileUser.id, profileUser.name || profileUser.email)}
                 disabled={exportingUserId === profileUser.id}
                 title="Export all user data as JSON"
-                style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, background: 'var(--surface)', color: exportingUserId === profileUser.id ? 'var(--text-faint)' : 'var(--brand)', border: '1px solid var(--border)', borderRadius: 7, cursor: exportingUserId === profileUser.id ? 'default' : 'pointer' }}>
+                style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, background: 'var(--surface)', color: exportingUserId === profileUser.id ? 'var(--text-faint)' : 'var(--brand)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: exportingUserId === profileUser.id ? 'default' : 'pointer' }}>
                 {exportingUserId === profileUser.id ? '⏳ Exporting…' : '⬇ Export Data'}
               </button>
               <button onClick={() => setProfileUser(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
@@ -3874,10 +3875,10 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       const status = reviewStatus(r)
                       const sm = STATUS_META[status]
                       return (
-                        <div key={r.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
+                        <div key={r.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                             <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{r.employee_position || 'No position'}</span>
-                            <span style={{ marginLeft: 'auto', padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>{sm.label}</span>
+                            <span style={{ marginLeft: 'auto', padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 600, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>{sm.label}</span>
                           </div>
                           <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
                             {!isDevAdmin && r.drive_url && <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)' }}>📄 View Doc</a>}
@@ -3900,13 +3901,13 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                     : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {profileGoals.map(g => (
-                          <div key={g.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
+                          <div key={g.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 16px' }}>
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>{isDevAdmin ? <Redacted>{g.title}</Redacted> : g.title}</div>
                                 {g.description && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{isDevAdmin ? <Redacted>{g.description}</Redacted> : g.description}</div>}
                               </div>
-                              <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 600, flexShrink: 0,
+                              <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 10, fontWeight: 600, flexShrink: 0,
                                 background: g.status === 'complete' ? 'var(--success-bg)' : g.status === 'in_progress' ? 'var(--info-bg)' : 'var(--surface)',
                                 color: g.status === 'complete' ? 'var(--success)' : g.status === 'in_progress' ? 'var(--brand)' : 'var(--text-muted)',
                                 border: `1px solid ${g.status === 'complete' ? 'var(--success-border)' : g.status === 'in_progress' ? 'var(--brand-tint)' : 'var(--border)'}` }}>
@@ -3928,10 +3929,10 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                     : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {profileNotes.map(n => (
-                          <div key={n.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
+                          <div key={n.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 16px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                               <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>{new Date(n.meeting_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                              <span style={{ marginLeft: 'auto', fontSize: 10, padding: '1px 6px', borderRadius: 10,
+                              <span style={{ marginLeft: 'auto', fontSize: 10, padding: '1px 6px', borderRadius: 'var(--radius-lg)',
                                 background: n.is_shared ? 'rgba(52,211,153,0.1)' : 'rgba(107,114,128,0.1)',
                                 color: n.is_shared ? 'var(--success)' : 'var(--text-muted)',
                                 border: `1px solid ${n.is_shared ? 'rgba(52,211,153,0.3)' : 'var(--border)'}` }}>
@@ -3941,7 +3942,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                             <div style={{ fontSize: 13, color: 'var(--text)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{isDevAdmin ? <Redacted>{n.note}</Redacted> : n.note}</div>
                             {n.tags?.length > 0 && (
                               <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                                {n.tags.map(tag => <span key={tag} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 10, background: 'var(--info-bg)', color: 'var(--brand)' }}>{isDevAdmin ? <Redacted>{tag}</Redacted> : tag}</span>)}
+                                {n.tags.map(tag => <span key={tag} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 'var(--radius-lg)', background: 'var(--info-bg)', color: 'var(--brand)' }}>{isDevAdmin ? <Redacted>{tag}</Redacted> : tag}</span>)}
                               </div>
                             )}
                           </div>

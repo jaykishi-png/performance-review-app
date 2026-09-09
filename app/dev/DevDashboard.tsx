@@ -86,15 +86,15 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
   }
 
   const pill = (color: string): React.CSSProperties => ({
-    display: 'inline-block', padding: '2px 8px', borderRadius: 99,
+    display: 'inline-block', padding: '2px 8px', borderRadius: 'var(--radius-pill)',
     background: color + '22', color, fontSize: 11, fontWeight: 700, letterSpacing: 0.5,
   })
   const tab = (active: boolean): React.CSSProperties => ({
-    padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
+    padding: '8px 16px', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer',
     background: active ? 'var(--brand)' : 'transparent', color: active ? '#fff' : 'var(--text-secondary)', fontWeight: 600, fontSize: 14,
   })
   const card: React.CSSProperties = {
-    background: 'var(--surface-raised)', borderRadius: 12, padding: '20px 24px', border: '1px solid var(--info-border)',
+    background: 'var(--surface-raised)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', border: '1px solid var(--info-border)',
   }
 
   return (
@@ -108,12 +108,12 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={pill('var(--danger)')}>Dev Admin</span>
           <button onClick={() => router.push('/admin')}
-            style={{ padding: '6px 14px', background: 'var(--surface-raised)', color: 'var(--brand)', border: '1px solid var(--border-strong)', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+            style={{ padding: '6px 14px', background: 'var(--surface-raised)', color: 'var(--brand)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
             Admin View
           </button>
           <button
             onClick={async () => { await fetch('/api/auth/signout', { method: 'POST' }); router.push('/login') }}
-            style={{ padding: '6px 14px', background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+            style={{ padding: '6px 14px', background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
             Sign out
           </button>
         </div>
@@ -136,7 +136,7 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
             </button>
           ))}
           <button onClick={() => setShowInviteModal(true)}
-            style={{ marginLeft: 'auto', padding: '8px 16px', background: 'var(--success)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
+            style={{ marginLeft: 'auto', padding: '8px 16px', background: 'var(--success)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
             + Invite User
           </button>
         </div>
@@ -150,7 +150,7 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
                 { label: 'Self Assessments (metadata only)', value: stats.selfReviewCount },
               ].map(s => (
                 <div key={s.label} style={card}>
-                  <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-strong)' }}>{s.value}</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-strong)' }}>{s.value}</div>
                   <div style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>{s.label}</div>
                 </div>
               ))}
@@ -189,7 +189,7 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
                       <td style={{ padding: '10px 12px' }}>
                         {editingUser === u.id ? (
                           <select value={editRole} onChange={e => setEditRole(e.target.value)}
-                            style={{ background: 'var(--page)', color: 'var(--text)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '4px 8px' }}>
+                            style={{ background: 'var(--page)', color: 'var(--text)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)', padding: '4px 8px' }}>
                             <option value="manager">Manager</option>
                             <option value="employee">Employee</option>
                           </select>
@@ -206,24 +206,24 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
                             editingUser === u.id ? (
                               <>
                                 <button onClick={() => handleRoleChange(u.id)} disabled={saving}
-                                  style={{ padding: '4px 10px', background: 'var(--success)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
+                                  style={{ padding: '4px 10px', background: 'var(--success)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 12 }}>
                                   {saving ? '...' : 'Save'}
                                 </button>
                                 <button onClick={() => setEditingUser(null)}
-                                  style={{ padding: '4px 10px', background: 'var(--surface-raised)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
+                                  style={{ padding: '4px 10px', background: 'var(--surface-raised)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 12 }}>
                                   Cancel
                                 </button>
                               </>
                             ) : (
                               <button onClick={() => { setEditingUser(u.id); setEditRole(u.role) }}
-                                style={{ padding: '4px 10px', background: 'var(--surface-raised)', color: 'var(--text-secondary)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
+                                style={{ padding: '4px 10px', background: 'var(--surface-raised)', color: 'var(--text-secondary)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 12 }}>
                                 Edit Role
                               </button>
                             )
                           )}
                           {u.id !== currentUser.id && (
                             <button onClick={() => handleDeactivate(u.id, u.is_active)}
-                              style={{ padding: '4px 10px', background: u.is_active ? 'var(--danger-border)' : 'var(--success-text)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
+                              style={{ padding: '4px 10px', background: u.is_active ? 'var(--danger-border)' : 'var(--success-text)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 12 }}>
                               {u.is_active ? 'Deactivate' : 'Reactivate'}
                             </button>
                           )}
@@ -287,21 +287,21 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
       {/* Invite Modal */}
       {showInviteModal && (
         <div style={{ position: 'fixed', inset: 0, background: '#00000088', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'var(--surface-raised)', borderRadius: 16, padding: 32, width: 420, border: '1px solid var(--info-border)' }}>
-            <h2 style={{ margin: '0 0 20px', fontSize: 18, color: 'var(--text-strong)' }}>Invite User</h2>
+          <div style={{ background: 'var(--surface-raised)', borderRadius: 'var(--radius-xl)', padding: 32, width: 420, border: '1px solid var(--info-border)' }}>
+            <h2 style={{ margin: '0 0 20px', fontSize: 20, color: 'var(--text-strong)' }}>Invite User</h2>
             <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-muted)' }}>Dev Admin can invite Manager or Employee only.</p>
             <form onSubmit={handleInvite}>
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Email</label>
                 <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} required type="email"
-                  style={{ width: '100%', padding: '8px 12px', background: 'var(--page)', color: 'var(--text)', border: '1px solid var(--border-strong)', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
+                  style={{ width: '100%', padding: '8px 12px', background: 'var(--page)', color: 'var(--text)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-md)', fontSize: 14, boxSizing: 'border-box' }} />
               </div>
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Role</label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {(['employee', 'manager'] as const).map(r => (
                     <button type="button" key={r} onClick={() => setInviteRole(r)}
-                      style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: '2px solid', borderColor: inviteRole === r ? 'var(--brand)' : 'var(--text-faint)', background: inviteRole === r ? '#6366f133' : 'transparent', color: inviteRole === r ? 'var(--brand)' : 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer', textTransform: 'capitalize' }}>
+                      style={{ flex: 1, padding: '8px 0', borderRadius: 'var(--radius-md)', border: '2px solid', borderColor: inviteRole === r ? 'var(--brand)' : 'var(--text-faint)', background: inviteRole === r ? '#6366f133' : 'transparent', color: inviteRole === r ? 'var(--brand)' : 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer', textTransform: 'capitalize' }}>
                       {r}
                     </button>
                   ))}
@@ -311,7 +311,7 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
                 <div style={{ marginBottom: 12 }}>
                   <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Manager (optional)</label>
                   <select value={inviteManagerId} onChange={e => setInviteManagerId(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', background: 'var(--page)', color: 'var(--text)', border: '1px solid var(--border-strong)', borderRadius: 8, fontSize: 14 }}>
+                    style={{ width: '100%', padding: '8px 12px', background: 'var(--page)', color: 'var(--text)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-md)', fontSize: 14 }}>
                     <option value="">No manager</option>
                     {managers.map(m => <option key={m.id} value={m.id}>{m.name || m.email}</option>)}
                   </select>
@@ -319,11 +319,11 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
               )}
               <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
                 <button type="submit" disabled={inviteLoading}
-                  style={{ flex: 1, padding: '10px 0', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 15 }}>
+                  style={{ flex: 1, padding: '10px 0', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 700, fontSize: 16 }}>
                   {inviteLoading ? 'Sending...' : 'Send Invite'}
                 </button>
                 <button type="button" onClick={() => setShowInviteModal(false)}
-                  style={{ padding: '10px 20px', background: 'var(--surface-raised)', color: 'var(--text-secondary)', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+                  style={{ padding: '10px 20px', background: 'var(--surface-raised)', color: 'var(--text-secondary)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 600 }}>
                   Cancel
                 </button>
               </div>

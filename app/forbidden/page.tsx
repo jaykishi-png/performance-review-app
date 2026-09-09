@@ -19,7 +19,7 @@ export default function ForbiddenPage() {
         onClick={() => router.push('/')}
         style={{
           marginTop: 8, padding: '10px 24px', background: 'var(--brand)', color: '#fff',
-          border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 15, fontWeight: 600,
+          border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 16, fontWeight: 600,
         }}
       >
         Go to my dashboard

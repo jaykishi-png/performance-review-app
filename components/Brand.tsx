@@ -27,6 +27,7 @@ export function CalibrIcon({ size = 32 }: { size?: number }) {
       height={size}
       viewBox="0 0 100 100"
       fill="none"
+      data-icon-raw
       role="img"
       aria-label="Calibr"
       style={{ display: 'block', flexShrink: 0 }}
@@ -116,7 +117,7 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
         padding: compact ? 0 : '0 10px',
         background: 'var(--surface-hover)',
         border: '1px solid var(--border)',
-        borderRadius: 8,
+        borderRadius: 'var(--radius-md)',
         color: 'var(--text-secondary)',
         cursor: 'pointer',
         fontSize: 12,

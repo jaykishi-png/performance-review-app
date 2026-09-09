@@ -125,7 +125,7 @@ export default function FeedbackPage() {
         </div>
 
         {state.open && (
-          <div style={{ marginTop: 8, padding: '12px 14px', background: 'rgba(79,70,229,0.08)', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 10 }}>
+          <div style={{ marginTop: 8, padding: '12px 14px', background: 'rgba(79,70,229,0.08)', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 'var(--radius-lg)' }}>
             <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--brand-text)' }}>
               Jot down what you have observed — AI will turn it into feedback. It will not invent details you did not mention.
             </p>
@@ -144,7 +144,7 @@ export default function FeedbackPage() {
                 disabled={state.loading || !state.context.trim()}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px',
-                  background: 'rgba(126,105,228,0.8)', color: '#fff', border: 'none', borderRadius: 8,
+                  background: 'rgba(126,105,228,0.8)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)',
                   fontSize: 11, fontWeight: 600,
                   cursor: state.loading || !state.context.trim() ? 'not-allowed' : 'pointer',
                   opacity: state.loading || !state.context.trim() ? 0.5 : 1,
@@ -214,7 +214,7 @@ export default function FeedbackPage() {
       maxWidth: '600px',
       backgroundColor: 'var(--surface)',
       border: '1px solid var(--border)',
-      borderRadius: '16px',
+      borderRadius: 'var(--radius-xl)',
       padding: '40px 36px',
       boxSizing: 'border-box' as const,
     },
@@ -224,7 +224,7 @@ export default function FeedbackPage() {
       gap: '6px',
       backgroundColor: 'var(--border)',
       border: '1px solid var(--border)',
-      borderRadius: '20px',
+      borderRadius: 'var(--radius-pill)',
       padding: '6px 14px',
       fontSize: '12px',
       color: 'var(--text-secondary)',
@@ -233,7 +233,7 @@ export default function FeedbackPage() {
       textTransform: 'uppercase' as const,
     },
     heading: {
-      fontSize: '22px',
+      fontSize: '20px',
       fontWeight: 700,
       color: 'var(--text-strong)',
       margin: '0 0 6px',
@@ -248,7 +248,7 @@ export default function FeedbackPage() {
       backgroundColor: 'var(--surface-hover)',
       border: '1px solid var(--border)',
       borderLeft: '3px solid var(--brand-strong)',
-      borderRadius: '8px',
+      borderRadius: 'var(--radius-md)',
       padding: '12px 16px',
       marginBottom: '20px',
       fontSize: '14px',
@@ -261,7 +261,7 @@ export default function FeedbackPage() {
       gap: '6px',
       backgroundColor: 'var(--surface-hover)',
       border: '1px solid var(--info-border)',
-      borderRadius: '6px',
+      borderRadius: 'var(--radius-sm)',
       padding: '6px 12px',
       fontSize: '13px',
       color: 'var(--info)',
@@ -290,7 +290,7 @@ export default function FeedbackPage() {
       width: '100%',
       backgroundColor: 'var(--surface-inset)',
       border: '1px solid var(--border)',
-      borderRadius: '8px',
+      borderRadius: 'var(--radius-md)',
       padding: '12px 14px',
       fontSize: '14px',
       color: 'var(--text-strong)',
@@ -322,7 +322,7 @@ export default function FeedbackPage() {
         : 'linear-gradient(135deg, var(--brand-strong) 0%, var(--brand) 100%)',
       color: '#fff',
       border: 'none',
-      borderRadius: '10px',
+      borderRadius: 'var(--radius-lg)',
       fontSize: '16px',
       fontWeight: 600,
       cursor: submitting ? 'not-allowed' : 'pointer',
@@ -333,7 +333,7 @@ export default function FeedbackPage() {
     errorBox: {
       backgroundColor: 'var(--danger-bg)',
       border: '1px solid var(--danger-border)',
-      borderRadius: '8px',
+      borderRadius: 'var(--radius-md)',
       padding: '12px 16px',
       fontSize: '14px',
       color: 'var(--danger-text)',
@@ -377,9 +377,9 @@ export default function FeedbackPage() {
     return (
       <div style={styles.wrapper}>
         <div style={{ ...styles.card, ...styles.centeredState }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔗</div>
+          <div style={{ fontSize: '36px', marginBottom: '16px' }}>🔗</div>
           <h2 style={{ color: 'var(--text-strong)', margin: '0 0 10px', fontSize: '20px' }}>Link Not Found</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '15px', margin: 0, lineHeight: 1.6 }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '16px', margin: 0, lineHeight: 1.6 }}>
             This feedback link is invalid or has expired.
           </p>
         </div>
@@ -391,9 +391,9 @@ export default function FeedbackPage() {
     return (
       <div style={styles.wrapper}>
         <div style={{ ...styles.card, ...styles.centeredState }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
+          <div style={{ fontSize: '36px', marginBottom: '16px' }}>✅</div>
           <h2 style={{ color: 'var(--text-strong)', margin: '0 0 10px', fontSize: '20px' }}>Already Submitted</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '15px', margin: 0, lineHeight: 1.6 }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '16px', margin: 0, lineHeight: 1.6 }}>
             You've already submitted feedback for <strong style={{ color: 'var(--text)' }}>{request.requestor_name}</strong>. Thank you!
           </p>
         </div>
@@ -421,10 +421,10 @@ export default function FeedbackPage() {
           >
             ✓
           </div>
-          <h2 style={{ color: 'var(--text-strong)', margin: '0 0 10px', fontSize: '22px' }}>
+          <h2 style={{ color: 'var(--text-strong)', margin: '0 0 10px', fontSize: '20px' }}>
             Thank you for your feedback!
           </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '15px', margin: 0, lineHeight: 1.6 }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '16px', margin: 0, lineHeight: 1.6 }}>
             Your response has been submitted.
           </p>
         </div>

@@ -134,7 +134,7 @@ export default function ConsentPage() {
     return (
       <div style={styles.card}>
         <div style={styles.centered}>
-          <div style={{ fontSize: 40, marginBottom: 16 }}>🔗</div>
+          <div style={{ fontSize: 36, marginBottom: 16 }}>🔗</div>
           <h2 style={styles.heading}>Link Not Found</h2>
           <p style={styles.mutedText}>
             This consent link is invalid or has expired.
@@ -149,7 +149,7 @@ export default function ConsentPage() {
     return (
       <div style={styles.card}>
         <div style={styles.centered}>
-          <div style={{ fontSize: 40, marginBottom: 16 }}>✅</div>
+          <div style={{ fontSize: 36, marginBottom: 16 }}>✅</div>
           <h2 style={styles.heading}>Consent Already Recorded</h2>
           <p style={styles.mutedText}>
             You have already given consent for this recording. Thank you.
@@ -164,7 +164,7 @@ export default function ConsentPage() {
     return (
       <div style={styles.card}>
         <div style={styles.centered}>
-          <div style={{ fontSize: 40, marginBottom: 16 }}>🚫</div>
+          <div style={{ fontSize: 36, marginBottom: 16 }}>🚫</div>
           <h2 style={styles.heading}>Recording Declined</h2>
           <p style={styles.mutedText}>
             This recording request has been declined.
@@ -183,7 +183,7 @@ export default function ConsentPage() {
       return (
         <div style={styles.card}>
           <div style={styles.centered}>
-            <div style={{ fontSize: 40, marginBottom: 16 }}>🎙️</div>
+            <div style={{ fontSize: 36, marginBottom: 16 }}>🎙️</div>
             <h2 style={styles.heading}>Consent Recorded</h2>
             <p style={styles.mutedText}>
               Thank you! Your consent has been recorded.
@@ -195,7 +195,7 @@ export default function ConsentPage() {
             )}
             <a
               href={portalUrl}
-              style={{ marginTop: 20, display: 'inline-block', padding: '12px 28px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', borderRadius: 10, fontWeight: 600, fontSize: 14, textDecoration: 'none' }}
+              style={{ marginTop: 20, display: 'inline-block', padding: '12px 28px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', borderRadius: 'var(--radius-lg)', fontWeight: 600, fontSize: 14, textDecoration: 'none' }}
             >
               {portalLabel} →
             </a>
@@ -208,7 +208,7 @@ export default function ConsentPage() {
       return (
         <div style={styles.card}>
           <div style={styles.centered}>
-            <div style={{ fontSize: 40, marginBottom: 16 }}>🚫</div>
+            <div style={{ fontSize: 36, marginBottom: 16 }}>🚫</div>
             <h2 style={styles.heading}>Recording Declined</h2>
             <p style={styles.mutedText}>
               You have declined the recording request. Your manager has been
@@ -216,7 +216,7 @@ export default function ConsentPage() {
             </p>
             <a
               href={portalUrl}
-              style={{ marginTop: 20, display: 'inline-block', padding: '12px 28px', background: 'var(--surface-raised)', color: 'var(--text)', border: '1px solid var(--border-strong)', borderRadius: 10, fontWeight: 600, fontSize: 14, textDecoration: 'none' }}
+              style={{ marginTop: 20, display: 'inline-block', padding: '12px 28px', background: 'var(--surface-raised)', color: 'var(--text)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-lg)', fontWeight: 600, fontSize: 14, textDecoration: 'none' }}
             >
               {portalLabel} →
             </a>
@@ -330,7 +330,7 @@ const styles: Record<string, React.CSSProperties> = {
   card: {
     backgroundColor: 'var(--surface)',
     border: '1px solid var(--surface-raised)',
-    borderRadius: 16,
+    borderRadius: 'var(--radius-xl)',
     padding: '32px 28px',
     color: 'var(--text)',
     boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
@@ -383,7 +383,7 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 20,
   },
   names: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: 600,
     color: 'var(--brand-text)',
     marginBottom: 6,
@@ -399,7 +399,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--brand)',
     backgroundColor: 'var(--brand-tint)',
     border: '1px solid var(--brand-strong)',
-    borderRadius: 6,
+    borderRadius: 'var(--radius-sm)',
     padding: '2px 10px',
   },
   amberBox: {
@@ -408,7 +408,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'flex-start',
     backgroundColor: 'var(--warning-bg)',
     border: '1px solid var(--warning-text)',
-    borderRadius: 10,
+    borderRadius: 'var(--radius-lg)',
     padding: '14px 16px',
     marginBottom: 20,
   },
@@ -429,13 +429,13 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 20,
     padding: '10px 14px',
     backgroundColor: 'var(--surface-inset)',
-    borderRadius: 8,
+    borderRadius: 'var(--radius-md)',
     border: '1px solid var(--surface-raised)',
   },
   statusBox: {
     backgroundColor: 'var(--surface-inset)',
     border: '1px solid var(--surface-raised)',
-    borderRadius: 10,
+    borderRadius: 'var(--radius-lg)',
     overflow: 'hidden',
     marginBottom: 24,
   },
@@ -472,11 +472,11 @@ const styles: Record<string, React.CSSProperties> = {
   consentButton: {
     width: '100%',
     padding: '14px',
-    borderRadius: 10,
+    borderRadius: 'var(--radius-lg)',
     border: 'none',
     background: 'linear-gradient(135deg, var(--success) 0%, var(--success) 100%)',
     color: '#fff',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: 600,
     cursor: 'pointer',
     transition: 'opacity 0.2s',
@@ -484,7 +484,7 @@ const styles: Record<string, React.CSSProperties> = {
   declineButton: {
     width: '100%',
     padding: '12px',
-    borderRadius: 10,
+    borderRadius: 'var(--radius-lg)',
     border: '1px solid var(--border-strong)',
     backgroundColor: 'var(--surface-inset)',
     color: 'var(--text-secondary)',
@@ -498,7 +498,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '12px 16px',
     backgroundColor: 'var(--success-bg)',
     border: '1px solid var(--success-text)',
-    borderRadius: 10,
+    borderRadius: 'var(--radius-lg)',
     color: 'var(--success)',
     fontSize: 14,
     textAlign: 'center' as const,
@@ -508,7 +508,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '12px 16px',
     backgroundColor: 'var(--danger-bg)',
     border: '1px solid var(--danger-border)',
-    borderRadius: 10,
+    borderRadius: 'var(--radius-lg)',
     color: 'var(--danger)',
     fontSize: 13,
   },

@@ -248,6 +248,14 @@ button {
   outline-offset: 2px;
 }
 
+/* §17 — one icon system, one weight. The CSS property overrides Lucide's
+ * stroke-width presentation attribute, so this sets it everywhere at once
+ * without touching 500+ call sites. Icons that deliberately carry weight
+ * (the logo) opt out via [data-icon-raw]. */
+svg:not([data-icon-raw]) {
+  stroke-width: 1.75;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

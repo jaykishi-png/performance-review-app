@@ -79,7 +79,7 @@ function LoginContent() {
         padding: '48px 40px',
         background: 'var(--surface)',
         border: '1px solid var(--border)',
-        borderRadius: 16,
+        borderRadius: 'var(--radius-xl)',
         textAlign: 'center',
         position: 'relative',
       }}>
@@ -94,7 +94,7 @@ function LoginContent() {
         {inviteLoading ? (
           // Loading state while fetching invite
           <>
-            <h1 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700, color: 'var(--text-strong)' }}>
+            <h1 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: 'var(--text-strong)' }}>
               Calibr
             </h1>
             <p style={{ margin: '0 0 36px', fontSize: 14, color: 'var(--text-muted)' }}>
@@ -112,12 +112,12 @@ function LoginContent() {
         ) : inviteError ? (
           // Invalid / expired invite
           <>
-            <h1 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700, color: 'var(--text-strong)' }}>
+            <h1 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: 'var(--text-strong)' }}>
               Invite Link Issue
             </h1>
             <div style={{
               background: 'var(--danger-bg)', border: '1px solid var(--danger-border)',
-              borderRadius: 8, padding: '12px 16px', margin: '0 0 24px',
+              borderRadius: 'var(--radius-md)', padding: '12px 16px', margin: '0 0 24px',
               fontSize: 14, color: 'var(--danger)', lineHeight: 1.5,
             }}>
               {inviteError}
@@ -133,13 +133,13 @@ function LoginContent() {
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               background: 'rgba(79,70,229,0.15)', border: '1px solid rgba(79,70,229,0.3)',
-              borderRadius: 20, padding: '4px 12px', marginBottom: 20,
+              borderRadius: 'var(--radius-pill)', padding: '4px 12px', marginBottom: 20,
               fontSize: 12, fontWeight: 600, color: 'var(--brand)', letterSpacing: '0.03em',
             }}>
               <span>✉️</span> You&apos;ve been invited
             </div>
 
-            <h1 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 700, color: 'var(--text-strong)', letterSpacing: '-0.3px' }}>
+            <h1 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 700, color: 'var(--text-strong)', letterSpacing: '-0.3px' }}>
               Welcome to Calibr
             </h1>
             <p style={{ margin: '0 0 24px', fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
@@ -151,7 +151,7 @@ function LoginContent() {
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               background: 'var(--surface-inset)', border: '1px solid var(--border)',
-              borderRadius: 8, padding: '7px 14px', marginBottom: 28,
+              borderRadius: 'var(--radius-md)', padding: '7px 14px', marginBottom: 28,
               fontSize: 13, color: 'var(--text-muted)',
             }}>
               <span style={{ color: 'var(--success)' }}>●</span>
@@ -160,7 +160,7 @@ function LoginContent() {
 
             {error && (
               <div style={{
-                background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 8,
+                background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 'var(--radius-md)',
                 padding: '10px 14px', marginBottom: 20, fontSize: 13, color: 'var(--danger)',
               }}>
                 Authentication failed. Make sure you sign in with {invite.email}.
@@ -172,7 +172,7 @@ function LoginContent() {
               style={{
                 width: '100%', padding: '13px 20px',
                 background: '#fff', color: '#0f172a', border: 'none',
-                borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                borderRadius: 'var(--radius-lg)', fontSize: 16, fontWeight: 600, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
               }}
               onMouseOver={e => (e.currentTarget.style.opacity = '0.9')}
@@ -190,7 +190,7 @@ function LoginContent() {
         ) : (
           // Standard login
           <>
-            <h1 style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 700, color: 'var(--text-strong)', letterSpacing: '-0.02em' }}>
+            <h1 style={{ margin: '0 0 6px', fontSize: 28, fontWeight: 700, color: 'var(--text-strong)', letterSpacing: '-0.02em' }}>
               Calibr
             </h1>
             <p style={{ margin: '0 0 20px', fontSize: 10, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--brand-text)' }}>
@@ -202,7 +202,7 @@ function LoginContent() {
 
             {error && (
               <div style={{
-                background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 8,
+                background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 'var(--radius-md)',
                 padding: '10px 14px', marginBottom: 20, fontSize: 13, color: 'var(--danger)',
               }}>
                 Authentication failed. Please try again.
@@ -214,7 +214,7 @@ function LoginContent() {
               style={{
                 width: '100%', padding: '12px 20px',
                 background: '#fff', color: '#0f172a', border: 'none',
-                borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                borderRadius: 'var(--radius-lg)', fontSize: 16, fontWeight: 600, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
               }}
               onMouseOver={e => (e.currentTarget.style.opacity = '0.9')}

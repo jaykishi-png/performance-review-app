@@ -7,6 +7,7 @@ import {
   Send, LogOut, CheckCircle2, Star, Plus, X, Loader2,
   ExternalLink, Bell, Target, User, ChevronDown,
   BarChart2, History, Pencil, Check, Sparkles,
+  ClipboardCheck, MessagesSquare, ClipboardList,
 } from 'lucide-react'
 import { useCompetencies } from '@/lib/use-competencies'
 import { SignaturePad, SignatureDisplay, encodeSignature, decodeSignature, type SignatureResult } from '@/components/SignaturePad'
@@ -88,11 +89,11 @@ const SA_STEPS = [
 ]
 
 const NAV_ITEMS: { id: Page; label: string; icon: React.FC<{ size: number; color?: string }> }[] = [
-  { id: 'self-assessment', label: 'Self Assessment',      icon: FileText   },
-  { id: 'reviews',         label: 'Performance Review Meeting', icon: BarChart2  },
+  { id: 'self-assessment', label: 'Self Assessment',      icon: ClipboardCheck },
+  { id: 'reviews',         label: 'Performance Review Meeting', icon: MessagesSquare },
   { id: 'timeline',        label: 'Review Timeline',      icon: History    },
   { id: 'goals',           label: 'Goals Tracker',        icon: Target     },
-  { id: 'pip',             label: 'Coaching Plan',        icon: BarChart2  },
+  { id: 'pip',             label: 'Coaching Plan',        icon: ClipboardList },
   { id: 'guide',           label: 'Employee Guide',       icon: BookOpen   },
   { id: 'glossary',        label: 'Competency Glossary',  icon: BookMarked },
 ]
@@ -173,7 +174,7 @@ function EmployeePipPanel() {
   }, [])
 
   const activePip = pipPlans.find(p => p.status === 'active') || pipPlans[0]
-  const sCard: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px', marginBottom: 16 }
+  const sCard: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', marginBottom: 16 }
   const statusColor: Record<string, string> = { active: 'var(--warning)', completed: 'var(--success)', escalated: 'var(--danger)', withdrawn: 'var(--text-muted)' }
   const statusBg: Record<string, string> = { active: 'var(--warning-bg)', completed: 'var(--success-bg)', escalated: 'var(--danger-bg)', withdrawn: 'var(--surface)' }
 
@@ -186,7 +187,7 @@ function EmployeePipPanel() {
 
       {pipPlans.length === 0 ? (
         <div style={{ ...sCard, textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>No active coaching plan</div>
           <div style={{ fontSize: 13 }}>You don&apos;t have any active PIPs or coaching plans at this time.</div>
         </div>
@@ -202,26 +203,26 @@ function EmployeePipPanel() {
                       Started {new Date(activePip.start_date).toLocaleDateString()} · Target {new Date(activePip.target_date).toLocaleDateString()}
                     </div>
                   </div>
-                  <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: statusBg[activePip.status], color: statusColor[activePip.status] }}>
+                  <span style={{ padding: '3px 10px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 600, background: statusBg[activePip.status], color: statusColor[activePip.status] }}>
                     {activePip.status.charAt(0).toUpperCase() + activePip.status.slice(1)}
                   </span>
                 </div>
 
                 {activePip.reason && (
-                  <div style={{ background: 'var(--surface-inset)', borderRadius: 8, padding: '12px 14px', marginBottom: 16, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  <div style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: 16, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                     {activePip.reason}
                   </div>
                 )}
 
                 {!activePip.employee_acknowledged && activePip.status === 'active' && (
-                  <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-border)', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 13, color: 'var(--warning-text)' }}>Please acknowledge you have received and reviewed this plan.</span>
                     <button disabled={pipSaving} onClick={async () => {
                       setPipSaving(true)
                       await fetch('/api/pip-plans', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: activePip.id, employee_acknowledged: true }) })
                       setPipPlans(prev => prev.map(p => p.id === activePip.id ? { ...p, employee_acknowledged: true } : p))
                       setPipSaving(false)
-                    }} style={{ padding: '6px 14px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    }} style={{ padding: '6px 14px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                       {pipSaving ? 'Saving…' : '✓ Acknowledge'}
                     </button>
                   </div>
@@ -254,7 +255,7 @@ function EmployeePipPanel() {
                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>My Notes</div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                   <input value={pipNote} onChange={e => setPipNote(e.target.value)} placeholder="Add a note…"
-                    style={{ flex: 1, background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }} />
+                    style={{ flex: 1, background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }} />
                   <button disabled={!pipNote || pipSaving} onClick={async () => {
                     setPipSaving(true)
                     const notes = [...((activePip.check_in_notes as any[]) || []), { text: pipNote, date: new Date().toISOString(), by: 'employee' }]
@@ -262,7 +263,7 @@ function EmployeePipPanel() {
                     setPipPlans(prev => prev.map(p => p.id === activePip.id ? { ...p, check_in_notes: notes } : p))
                     setPipNote('')
                     setPipSaving(false)
-                  }} style={{ padding: '8px 16px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: !pipNote || pipSaving ? 0.5 : 1 }}>
+                  }} style={{ padding: '8px 16px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: !pipNote || pipSaving ? 0.5 : 1 }}>
                     Add
                   </button>
                 </div>
@@ -270,7 +271,7 @@ function EmployeePipPanel() {
                   <div style={{ fontSize: 13, color: 'var(--text-faint)' }}>No notes added yet.</div>
                 ) : (
                   [...((activePip.check_in_notes as any[]) || [])].filter((n: any) => n.by === 'employee').reverse().map((n: any, i: number) => (
-                    <div key={i} style={{ background: 'var(--surface-inset)', borderRadius: 8, padding: '10px 12px', marginBottom: 8 }}>
+                    <div key={i} style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '10px 12px', marginBottom: 8 }}>
                       <div style={{ fontSize: 13, color: 'var(--text)' }}>{n.text}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 4 }}>{new Date(n.date).toLocaleDateString()}</div>
                     </div>
@@ -727,15 +728,15 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   }
 
   // ── Shared tokens ─────────────────────────────────────────────────────────
-  const inp: React.CSSProperties = { width: '100%', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', boxSizing: 'border-box', fontFamily: 'inherit', outline: 'none' }
+  const inp: React.CSSProperties = { width: '100%', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '8px 12px', fontSize: 13, color: 'var(--text)', boxSizing: 'border-box', fontFamily: 'inherit', outline: 'none' }
   const lbl: React.CSSProperties = { display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }
-  const card: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '18px 20px', marginBottom: 12 }
+  const card: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '18px 20px', marginBottom: 12 }
 
   const navBtn = (active: boolean): React.CSSProperties => ({
     width: '100%', display: 'flex', alignItems: 'center', gap: 8,
     padding: collapsed ? '8px' : '7px 10px',
     justifyContent: collapsed ? 'center' : 'flex-start',
-    borderRadius: 8, border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent',
+    borderRadius: 'var(--radius-md)', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent',
     background: active ? 'var(--brand-tint)' : 'transparent',
     cursor: 'pointer', marginBottom: 2, transition: 'all 0.15s',
     fontSize: 12, fontWeight: active ? 600 : 400, color: active ? 'var(--brand-soft)' : 'var(--text-secondary)',
@@ -771,7 +772,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
       <div>
         {/* Manager card */}
         <div style={{ ...card, borderLeft: '3px solid var(--brand-strong)', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+          <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
             {(manager?.name || manager?.email || '?').charAt(0).toUpperCase()}
           </div>
           <div style={{ flex: 1 }}>
@@ -781,7 +782,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>Status</div>
-            <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: isSubmitted ? 'var(--success-bg)' : 'var(--warning-bg)', color: isSubmitted ? 'var(--success)' : 'var(--warning)', border: `1px solid ${isSubmitted ? 'var(--success-border)' : 'var(--warning-text)'}` }}>
+            <span style={{ padding: '3px 10px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 700, background: isSubmitted ? 'var(--success-bg)' : 'var(--warning-bg)', color: isSubmitted ? 'var(--success)' : 'var(--warning)', border: `1px solid ${isSubmitted ? 'var(--success-border)' : 'var(--warning-text)'}` }}>
               {isSubmitted ? '✓ Submitted' : 'Draft'}
             </span>
           </div>
@@ -809,14 +810,14 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ padding: '3px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: cfg.accent + '20', color: cfg.accent, border: `1px solid ${cfg.accent}40` }}>{cfg.sublabel}</span>
+              <span style={{ padding: '3px 12px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 700, background: cfg.accent + '20', color: cfg.accent, border: `1px solid ${cfg.accent}40` }}>{cfg.sublabel}</span>
               {/* Type pills — Competency 5 only */}
               {ci === 4 && (['positive', 'constructive'] as const).map(t => {
                 const isSelected = comp?.type === t
                 const color = t === 'positive' ? 'var(--success)' : 'var(--warning)'
                 return (
                   <button key={t} onClick={() => !isSubmitted && updateComp(ci, 'type', t)} disabled={isSubmitted}
-                    style={{ padding: '3px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, border: `1px solid ${isSelected ? color : 'var(--border)'}`, background: isSelected ? color + '20' : 'transparent', color: isSelected ? color : 'var(--text-faint)', cursor: isSubmitted ? 'default' : 'pointer', transition: 'all 0.15s' }}>
+                    style={{ padding: '3px 12px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 700, border: `1px solid ${isSelected ? color : 'var(--border)'}`, background: isSelected ? color + '20' : 'transparent', color: isSelected ? color : 'var(--text-faint)', cursor: isSubmitted ? 'default' : 'pointer', transition: 'all 0.15s' }}>
                     {t === 'positive' ? 'Positive' : 'Constructive'}
                   </button>
                 )
@@ -837,7 +838,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
               <option value="">— Select from glossary —</option>
               {COMPETENCY_TERMS.map(t => <option key={t.term} value={t.term}>{t.term}</option>)}
             </select>
-            {def && <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--surface-inset)', borderRadius: 8, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, fontStyle: 'italic' }}><strong style={{ color: 'var(--text-muted)', fontStyle: 'normal' }}>Definition: </strong>{def.definition}</div>}
+            {def && <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, fontStyle: 'italic' }}><strong style={{ color: 'var(--text-muted)', fontStyle: 'normal' }}>Definition: </strong>{def.definition}</div>}
           </div>
             )
           })()}
@@ -869,7 +870,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                         </div>
                       )}
                       {!isSubmitted && aiState.showPrompt && (
-                        <div style={{ marginTop: 8, padding: '12px 14px', background: 'rgba(79,70,229,0.08)', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 10 }}>
+                        <div style={{ marginTop: 8, padding: '12px 14px', background: 'rgba(79,70,229,0.08)', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 'var(--radius-lg)' }}>
                           <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--brand-text)' }}>Describe what happened — AI will write the example.</p>
                           <textarea
                             value={aiState.context}
@@ -883,7 +884,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                             <button
                               onClick={() => draftCompExample(ci, ei)}
                               disabled={aiState.loading || !aiState.context.trim()}
-                              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: 'rgba(126,105,228,0.8)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: aiState.loading || !aiState.context.trim() ? 'not-allowed' : 'pointer', opacity: aiState.loading || !aiState.context.trim() ? 0.5 : 1 }}>
+                              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: 'rgba(126,105,228,0.8)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 11, fontWeight: 600, cursor: aiState.loading || !aiState.context.trim() ? 'not-allowed' : 'pointer', opacity: aiState.loading || !aiState.context.trim() ? 0.5 : 1 }}>
                               {aiState.loading ? <><Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> Drafting…</> : <><Sparkles size={11} /> Draft Example {ei + 1}</>}
                             </button>
                             <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>⌘↵ to submit</span>
@@ -906,7 +907,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', marginBottom: 6 }}>Goals, Objectives & Accomplishments</div>
           <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--text-muted)' }}>Indicate completion of your goals or objectives and explain why. Include stand-alone accomplishments too.</p>
           {review.goals_objectives.map((g, i) => (
-            <div key={i} style={{ padding: '14px', background: 'var(--surface-inset)', borderRadius: 10, marginBottom: 10, border: '1px solid var(--border)' }}>
+            <div key={i} style={{ padding: '14px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-lg)', marginBottom: 10, border: '1px solid var(--border)' }}>
               <div style={{ fontWeight: 600, fontSize: 11, color: 'var(--success)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{i + 1}. Goal / Objective / Accomplishment</div>
               <div style={{ marginBottom: 10 }}><div style={lbl}>Description</div><textarea value={g.description} onChange={e => updateGoal(i, 'description', e.target.value)} disabled={isSubmitted} rows={2} placeholder="Describe your goal, objective, or accomplishment…" style={{ ...inp, resize: 'vertical' }} /></div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10 }}>
@@ -931,7 +932,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             </div>
           ))}
           {!isSubmitted && review.goals_objectives.length < 5 && (
-            <button onClick={() => setReview(r => ({ ...r, goals_objectives: [...r.goals_objectives, { description: '', outcome: '', reasoning: '' }] }))} style={{ width: '100%', padding: '8px', background: 'transparent', color: 'var(--success)', border: '1px dashed var(--success-border)', borderRadius: 8, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Plus size={13} /> Add Goal / Accomplishment</button>
+            <button onClick={() => setReview(r => ({ ...r, goals_objectives: [...r.goals_objectives, { description: '', outcome: '', reasoning: '' }] }))} style={{ width: '100%', padding: '8px', background: 'transparent', color: 'var(--success)', border: '1px dashed var(--success-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Plus size={13} /> Add Goal / Accomplishment</button>
           )}
         </div>
         <div style={card}>
@@ -942,8 +943,8 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
               const s = STAR_LABELS[n]; const sel = review.overall_rating === n
               return (
                 <button key={n} onClick={() => !isSubmitted && setReview(r => ({ ...r, overall_rating: n }))} disabled={isSubmitted}
-                  style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '11px 14px', borderRadius: 10, border: `1.5px solid ${sel ? s.color : 'var(--border)'}`, background: sel ? s.color + '15' : 'var(--surface-inset)', cursor: isSubmitted ? 'default' : 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.15s' }}>
-                  <div style={{ fontSize: 15, color: s.color, fontWeight: 800, minWidth: 80, letterSpacing: -1 }}>{'★'.repeat(n)}{'☆'.repeat(5 - n)}</div>
+                  style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '11px 14px', borderRadius: 'var(--radius-lg)', border: `1.5px solid ${sel ? s.color : 'var(--border)'}`, background: sel ? s.color + '15' : 'var(--surface-inset)', cursor: isSubmitted ? 'default' : 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.15s' }}>
+                  <div style={{ fontSize: 16, color: s.color, fontWeight: 800, minWidth: 80, letterSpacing: -1 }}>{'★'.repeat(n)}{'☆'.repeat(5 - n)}</div>
                   <div><div style={{ fontWeight: 700, color: sel ? s.color : 'var(--text-secondary)', fontSize: 13 }}>{n} — {s.label}</div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{s.description}</div></div>
                 </button>
               )
@@ -965,14 +966,14 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                 onClick={draftNextYearGoals}
                 disabled={nextYearAI.loading || !hasConstructive}
                 title={!hasConstructive ? 'Fill in your constructive competencies (steps 3–4) first' : 'Generate SMART goals based on your constructive competency areas'}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', background: hasConstructive ? 'rgba(126,105,228,0.8)' : 'var(--border)', color: hasConstructive ? '#fff' : 'var(--text-faint)', border: `1px solid ${hasConstructive ? 'rgba(129,140,248,0.4)' : 'var(--border)'}`, borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: (nextYearAI.loading || !hasConstructive) ? 'not-allowed' : 'pointer' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', background: hasConstructive ? 'rgba(126,105,228,0.8)' : 'var(--border)', color: hasConstructive ? '#fff' : 'var(--text-faint)', border: `1px solid ${hasConstructive ? 'rgba(129,140,248,0.4)' : 'var(--border)'}`, borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: (nextYearAI.loading || !hasConstructive) ? 'not-allowed' : 'pointer' }}>
                 {nextYearAI.loading ? <><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Generating…</> : <><Sparkles size={12} /> AI Draft Goals</>}
               </button>
               {!hasConstructive && <div style={{ fontSize: 10, color: 'var(--text-faint)', marginTop: 4, textAlign: 'right' }}>Fill constructive competencies first</div>}
             </div>
           )}
         </div>
-        {nextYearAI.error && <div style={{ padding: '8px 12px', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 8, color: 'var(--danger)', fontSize: 12, marginBottom: 12 }}>{nextYearAI.error}</div>}
+        {nextYearAI.error && <div style={{ padding: '8px 12px', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 'var(--radius-md)', color: 'var(--danger)', fontSize: 12, marginBottom: 12 }}>{nextYearAI.error}</div>}
         {review.next_year_goals.map((g, i) => (
           <div key={i} style={{ ...card, borderLeft: '3px solid var(--warning)' }}>
             <div style={{ fontWeight: 600, fontSize: 11, color: 'var(--warning)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Goal {i + 1}</div>
@@ -981,7 +982,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           </div>
         ))}
         {!isSubmitted && review.next_year_goals.length < 5 && (
-          <button onClick={() => setReview(r => ({ ...r, next_year_goals: [...r.next_year_goals, { goal: '', objective: '' }] }))} style={{ width: '100%', padding: '8px', background: 'transparent', color: 'var(--warning)', border: '1px dashed var(--warning-text)', borderRadius: 8, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Plus size={13} /> Add Another Goal</button>
+          <button onClick={() => setReview(r => ({ ...r, next_year_goals: [...r.next_year_goals, { goal: '', objective: '' }] }))} style={{ width: '100%', padding: '8px', background: 'transparent', color: 'var(--warning)', border: '1px dashed var(--warning-text)', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Plus size={13} /> Add Another Goal</button>
         )}
       </div>
     )
@@ -997,27 +998,27 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           </div>
           <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Part One — Competencies</div>
           {review.competencies.map((c, i) => c.term ? (
-            <div key={i} style={{ padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 8, marginBottom: 6, borderLeft: `3px solid ${COMP_CONFIG[i].accent}` }}>
+            <div key={i} style={{ padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', marginBottom: 6, borderLeft: `3px solid ${COMP_CONFIG[i].accent}` }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{COMP_CONFIG[i].label} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({COMP_CONFIG[i].sublabel})</span> — {c.term}</div>
               {c.examples.filter(Boolean).map((ex, j) => <div key={j} style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{j + 1}. {ex}</div>)}
             </div>
-          ) : <div key={i} style={{ padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 8, marginBottom: 6, fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>{COMP_CONFIG[i].label} — not filled</div>)}
+          ) : <div key={i} style={{ padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', marginBottom: 6, fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>{COMP_CONFIG[i].label} — not filled</div>)}
           <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--success)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '14px 0 8px' }}>Part Two — Goals & Rating</div>
           {review.goals_objectives.filter(g => g.description).map((g, i) => (
-            <div key={i} style={{ padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 8, marginBottom: 6 }}>
+            <div key={i} style={{ padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', marginBottom: 6 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{i + 1}. {g.description}</div>
               {g.outcome && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Outcome: {g.outcome}</div>}
             </div>
           ))}
           {review.overall_rating ? (
-            <div style={{ padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 8, marginBottom: 6 }}>
+            <div style={{ padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', marginBottom: 6 }}>
               <span style={{ color: STAR_LABELS[review.overall_rating].color }}>{'★'.repeat(review.overall_rating)}</span>
               {' '}<span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{review.overall_rating}/5 — {STAR_LABELS[review.overall_rating].label}</span>
             </div>
-          ) : <div style={{ padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 8, fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>No rating selected</div>}
+          ) : <div style={{ padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>No rating selected</div>}
           <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--warning)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '14px 0 8px' }}>Part Three — Next Year&apos;s Goals</div>
           {review.next_year_goals.filter(g => g.goal).map((g, i) => (
-            <div key={i} style={{ padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 8, marginBottom: 6 }}>
+            <div key={i} style={{ padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', marginBottom: 6 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{i + 1}. {g.goal}</div>
               {g.objective && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{g.objective}</div>}
             </div>
@@ -1028,27 +1029,27 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           <div style={card}>
             <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', marginBottom: 8 }}>Ready to submit?</div>
             <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>Once submitted, your self-assessment is shared with your manager and cannot be edited. You&apos;ll then be able to export it to Google Drive.</p>
-            <button onClick={() => setSubmitConfirm(true)} style={{ width: '100%', padding: '11px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Submit Self-Assessment</button>
+            <button onClick={() => setSubmitConfirm(true)} style={{ width: '100%', padding: '11px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Submit Self-Assessment</button>
           </div>
         ) : driveUrl ? (
           <div style={{ ...card, background: 'var(--success-bg)', border: '1px solid var(--success-border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <div style={{ fontSize: 22 }}>✅</div>
+              <div style={{ fontSize: 20 }}>✅</div>
               <div style={{ fontWeight: 700, color: 'var(--success)', fontSize: 14 }}>Saved to Google Drive</div>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--success)', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 8, padding: '7px 12px', marginBottom: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{driveUrl}</div>
+            <div style={{ fontSize: 11, color: 'var(--success)', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-md)', padding: '7px 12px', marginBottom: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{driveUrl}</div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <a href={driveUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--success-border)', color: 'var(--success)', borderRadius: 8, fontWeight: 700, fontSize: 12, textDecoration: 'none', border: '1px solid var(--success)' }}><ExternalLink size={12} /> Open in Google Docs</a>
-              <button onClick={sendToDrive} disabled={exporting} style={{ padding: '8px 14px', background: 'transparent', color: 'var(--text-muted)', borderRadius: 8, fontSize: 12, border: '1px solid var(--border)', cursor: 'pointer' }}>Re-export</button>
-              <button onClick={() => { setShowManualLink(true); setManualLinkValue(driveUrl ?? '') }} style={{ padding: '8px 14px', background: 'transparent', color: 'var(--text-muted)', borderRadius: 8, fontSize: 12, border: '1px solid var(--border)', cursor: 'pointer' }}>Replace link</button>
+              <a href={driveUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--success-border)', color: 'var(--success)', borderRadius: 'var(--radius-md)', fontWeight: 700, fontSize: 12, textDecoration: 'none', border: '1px solid var(--success)' }}><ExternalLink size={12} /> Open in Google Docs</a>
+              <button onClick={sendToDrive} disabled={exporting} style={{ padding: '8px 14px', background: 'transparent', color: 'var(--text-muted)', borderRadius: 'var(--radius-md)', fontSize: 12, border: '1px solid var(--border)', cursor: 'pointer' }}>Re-export</button>
+              <button onClick={() => { setShowManualLink(true); setManualLinkValue(driveUrl ?? '') }} style={{ padding: '8px 14px', background: 'transparent', color: 'var(--text-muted)', borderRadius: 'var(--radius-md)', fontSize: 12, border: '1px solid var(--border)', cursor: 'pointer' }}>Replace link</button>
             </div>
             {showManualLink && (
-              <div style={{ marginTop: 12, padding: '12px', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 8 }}>
+              <div style={{ marginTop: 12, padding: '12px', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)' }}>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>Paste a Google Docs or Drive URL:</div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
                   <input value={manualLinkValue} onChange={e => { setManualLinkValue(e.target.value); setManualLinkError('') }} onKeyDown={e => { if (e.key === 'Enter') saveManualDriveLink() }} placeholder="https://docs.google.com/document/d/..." style={{ ...inp, flex: 1, fontSize: 12 }} />
-                  <button onClick={saveManualDriveLink} disabled={manualLinkSaving || !manualLinkValue.trim()} style={{ padding: '8px 14px', background: 'var(--success)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{manualLinkSaving ? 'Saving…' : 'Save'}</button>
-                  <button onClick={() => { setShowManualLink(false); setManualLinkError('') }} style={{ padding: '8px 12px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>Cancel</button>
+                  <button onClick={saveManualDriveLink} disabled={manualLinkSaving || !manualLinkValue.trim()} style={{ padding: '8px 14px', background: 'var(--success)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{manualLinkSaving ? 'Saving…' : 'Save'}</button>
+                  <button onClick={() => { setShowManualLink(false); setManualLinkError('') }} style={{ padding: '8px 12px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>Cancel</button>
                 </div>
                 {manualLinkError && <div style={{ fontSize: 11, color: 'var(--danger)' }}>{manualLinkError}</div>}
               </div>
@@ -1059,12 +1060,12 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', marginBottom: 8 }}>Export to Google Drive</div>
             <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>A formatted Google Doc will be created in the Performance Reviews folder.</p>
             {!approved ? (
-              <button onClick={() => setApproved(true)} style={{ width: '100%', padding: '10px', background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>✓ Confirm accuracy and approve for export</button>
+              <button onClick={() => setApproved(true)} style={{ width: '100%', padding: '10px', background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>✓ Confirm accuracy and approve for export</button>
             ) : (
               <div>
-                <div style={{ padding: '8px 12px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 8, color: 'var(--success)', fontSize: 12, marginBottom: 12 }}>✓ Approved — ready to export</div>
-                {exportError && <div style={{ padding: '8px 12px', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 8, color: 'var(--danger)', fontSize: 12, marginBottom: 12 }}>{exportError}</div>}
-                <button onClick={sendToDrive} disabled={exporting} style={{ width: '100%', padding: '11px', background: 'linear-gradient(135deg, var(--success), var(--success))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: exporting ? 'wait' : 'pointer', opacity: exporting ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <div style={{ padding: '8px 12px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-md)', color: 'var(--success)', fontSize: 12, marginBottom: 12 }}>✓ Approved — ready to export</div>
+                {exportError && <div style={{ padding: '8px 12px', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 'var(--radius-md)', color: 'var(--danger)', fontSize: 12, marginBottom: 12 }}>{exportError}</div>}
+                <button onClick={sendToDrive} disabled={exporting} style={{ width: '100%', padding: '11px', background: 'linear-gradient(135deg, var(--success), var(--success))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 700, cursor: exporting ? 'wait' : 'pointer', opacity: exporting ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                   {exporting ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Creating Google Doc…</> : <><Send size={14} /> Send to Google Drive</>}
                 </button>
               </div>
@@ -1080,8 +1081,8 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>Paste a Google Docs or Drive URL:</div>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
                     <input value={manualLinkValue} onChange={e => { setManualLinkValue(e.target.value); setManualLinkError('') }} onKeyDown={e => { if (e.key === 'Enter') saveManualDriveLink() }} placeholder="https://docs.google.com/document/d/..." style={{ ...inp, flex: 1, fontSize: 12 }} />
-                    <button onClick={saveManualDriveLink} disabled={manualLinkSaving || !manualLinkValue.trim()} style={{ padding: '8px 14px', background: 'var(--success)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, opacity: (!manualLinkValue.trim() || manualLinkSaving) ? 0.6 : 1 }}>{manualLinkSaving ? 'Saving…' : 'Save'}</button>
-                    <button onClick={() => { setShowManualLink(false); setManualLinkError('') }} style={{ padding: '8px 12px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>Cancel</button>
+                    <button onClick={saveManualDriveLink} disabled={manualLinkSaving || !manualLinkValue.trim()} style={{ padding: '8px 14px', background: 'var(--success)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, opacity: (!manualLinkValue.trim() || manualLinkSaving) ? 0.6 : 1 }}>{manualLinkSaving ? 'Saving…' : 'Save'}</button>
+                    <button onClick={() => { setShowManualLink(false); setManualLinkError('') }} style={{ padding: '8px 12px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>Cancel</button>
                   </div>
                   {manualLinkError && <div style={{ fontSize: 11, color: 'var(--danger)' }}>{manualLinkError}</div>}
                 </div>
@@ -1127,7 +1128,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             <div key={idx} style={{ padding: '16px 20px', borderTop: idx === 0 ? 'none' : '1px solid var(--surface-hover)', background: idx % 2 === 0 ? 'var(--surface-inset)' : 'var(--page)', borderRadius: idx === 0 ? '10px 10px 0 0' : idx === total - 1 ? '0 0 10px 10px' : '0' }}>
               {heading && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <div style={{ width: 3, height: 16, borderRadius: 2, background: hc, flexShrink: 0 }} />
+                  <div style={{ width: 3, height: 16, borderRadius: 'var(--radius-sm)', background: hc, flexShrink: 0 }} />
                   <span style={{ fontSize: 10, fontWeight: 800, color: hc, textTransform: 'uppercase' as const, letterSpacing: '0.12em' }}>{heading}</span>
                   <div style={{ flex: 1, height: 1, background: bc }} />
                 </div>
@@ -1176,12 +1177,12 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             <div style={{ ...card, background: 'var(--surface-inset)', borderLeft: '3px solid var(--warning)', padding: '16px 20px', marginBottom: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--warning)', marginBottom: 4 }}>Complete your Self-Assessment first</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>Your self-assessment must be submitted before your manager can write your performance review.</div>
-              <button onClick={() => setPage('self-assessment')} style={{ padding: '7px 16px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Go to Self-Assessment</button>
+              <button onClick={() => setPage('self-assessment')} style={{ padding: '7px 16px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Go to Self-Assessment</button>
             </div>
           )}
           <div style={{ ...card, background: 'var(--surface-inset)', textAlign: 'center', padding: '48px 32px' }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>No performance reviews yet</div>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>No performance reviews yet</div>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--text-faint)', lineHeight: 1.6, maxWidth: 400, marginInline: 'auto' }}>Once your manager completes and submits your performance review, this panel will show a side-by-side comparison of your self-assessment and their review.</p>
           </div>
         </div>
@@ -1202,16 +1203,16 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
               <div style={{ borderBottom: '1px solid var(--border)', padding: '16px 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Performance Review</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-strong)' }}>{profileName || profile.email}</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-strong)' }}>{profileName || profile.email}</div>
                   {r.employee_position && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{r.employee_position}</div>}
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {driveUrl && <a href={driveUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)', borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}><ExternalLink size={12} /> SA Doc</a>}
-                  {r.drive_url && <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)', borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}><ExternalLink size={12} /> Review Doc</a>}
+                  {driveUrl && <a href={driveUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}><ExternalLink size={12} /> SA Doc</a>}
+                  {r.drive_url && <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}><ExternalLink size={12} /> Review Doc</a>}
                   {r.employee_signed_at ? (
-                    <div style={{ padding: '6px 14px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 20, fontSize: 12, fontWeight: 700, color: 'var(--success)' }}>✓ Fully Signed</div>
+                    <div style={{ padding: '6px 14px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-pill)', fontSize: 12, fontWeight: 700, color: 'var(--success)' }}>✓ Fully Signed</div>
                   ) : (
-                    <div style={{ padding: '6px 14px', background: 'var(--warning-bg)', border: '1px solid var(--warning-text)', borderRadius: 20, fontSize: 12, fontWeight: 700, color: 'var(--warning)' }}>Awaiting Your Signature</div>
+                    <div style={{ padding: '6px 14px', background: 'var(--warning-bg)', border: '1px solid var(--warning-text)', borderRadius: 'var(--radius-pill)', fontSize: 12, fontWeight: 700, color: 'var(--warning)' }}>Awaiting Your Signature</div>
                   )}
                 </div>
               </div>
@@ -1238,7 +1239,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                               {saCompetencies.map((c, i) => {
                                 const col = c.type === 'positive' ? 'var(--success)' : c.type === 'constructive' ? 'var(--warning)' : 'var(--brand)'
                                 return (
-                                  <div key={i} style={{ background: 'var(--surface)', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                                  <div key={i} style={{ background: 'var(--surface)', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 'var(--radius-md)', padding: '10px 12px', marginBottom: 6 }}>
                                     <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>{c.term}</div>
                                     {c.examples.filter(e => e.trim()).map((ex, ei) => (
                                       <div key={ei} style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 2 }}>{ex}</div>
@@ -1253,7 +1254,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                             <div>
                               <div style={sLabel}>Goals &amp; Objectives</div>
                               {review.goals_objectives.filter(g => g.description?.trim()).map((g, i) => (
-                                <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                                <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '10px 12px', marginBottom: 6 }}>
                                   <div style={{ fontSize: 12, color: 'var(--text)', marginBottom: 4 }}>{g.description}</div>
                                   {g.outcome && <span style={{ fontSize: 11, fontWeight: 600, color: g.outcome === 'successful' ? 'var(--success)' : g.outcome === 'ongoing' ? 'var(--warning)' : 'var(--danger)', textTransform: 'capitalize' }}>{g.outcome}</span>}
                                   {g.reasoning && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{g.reasoning}</div>}
@@ -1263,7 +1264,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                           )}
                           {/* Self-rating */}
                           {review.overall_rating != null && (
-                            <div style={{ padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 10 }}>
                               <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Self Rating</span>
                               <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--brand-text)' }}>{'★'.repeat(review.overall_rating)}{'☆'.repeat(5 - review.overall_rating)}</span>
                               <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{STAR_LABELS[review.overall_rating]?.label}</span>
@@ -1274,7 +1275,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                             <div>
                               <div style={sLabel}>Next Year&apos;s Goals</div>
                               {review.next_year_goals.filter(g => g.goal?.trim()).map((g, i) => (
-                                <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                                <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '10px 12px', marginBottom: 6 }}>
                                   <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>{g.goal}</div>
                                   {g.objective && <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{g.objective}</div>}
                                 </div>
@@ -1295,7 +1296,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                     <div style={{ padding: 16, background: 'var(--surface-inset)', border: '1px solid var(--info-border)', borderRadius: '0 0 10px 10px', flex: 1 }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         {/* Employee info */}
-                        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px' }}>
+                        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '10px 14px' }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>{r.employee_name || profileName || profile.email}</div>
                           <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.employee_position}{form.appraisalPeriod ? ` · ${String(form.appraisalPeriod)}` : ''}</div>
                           {!!form.supervisorName && <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>Supervisor: {String(form.supervisorName)}</div>}
@@ -1319,7 +1320,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                             ].filter(c => c.entry?.competency).map((c, i) => {
                               const col = c.type === 'positive' ? 'var(--success)' : 'var(--warning)'
                               return (
-                                <div key={i} style={{ background: 'var(--surface)', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                                <div key={i} style={{ background: 'var(--surface)', border: `1px solid ${col}30`, borderLeft: `3px solid ${col}`, borderRadius: 'var(--radius-md)', padding: '10px 12px', marginBottom: 6 }}>
                                   <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>{c.entry!.competency}</div>
                                   {(c.entry!.examples ?? []).filter(e => e.trim()).map((ex, ei) => (
                                     <div key={ei} style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 2 }}>{ei + 1}. {ex}</div>
@@ -1334,9 +1335,9 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                           <div>
                             <div style={sLabel}>Goals &amp; Objectives</div>
                             {(form.goals as Array<{ text: string; status?: string; explanation?: string }>).filter(g => g.text?.trim()).map((g, i) => (
-                              <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                              <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '10px 12px', marginBottom: 6 }}>
                                 <div style={{ fontSize: 12, color: 'var(--text)', marginBottom: g.status ? 4 : 0 }}>{g.text}</div>
-                                {g.status && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: g.status === 'Successful' ? 'var(--success-bg)' : g.status === 'Unsuccessful' ? 'var(--danger-bg)' : 'var(--warning-bg)', color: g.status === 'Successful' ? 'var(--success)' : g.status === 'Unsuccessful' ? 'var(--danger)' : 'var(--warning)' }}>{g.status}</span>}
+                                {g.status && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 'var(--radius-lg)', background: g.status === 'Successful' ? 'var(--success-bg)' : g.status === 'Unsuccessful' ? 'var(--danger-bg)' : 'var(--warning-bg)', color: g.status === 'Successful' ? 'var(--success)' : g.status === 'Unsuccessful' ? 'var(--danger)' : 'var(--warning)' }}>{g.status}</span>}
                                 {g.explanation && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic' }}>{g.explanation}</div>}
                               </div>
                             ))}
@@ -1344,7 +1345,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                         ) : null}
                         {/* Overall score */}
                         {score > 0 && (
-                          <div style={{ padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 10 }}>
                             <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Overall Score</span>
                             <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--info)' }}>{'★'.repeat(score)}{'☆'.repeat(5 - score)}</span>
                             <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{STAR_LABELS[score]?.label}</span>
@@ -1352,7 +1353,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                         )}
                         {/* Overall summary */}
                         {(form.overallSummary as string | undefined) && (
-                          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
+                          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '10px 12px' }}>
                             <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Summary</div>
                             <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.6 }}>{String(form.overallSummary)}</div>
                           </div>
@@ -1362,7 +1363,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                           <div>
                             <div style={sLabel}>Next Year&apos;s Goals</div>
                             {(form.nextGoals as Array<{ text: string; targetDate?: string }>).filter(g => g.text?.trim()).map((g, i) => (
-                              <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 6 }}>
+                              <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '10px 12px', marginBottom: 6 }}>
                                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>{g.text}</div>
                                 {g.targetDate && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Target: {g.targetDate}</div>}
                               </div>
@@ -1377,7 +1378,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
 
               {/* ── Comparison Report ── */}
               {r.comparison_report && (
-                <div style={{ borderRadius: 12, border: '1px solid rgba(124,58,237,0.3)', background: 'rgba(88,28,235,0.06)', padding: 20, marginBottom: 24 }}>
+                <div style={{ borderRadius: 'var(--radius-lg)', border: '1px solid rgba(124,58,237,0.3)', background: 'rgba(88,28,235,0.06)', padding: 20, marginBottom: 24 }}>
                   {/* Top header row */}
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
                     <div>
@@ -1399,37 +1400,37 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                           setCopiedReport(true)
                           setTimeout(() => setCopiedReport(false), 2000)
                         }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-inset)', color: copiedReport ? 'var(--success)' : 'var(--text-secondary)', cursor: 'pointer' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, padding: '5px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface-inset)', color: copiedReport ? 'var(--success)' : 'var(--text-secondary)', cursor: 'pointer' }}
                       >
                         {copiedReport ? '✓ Copied!' : '⎘ Copy'}
                       </button>
                     </div>
                   </div>
                   {/* Report body */}
-                  <div style={{ background: 'var(--page)', border: '1px solid var(--surface)', borderRadius: 12, padding: 20 }}>
+                  <div style={{ background: 'var(--page)', border: '1px solid var(--surface)', borderRadius: 'var(--radius-lg)', padding: 20 }}>
                     {renderComparisonReport(r.comparison_report)}
                   </div>
                 </div>
               )}
 
               {/* ── Signatures ── */}
-              <div style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 12, padding: '24px 28px' }}>
+              <div style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '24px 28px' }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 20 }}>Signatures</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: !r.employee_signed_at ? 20 : 0 }}>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Manager</div>
-                    <div style={{ padding: '12px 14px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 8 }}>
+                    <div style={{ padding: '12px 14px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-md)' }}>
                       <SignatureDisplay stored={r.manager_signature} date={r.manager_signed_at} />
                     </div>
                   </div>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Employee</div>
                     {r.employee_signed_at ? (
-                      <div style={{ padding: '12px 14px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 8 }}>
+                      <div style={{ padding: '12px 14px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-md)' }}>
                         <SignatureDisplay stored={r.employee_signature} date={r.employee_signed_at} />
                       </div>
                     ) : (
-                      <div style={{ padding: '14px', background: 'var(--warning-bg)', border: '1px solid var(--warning-text)', borderRadius: 8 }}>
+                      <div style={{ padding: '14px', background: 'var(--warning-bg)', border: '1px solid var(--warning-text)', borderRadius: 'var(--radius-md)' }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--warning)', marginBottom: 4 }}>Awaiting Your Signature</div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Sign below to acknowledge this review has been discussed.</div>
                       </div>
@@ -1438,7 +1439,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                 </div>
                 {!r.employee_signed_at && (
                   signingId === r.id ? (
-                    <div style={{ background: 'var(--page)', border: '1px solid var(--border)', borderRadius: 10, padding: '20px' }}>
+                    <div style={{ background: 'var(--page)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px' }}>
                       <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                         By signing, you acknowledge that you have reviewed this performance evaluation and discussed it with your manager.
                       </p>
@@ -1453,14 +1454,14 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                   ) : (
                     <button
                       onClick={() => { setSigningId(r.id); setSignError('') }}
-                      style={{ width: '100%', padding: '12px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+                      style={{ width: '100%', padding: '12px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-lg)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
                     >
                       ✍️ Sign &amp; Acknowledge Review
                     </button>
                   )
                 )}
                 {r.employee_signed_at && (
-                  <div style={{ marginTop: 16, padding: '12px 16px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ marginTop: 16, padding: '12px 16px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <CheckCircle2 size={16} color="var(--success)" />
                     <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--success)' }}>Review acknowledged and signed on {new Date(r.employee_signed_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
                   </div>
@@ -1511,7 +1512,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Track your progress between review cycles. Click &apos;Import Goals into SA&apos; to pre-fill your Next Year&apos;s Goals.</p>
           </div>
           <button onClick={() => { setShowAddGoal(true); setGoalForm({ title: '', description: '', status: 'not_started', target_date: '', notes: '' }) }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
             <Plus size={14} /> Add Goal
           </button>
         </div>
@@ -1526,7 +1527,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
               { label: 'Overdue', value: overdue, color: overdue > 0 ? 'var(--danger)' : 'var(--text-faint)' },
             ].map(s => (
               <div key={s.label} style={{ ...card, padding: '12px 16px', textAlign: 'center' }}>
-                <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{s.value}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{s.label}</div>
               </div>
             ))}
@@ -1552,7 +1553,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                   setStep(7)
                 }, 1200)
               }}
-              style={{ flexShrink: 0, padding: '8px 18px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              style={{ flexShrink: 0, padding: '8px 18px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
             >
               Import Goals into SA →
             </button>
@@ -1565,8 +1566,8 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', marginBottom: 14 }}>New Goal</div>
             {formFields}
             <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
-              <button onClick={() => setShowAddGoal(false)} style={{ flex: 1, padding: '9px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={createGoal} disabled={goalSaving || !goalForm.title.trim()} style={{ flex: 2, padding: '9px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: (!goalForm.title.trim() || goalSaving) ? 0.6 : 1 }}>
+              <button onClick={() => setShowAddGoal(false)} style={{ flex: 1, padding: '9px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={createGoal} disabled={goalSaving || !goalForm.title.trim()} style={{ flex: 2, padding: '9px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: (!goalForm.title.trim() || goalSaving) ? 0.6 : 1 }}>
                 {goalSaving ? 'Saving…' : 'Add Goal'}
               </button>
             </div>
@@ -1583,7 +1584,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--text-faint)', lineHeight: 1.6, maxWidth: 340, marginLeft: 'auto', marginRight: 'auto' }}>
               Add goals between review cycles to track your progress. Your active goals can carry forward into your next self-assessment.
             </p>
-            <button onClick={() => setShowAddGoal(true)} style={{ padding: '8px 20px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Add Your First Goal</button>
+            <button onClick={() => setShowAddGoal(true)} style={{ padding: '8px 20px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Add Your First Goal</button>
           </div>
         ) : (
           goals.map(g => {
@@ -1597,8 +1598,8 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                     <div style={{ fontWeight: 600, fontSize: 12, color: 'var(--brand)', marginBottom: 14 }}>Editing Goal</div>
                     {formFields}
                     <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
-                      <button onClick={() => setEditingGoal(null)} style={{ flex: 1, padding: '8px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
-                      <button onClick={saveEditGoal} disabled={goalSaving} style={{ flex: 2, padding: '8px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{goalSaving ? 'Saving…' : 'Save Changes'}</button>
+                      <button onClick={() => setEditingGoal(null)} style={{ flex: 1, padding: '8px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={saveEditGoal} disabled={goalSaving} style={{ flex: 2, padding: '8px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{goalSaving ? 'Saving…' : 'Save Changes'}</button>
                     </div>
                   </div>
                 ) : (
@@ -1612,13 +1613,13 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                         {g.status !== 'complete' && (
                           <button onClick={() => updateGoalRecord(g.id, { status: g.status === 'not_started' ? 'in_progress' : 'complete' })}
                             title={g.status === 'not_started' ? 'Mark In Progress' : 'Mark Complete'}
-                            style={{ padding: '4px 8px', background: 'var(--border)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>
+                            style={{ padding: '4px 8px', background: 'var(--border)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 11, cursor: 'pointer' }}>
                             {g.status === 'not_started' ? '▶ Start' : '✓ Done'}
                           </button>
                         )}
                         <button onClick={() => { setEditingGoal(g); setGoalForm({ title: g.title, description: g.description, status: g.status, target_date: g.target_date, notes: g.notes }) }}
-                          style={{ padding: '4px 8px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Edit</button>
-                        <button onClick={() => deleteGoal(g.id)} style={{ padding: '4px 8px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>✕</button>
+                          style={{ padding: '4px 8px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 11, cursor: 'pointer' }}>Edit</button>
+                        <button onClick={() => deleteGoal(g.id)} style={{ padding: '4px 8px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 11, cursor: 'pointer' }}>✕</button>
                       </div>
                     </div>
 
@@ -1633,27 +1634,27 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                             <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Key Results Progress</span>
                             <span style={{ fontSize: 10, fontWeight: 700, color: barColor }}>{pct}%</span>
                           </div>
-                          <div style={{ height: 6, background: 'var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 4, transition: 'width 0.3s ease' }} />
+                          <div style={{ height: 6, background: 'var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 'var(--radius-sm)', transition: 'width 0.3s ease' }} />
                           </div>
                         </div>
                       )
                     })()}
 
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: sc.bg, color: sc.color, border: `1px solid ${sc.color}40` }}>{sc.label}</span>
+                      <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 700, background: sc.bg, color: sc.color, border: `1px solid ${sc.color}40` }}>{sc.label}</span>
                       {g.target_date && (
                         <span style={{ fontSize: 11, color: isOverdue ? 'var(--danger)' : 'var(--text-muted)' }}>
                           {isOverdue ? '⚠ Overdue · ' : '📅 '}{new Date(g.target_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                       )}
                       <button onClick={() => setKrExpandedIds(s => { const n = new Set(s); n.has(g.id) ? n.delete(g.id) : n.add(g.id); return n })}
-                        style={{ marginLeft: 'auto', padding: '2px 8px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>
+                        style={{ marginLeft: 'auto', padding: '2px 8px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 11, cursor: 'pointer' }}>
                         🎯 Key Results {(g.key_results ?? []).length > 0 ? `(${g.key_results.length})` : ''} {krExpandedIds.has(g.id) ? '▲' : '▼'}
                       </button>
                     </div>
 
-                    {g.notes && <div style={{ marginTop: 10, padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 8, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{g.notes}</div>}
+                    {g.notes && <div style={{ marginTop: 10, padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{g.notes}</div>}
 
                     {/* Key Results expanded section */}
                     {krExpandedIds.has(g.id) && (
@@ -1674,14 +1675,14 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                                 ? `${kr.current}% / ${kr.target}%`
                                 : `${kr.current}${kr.unit ? ' ' + kr.unit : ''} / ${kr.target}${kr.unit ? ' ' + kr.unit : ''}`
                           return (
-                            <div key={kr.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, padding: '8px 10px', background: 'var(--surface-inset)', borderRadius: 8 }}>
+                            <div key={kr.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, padding: '8px 10px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)' }}>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                                   <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 500 }}>{kr.title}</span>
                                   <span style={{ fontSize: 11, color: barColor, fontWeight: 700, whiteSpace: 'nowrap', marginLeft: 8 }}>{displayValue}</span>
                                 </div>
-                                <div style={{ height: 4, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-                                  <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 3, transition: 'width 0.3s ease' }} />
+                                <div style={{ height: 4, background: 'var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                                  <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 'var(--radius-sm)', transition: 'width 0.3s ease' }} />
                                 </div>
                               </div>
                               {/* Inline current value editor */}
@@ -1690,30 +1691,30 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                                   type="number"
                                   defaultValue={kr.current}
                                   onBlur={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v !== kr.current) updateKeyResultValue(g.id, kr.id, v) }}
-                                  style={{ width: 64, padding: '3px 6px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, color: 'var(--text)', textAlign: 'right' }}
+                                  style={{ width: 64, padding: '3px 6px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 11, color: 'var(--text)', textAlign: 'right' }}
                                 />
                               ) : (
                                 <button onClick={() => updateKeyResultValue(g.id, kr.id, kr.current >= 1 ? 0 : 1)}
-                                  style={{ padding: '3px 8px', background: kr.current >= 1 ? 'var(--success-bg)' : 'var(--border)', color: kr.current >= 1 ? 'var(--success)' : 'var(--text-muted)', border: `1px solid ${kr.current >= 1 ? 'var(--success)' : 'var(--border)'}`, borderRadius: 6, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                  style={{ padding: '3px 8px', background: kr.current >= 1 ? 'var(--success-bg)' : 'var(--border)', color: kr.current >= 1 ? 'var(--success)' : 'var(--text-muted)', border: `1px solid ${kr.current >= 1 ? 'var(--success)' : 'var(--border)'}`, borderRadius: 'var(--radius-sm)', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                                   {kr.current >= 1 ? '✓ Done' : 'Mark Done'}
                                 </button>
                               )}
                               <button onClick={() => deleteKeyResult(g.id, kr.id)}
-                                style={{ padding: '3px 6px', background: 'transparent', color: 'var(--text-faint)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>✕</button>
+                                style={{ padding: '3px 6px', background: 'transparent', color: 'var(--text-faint)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 11, cursor: 'pointer' }}>✕</button>
                             </div>
                           )
                         })}
 
                         {/* Add KR form */}
                         {krAddingId === g.id ? (
-                          <div style={{ padding: '12px', background: 'var(--surface-inset)', borderRadius: 8, marginTop: 4 }}>
+                          <div style={{ padding: '12px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', marginTop: 4 }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                               <input value={krForm.title} onChange={e => setKrForm(f => ({ ...f, title: e.target.value }))}
                                 placeholder="Key result title, e.g. Increase quarterly revenue" autoFocus
-                                style={{ padding: '7px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, color: 'var(--text)' }} />
+                                style={{ padding: '7px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 12, color: 'var(--text)' }} />
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                                 <select value={krForm.type} onChange={e => setKrForm(f => ({ ...f, type: e.target.value as KeyResult['type'] }))}
-                                  style={{ padding: '7px 8px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, color: 'var(--text)', appearance: 'none' }}>
+                                  style={{ padding: '7px 8px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 12, color: 'var(--text)', appearance: 'none' }}>
                                   <option value="percent">% Percent</option>
                                   <option value="number">🔢 Number</option>
                                   <option value="currency">$ Currency</option>
@@ -1721,21 +1722,21 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                                 </select>
                                 {krForm.type !== 'boolean' && <>
                                   <input type="number" value={krForm.current} onChange={e => setKrForm(f => ({ ...f, current: e.target.value }))}
-                                    placeholder="Current" style={{ padding: '7px 8px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, color: 'var(--text)' }} />
+                                    placeholder="Current" style={{ padding: '7px 8px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 12, color: 'var(--text)' }} />
                                   <input type="number" value={krForm.target} onChange={e => setKrForm(f => ({ ...f, target: e.target.value }))}
-                                    placeholder="Target" style={{ padding: '7px 8px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, color: 'var(--text)' }} />
+                                    placeholder="Target" style={{ padding: '7px 8px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 12, color: 'var(--text)' }} />
                                 </>}
                               </div>
                               {(krForm.type === 'number') && (
                                 <input value={krForm.unit} onChange={e => setKrForm(f => ({ ...f, unit: e.target.value }))}
                                   placeholder="Unit label (optional), e.g. clients, calls, posts"
-                                  style={{ padding: '7px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, color: 'var(--text)' }} />
+                                  style={{ padding: '7px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 12, color: 'var(--text)' }} />
                               )}
                               <div style={{ display: 'flex', gap: 8 }}>
                                 <button onClick={() => { setKrAddingId(null); setKrForm({ title: '', type: 'percent', current: '', target: '', unit: '' }) }}
-                                  style={{ flex: 1, padding: '7px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                                  style={{ flex: 1, padding: '7px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
                                 <button onClick={() => addKeyResult(g.id)} disabled={krSaving || !krForm.title.trim()}
-                                  style={{ flex: 2, padding: '7px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: (!krForm.title.trim() || krSaving) ? 0.6 : 1 }}>
+                                  style={{ flex: 2, padding: '7px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: (!krForm.title.trim() || krSaving) ? 0.6 : 1 }}>
                                   {krSaving ? 'Saving…' : 'Add Key Result'}
                                 </button>
                               </div>
@@ -1743,7 +1744,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                           </div>
                         ) : (
                           <button onClick={() => { setKrAddingId(g.id); setKrForm({ title: '', type: 'percent', current: '', target: '', unit: '' }) }}
-                            style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', background: 'transparent', color: 'var(--brand)', border: '1px dashed var(--brand-strong)', borderRadius: 7, fontSize: 12, cursor: 'pointer' }}>
+                            style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', background: 'transparent', color: 'var(--brand)', border: '1px dashed var(--brand-strong)', borderRadius: 'var(--radius-sm)', fontSize: 12, cursor: 'pointer' }}>
                             <Plus size={12} /> Add Key Result
                           </button>
                         )}
@@ -1796,7 +1797,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         <p style={{ margin: '0 0 28px', fontSize: 13, color: 'var(--text-muted)' }}>A chronological log of your review activity and milestones.</p>
         {events.length === 0 ? (
           <div style={{ ...card, background: 'var(--surface-inset)', textAlign: 'center', padding: '32px' }}>
-            <div style={{ fontSize: 32, marginBottom: 10 }}>🕐</div>
+            <div style={{ fontSize: 28, marginBottom: 10 }}>🕐</div>
             <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>No activity recorded yet</div>
           </div>
         ) : (
@@ -1805,7 +1806,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             {events.map((e, i) => (
               <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 16, position: 'relative' }}>
                 <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--surface)', border: `2px solid ${e.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, zIndex: 1 }}>{e.icon}</div>
-                <div style={{ flex: 1, padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10 }}>
+                <div style={{ flex: 1, padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{e.label}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{e.time}</div>
                 </div>
@@ -1847,7 +1848,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           {[5, 4, 3, 2, 1].map(n => {
             const s = STAR_LABELS[n]
             return (
-              <div key={n} style={{ display: 'flex', gap: 14, marginBottom: 10, alignItems: 'flex-start', padding: '10px 12px', background: 'var(--surface-inset)', borderRadius: 8 }}>
+              <div key={n} style={{ display: 'flex', gap: 14, marginBottom: 10, alignItems: 'flex-start', padding: '10px 12px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)' }}>
                 <div style={{ fontSize: 16, color: s.color, fontWeight: 800, minWidth: 24 }}>{n}</div>
                 <div><div style={{ fontSize: 13, fontWeight: 700, color: s.color }}>{s.label}</div><div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{s.description}</div></div>
               </div>
@@ -1858,7 +1859,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         <div style={card}>
           <div style={{ fontWeight: 700, color: 'var(--text-strong)', fontSize: 14, marginBottom: 14 }}>SMART Goal Method</div>
           {[['S', 'Specific', 'Goals should be specific and narrow enough for effective planning and attainability.'], ['M', 'Measurable', 'Define how progress towards the goal will be made.'], ['A', 'Attainable', 'Ensure goals are accomplished reasonably within a certain timeframe.'], ['R', 'Relevant', 'Goals should align with Company values and your job description.'], ['T', 'Time-Bound', 'Set a realistic date and stick to it.']].map(([l, w, d]) => (
-            <div key={l} style={{ display: 'flex', gap: 14, marginBottom: 8, padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 8 }}>
+            <div key={l} style={{ display: 'flex', gap: 14, marginBottom: 8, padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)' }}>
               <div style={{ fontWeight: 800, color: 'var(--brand)', fontSize: 16, minWidth: 18 }}>{l}</div>
               <div><div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{w}</div><div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{d}</div></div>
             </div>
@@ -1872,7 +1873,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             { title: 'Objective', color: 'var(--success)', desc: 'Shorter, more specific, measurable steps toward achieving a goal. Generally determined by the employee with manager support.', example: 'Attend a public speaking course and practice presentations to a colleague one time per quarter.' },
             { title: 'Accomplishment', color: 'var(--warning)', desc: 'Tangible achievements or milestones from pursuing goals and objectives — what has been successfully met regardless of whether it was part of the goal-planning process.', example: 'Successfully delivered a presentation at a Company-wide meeting that received positive feedback from senior management.' },
           ].map(item => (
-            <div key={item.title} style={{ marginBottom: 12, padding: '12px 14px', background: 'var(--surface-inset)', borderRadius: 8, borderLeft: `3px solid ${item.color}` }}>
+            <div key={item.title} style={{ marginBottom: 12, padding: '12px 14px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', borderLeft: `3px solid ${item.color}` }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: item.color, marginBottom: 4 }}>{item.title}</div>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 6 }}>{item.desc}</div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>Example: {item.example}</div>
@@ -1933,12 +1934,12 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     return (
       <div style={{ position: 'relative' }}>
         <button onClick={() => { setShowNotifications(n => !n); if (!showNotifications) markAllNotifsRead() }}
-          style={{ position: 'relative', width: 34, height: 34, borderRadius: 8, background: showNotifications ? 'var(--brand-tint)' : 'transparent', border: '1px solid transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}
+          style={{ position: 'relative', width: 34, height: 34, borderRadius: 'var(--radius-md)', background: showNotifications ? 'var(--brand-tint)' : 'transparent', border: '1px solid transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}
           onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = 'var(--border)' }}
           onMouseLeave={e => { if (!showNotifications) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' } }}>
           <Bell size={16} />
           {(totalUnread > 0 || notifications.length > 0) && (
-            <span style={{ position: 'absolute', top: 4, right: 4, minWidth: 14, height: 14, borderRadius: 7, background: 'var(--warning)', border: '1.5px solid var(--surface-inset)', fontSize: 8, fontWeight: 700, color: 'var(--text-on-brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
+            <span style={{ position: 'absolute', top: 4, right: 4, minWidth: 14, height: 14, borderRadius: 'var(--radius-sm)', background: 'var(--warning)', border: '1.5px solid var(--surface-inset)', fontSize: 8, fontWeight: 700, color: 'var(--text-on-brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
               {totalUnread + notifications.length || ''}
             </span>
           )}
@@ -1946,10 +1947,10 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         {showNotifications && (
           <>
             <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setShowNotifications(false)} />
-            <div style={{ position: 'absolute', right: 0, top: 40, width: 340, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, zIndex: 50, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', maxHeight: 420, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ position: 'absolute', right: 0, top: 40, width: 340, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', zIndex: 50, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', maxHeight: 420, display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Notifications</span>
-                {allNotifs && <span style={{ fontSize: 10, fontWeight: 700, background: '#f59e0b20', color: 'var(--warning)', padding: '1px 6px', borderRadius: 10 }}>{totalUnread + notifications.length}</span>}
+                {allNotifs && <span style={{ fontSize: 10, fontWeight: 700, background: '#f59e0b20', color: 'var(--warning)', padding: '1px 6px', borderRadius: 'var(--radius-lg)' }}>{totalUnread + notifications.length}</span>}
               </div>
               <div style={{ overflowY: 'auto', flex: 1 }}>
                 {/* DB cycle notifications */}
@@ -1979,7 +1980,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                 ))}
                 {!allNotifs && notifications.length === 0 && (
                   <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 13 }}>
-                    <div style={{ fontSize: 24, marginBottom: 6 }}>🔔</div>
+                    <div style={{ fontSize: 20, marginBottom: 6 }}>🔔</div>
                     All caught up!
                   </div>
                 )}
@@ -1998,11 +1999,11 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     <div style={{ display: 'flex', height: '100vh', background: 'var(--page)', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: 'var(--text-strong)', overflow: 'hidden' }}>
 
       {/* ── Sidebar ── */}
-      <aside style={{ width: collapsed ? 56 : 240, flexShrink: 0, background: 'var(--surface-inset)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', transition: 'width 0.2s ease', overflow: 'hidden' }}>
+      <aside style={{ width: collapsed ? 64 : 240, flexShrink: 0, background: 'var(--surface-inset)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', transition: 'width 0.2s ease', overflow: 'hidden' }}>
 
         {/* Logo + collapse */}
         <div style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: collapsed ? '0 12px' : '0 16px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-          {!collapsed && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><CalibrIcon size={20} /><span style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.02em', color: 'var(--text-strong)', whiteSpace: 'nowrap' }}>Calibr</span></div>}
+          {!collapsed && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><CalibrIcon size={20} /><span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em', color: 'var(--text-strong)', whiteSpace: 'nowrap' }}>Calibr</span></div>}
           {collapsed && <CalibrIcon size={20} />}
           <button onClick={() => setCollapsed(c => !c)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
             {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
@@ -2072,7 +2073,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
 
           {/* Profile — clickable */}
           <button onClick={() => setShowProfileEdit(true)} title={collapsed ? displayName : undefined}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '8px' : '8px 8px', borderRadius: 8, border: '1px solid transparent', background: 'transparent', cursor: 'pointer', justifyContent: collapsed ? 'center' : 'flex-start', transition: 'all 0.15s' }}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '8px' : '8px 8px', borderRadius: 'var(--radius-md)', border: '1px solid transparent', background: 'transparent', cursor: 'pointer', justifyContent: collapsed ? 'center' : 'flex-start', transition: 'all 0.15s' }}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--surface)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
@@ -2094,7 +2095,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
 
           {/* Sign out */}
           <button onClick={async () => { await fetch('/api/auth/signout', { method: 'POST' }); router.push('/login') }} title={collapsed ? 'Sign out' : undefined}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '8px' : '8px 8px', borderRadius: 8, border: '1px solid transparent', background: 'transparent', cursor: 'pointer', justifyContent: collapsed ? 'center' : 'flex-start', marginTop: 2 }}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '8px' : '8px 8px', borderRadius: 'var(--radius-md)', border: '1px solid transparent', background: 'transparent', cursor: 'pointer', justifyContent: collapsed ? 'center' : 'flex-start', marginTop: 2 }}
             onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-bg)'; (e.currentTarget.querySelector('span') as HTMLElement | null)?.style && ((e.currentTarget.querySelector('span') as HTMLElement).style.color = 'var(--danger)') }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; (e.currentTarget.querySelector('span') as HTMLElement | null)?.style && ((e.currentTarget.querySelector('span') as HTMLElement).style.color = 'var(--text-muted)') }}>
             <LogOut size={14} color="var(--text-muted)" />
@@ -2113,8 +2114,8 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             <div style={{ height: 40, background: 'var(--surface-inset)', borderBottom: '1px solid var(--border)', padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-strong)' }}>Self Assessment</span>
-                {saLocked && <span style={{ fontSize: 10, color: 'var(--text-muted)', background: 'var(--border)', border: '1px solid var(--border)', borderRadius: 20, padding: '1px 8px' }}>🔒 Closed</span>}
-                {saWindowOpen && <span style={{ fontSize: 10, color: 'var(--success)', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 20, padding: '1px 8px' }}>● Open</span>}
+                {saLocked && <span style={{ fontSize: 10, color: 'var(--text-muted)', background: 'var(--border)', border: '1px solid var(--border)', borderRadius: 'var(--radius-pill)', padding: '1px 8px' }}>🔒 Closed</span>}
+                {saWindowOpen && <span style={{ fontSize: 10, color: 'var(--success)', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-pill)', padding: '1px 8px' }}>● Open</span>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>Supervisor:</span>
@@ -2147,13 +2148,13 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {page === 'self-assessment' && saLocked && (
             <div style={{ padding: '48px 32px', maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
-              <div style={{ fontSize: 40, marginBottom: 16 }}>🔒</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 8 }}>Self-Assessment is Closed</div>
+              <div style={{ fontSize: 36, marginBottom: 16 }}>🔒</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 8 }}>Self-Assessment is Closed</div>
               <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: 28, maxWidth: 420, margin: '0 auto 28px' }}>
                 Your self-assessment will become editable when your annual review cycle opens — approximately 30 days before your work anniversary.
               </p>
               {activeCycle && effectivePhase !== 'sa_open' && (
-                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px', textAlign: 'left', maxWidth: 420, margin: '0 auto 20px' }}>
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', textAlign: 'left', maxWidth: 420, margin: '0 auto 20px' }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Your {activeCycle.anniversary_year} Review Cycle</div>
                   {[
                     { label: 'Self-Assessment', open: activeCycle.sa_open_at, close: activeCycle.sa_close_at, phase: 'sa_open', isDone: isSubmitted },
@@ -2184,7 +2185,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                 </div>
               )}
               {!activeCycle && (
-                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px', fontSize: 13, color: 'var(--text-faint)', maxWidth: 420, margin: '0 auto' }}>
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 18px', fontSize: 13, color: 'var(--text-faint)', maxWidth: 420, margin: '0 auto' }}>
                   No active review cycle found. Your manager or admin will be notified when your anniversary is approaching.
                 </div>
               )}
@@ -2208,16 +2209,16 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         {page === 'self-assessment' && !saLocked && (
           <div style={{ height: 60, background: 'var(--surface-inset)', borderTop: '1px solid var(--border)', padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
             <button onClick={() => goStep(step - 1)} disabled={step === 0}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', background: 'transparent', color: step > 0 ? 'var(--text-secondary)' : 'var(--text-faint)', border: `1px solid ${step > 0 ? 'var(--border)' : 'var(--border)'}`, borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: step > 0 ? 'pointer' : 'default' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', background: 'transparent', color: step > 0 ? 'var(--text-secondary)' : 'var(--text-faint)', border: `1px solid ${step > 0 ? 'var(--border)' : 'var(--border)'}`, borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 500, cursor: step > 0 ? 'pointer' : 'default' }}>
               <ChevronLeft size={14} /> Back
             </button>
             <div style={{ display: 'flex', gap: 5 }}>
               {SA_STEPS.map((_, i) => (
-                <div key={i} onClick={() => goStep(i)} style={{ width: i === step ? 18 : 6, height: 6, borderRadius: 3, background: i === step ? 'var(--brand)' : i < step ? 'var(--brand-strong)' : 'var(--border)', transition: 'all 0.2s', cursor: 'pointer' }} />
+                <div key={i} onClick={() => goStep(i)} style={{ width: i === step ? 18 : 6, height: 6, borderRadius: 'var(--radius-sm)', background: i === step ? 'var(--brand)' : i < step ? 'var(--brand-strong)' : 'var(--border)', transition: 'all 0.2s', cursor: 'pointer' }} />
               ))}
             </div>
             {step < SA_STEPS.length - 1 ? (
-              <button onClick={() => goStep(step + 1)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 18px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <button onClick={() => goStep(step + 1)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 18px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                 Next <ChevronRight size={14} />
               </button>
             ) : <div style={{ width: 80 }} />}
@@ -2228,7 +2229,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
       {/* ── Profile edit modal ── */}
       {showProfileEdit && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }} onClick={e => { if (e.target === e.currentTarget) setShowProfileEdit(false) }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 380 }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 28, width: 380 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-strong)' }}>Edit Profile</h2>
               <button onClick={() => setShowProfileEdit(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={16} /></button>
@@ -2243,8 +2244,8 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
               <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 4 }}>Email is managed by your Google account and cannot be changed here.</div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setShowProfileEdit(false)} style={{ flex: 1, padding: '10px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={saveProfile} disabled={profileSaving || !profileName.trim()} style={{ flex: 2, padding: '10px', background: profileSaved ? 'linear-gradient(135deg, var(--success), var(--success))' : 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: (!profileName.trim() || profileSaving) ? 0.6 : 1 }}>
+              <button onClick={() => setShowProfileEdit(false)} style={{ flex: 1, padding: '10px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={saveProfile} disabled={profileSaving || !profileName.trim()} style={{ flex: 2, padding: '10px', background: profileSaved ? 'linear-gradient(135deg, var(--success), var(--success))' : 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: (!profileName.trim() || profileSaving) ? 0.6 : 1 }}>
                 {profileSaved ? <><Check size={14} /> Saved!</> : profileSaving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Saving…</> : 'Save Profile'}
               </button>
             </div>
@@ -2255,12 +2256,12 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
       {/* ── Submit confirmation ── */}
       {submitConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, maxWidth: 400, width: '90%' }}>
-            <h2 style={{ margin: '0 0 10px', fontSize: 17, color: 'var(--text-strong)' }}>Submit Self-Assessment?</h2>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 28, maxWidth: 400, width: '90%' }}>
+            <h2 style={{ margin: '0 0 10px', fontSize: 16, color: 'var(--text-strong)' }}>Submit Self-Assessment?</h2>
             <p style={{ margin: '0 0 22px', color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6 }}>Once submitted, your self-assessment will be shared with your manager and cannot be edited.</p>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setSubmitConfirm(false)} style={{ flex: 1, padding: '10px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Go Back</button>
-              <button onClick={submitReview} disabled={saving} style={{ flex: 2, padding: '10px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              <button onClick={() => setSubmitConfirm(false)} style={{ flex: 1, padding: '10px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, cursor: 'pointer' }}>Go Back</button>
+              <button onClick={submitReview} disabled={saving} style={{ flex: 2, padding: '10px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                 {saving ? 'Submitting…' : 'Yes, Submit'}
               </button>
             </div>
