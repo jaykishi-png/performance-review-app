@@ -287,14 +287,24 @@ export function ProgressRing({ value, max = 100, size = 44, segments = 4 }: {
 
 /* ── Empty state (§32) — contextual, never "No data found." ───────────────── */
 
-export function EmptyState({ title, description, action }: {
-  title: string; description: string; action?: ReactNode
+export function EmptyState({ title, description, action, icon }: {
+  title: string; description: string; action?: ReactNode; icon?: ReactNode
 }) {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
       padding: 'var(--space-12) var(--space-6)', gap: 'var(--space-3)',
     }}>
+      {icon && (
+        <div aria-hidden="true" style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 44, height: 44, borderRadius: 'var(--radius-lg)',
+          background: 'var(--surface-sunken)', color: 'var(--text-muted)',
+          marginBottom: 'var(--space-1)',
+        }}>
+          {icon}
+        </div>
+      )}
       <CardHeading>{title}</CardHeading>
       <Body tone="muted" style={{ maxWidth: 420, lineHeight: 1.6 }}>{description}</Body>
       {action && <div style={{ marginTop: 'var(--space-2)' }}>{action}</div>}

@@ -12,6 +12,7 @@ import {
 import { useCompetencies } from '@/lib/use-competencies'
 import { SignaturePad, SignatureDisplay, encodeSignature, decodeSignature, type SignatureResult } from '@/components/SignaturePad'
 import { CalibrIcon, ThemeToggle } from '@/components/Brand'
+import { EmptyState, Button as CButton } from '@/components/calibr'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -268,7 +269,7 @@ function EmployeePipPanel() {
                   </button>
                 </div>
                 {((activePip.check_in_notes as any[]) || []).filter((n: any) => n.by === 'employee').length === 0 ? (
-                  <div style={{ fontSize: 13, color: 'var(--text-faint)' }}>No notes added yet.</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-faint)' }}>Notes your manager shares will appear here.</div>
                 ) : (
                   [...((activePip.check_in_notes as any[]) || [])].filter((n: any) => n.by === 'employee').reverse().map((n: any, i: number) => (
                     <div key={i} style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '10px 12px', marginBottom: 8 }}>
@@ -1579,12 +1580,12 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: 13 }}><Loader2 size={20} style={{ animation: 'spin 1s linear infinite', marginBottom: 8 }} /><br />Loading goals…</div>
         ) : goals.length === 0 ? (
           <div style={{ ...card, background: 'var(--surface-inset)', textAlign: 'center', padding: '40px' }}>
-            <div style={{ fontSize: 36, marginBottom: 10 }}>🎯</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>No goals yet</div>
-            <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--text-faint)', lineHeight: 1.6, maxWidth: 340, marginLeft: 'auto', marginRight: 'auto' }}>
-              Add goals between review cycles to track your progress. Your active goals can carry forward into your next self-assessment.
-            </p>
-            <button onClick={() => setShowAddGoal(true)} style={{ padding: '8px 20px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Add Your First Goal</button>
+            <EmptyState
+              icon={<Target size={20} />}
+              title="Turn expectations into measurable progress."
+              description="Create goals to keep priorities clear throughout the review period."
+              action={<CButton onClick={() => setShowAddGoal(true)}>Create Goal</CButton>}
+            />
           </div>
         ) : (
           goals.map(g => {

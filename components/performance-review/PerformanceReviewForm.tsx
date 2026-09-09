@@ -5,6 +5,7 @@ import { House, ClipboardCheck, UserRoundCheck, ClipboardList, Copy, CheckCircle
 import { SignaturePad, SignatureDisplay, encodeSignature, type SignatureResult } from '@/components/SignaturePad'
 import { useCompetencies } from '@/lib/use-competencies'
 import { CalibrIcon, ThemeToggle } from '@/components/Brand'
+import { EmptyState, Button as CButton } from '@/components/calibr'
 
 const SCORE_LABELS: Record<number, { label: string; description: string; color: string }> = {
   1: { label: 'Unsatisfactory', description: 'Demonstrates an unacceptable level of skills and competencies.', color: 'text-red-400' },
@@ -3198,7 +3199,7 @@ export function PerformanceReviewForm() {
           {meetingSaves.length === 0 ? (
             <div style={{ padding: '40px 32px', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', textAlign: 'center', color: 'var(--text-muted)' }}>
               <div style={{ fontSize: 28, marginBottom: 10 }}>📅</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>No reviews ready for a meeting yet</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>No reviews are ready for a meeting yet</div>
               <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>Complete and sign a performance review form first, then return here to conduct the meeting.</p>
             </div>
           ) : (
@@ -4700,7 +4701,7 @@ export function PerformanceReviewForm() {
                 c.name.toLowerCase().includes(glossarySearch.toLowerCase()) ||
                 c.definition.toLowerCase().includes(glossarySearch.toLowerCase())
               ).length === 0 && (
-                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-faint)', fontSize: 13 }}>No results found.</div>
+                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-faint)', fontSize: 13 }}>No employees match that search.</div>
               )}
             </div>
           </div>
@@ -5352,10 +5353,13 @@ export function PerformanceReviewForm() {
 
             {/* In-progress / draft reviews from localStorage */}
             {saves.length === 0 && completedDbReviews.length === 0 ? (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '40px', textAlign: 'center' }}>
-                <div style={{ fontSize: 36, marginBottom: 10 }}>📋</div>
-                <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>No reviews yet. Create your first one.</div>
-                <button onClick={() => setShowEmployeePicker(true)} style={{ padding: '9px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ New Review</button>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }}>
+                <EmptyState
+                  icon={<ClipboardCheck size={20} />}
+                  title="No reviews yet."
+                  description="Create your first performance review cycle and bring employee, manager, and peer feedback into one structured process."
+                  action={<CButton onClick={() => setShowEmployeePicker(true)}>Create Review Cycle</CButton>}
+                />
               </div>
             ) : saves.length > 0 && (
               <>

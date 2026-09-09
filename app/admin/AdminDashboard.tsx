@@ -9,6 +9,7 @@ import {
   House, ClipboardCheck, RefreshCcw, ChartNoAxesCombined, UserRoundCheck, Files,
 } from 'lucide-react'
 import { CalibrIcon, ThemeToggle } from '@/components/Brand'
+import { EmptyState, ErrorState, LoadingState } from '@/components/calibr'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1420,11 +1421,19 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         {/* Table */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflowX: 'auto' }}>
           {filteredReviews.length === 0 ? (
-            <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: 28, marginBottom: 10 }}>📝</div>
-              <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 4 }}>No reviews found</div>
-              <div style={{ fontSize: 12 }}>{reviews.length === 0 ? 'No performance reviews have been created yet.' : 'Try adjusting your filters.'}</div>
-            </div>
+            reviews.length === 0 ? (
+              <EmptyState
+                icon={<ClipboardCheck size={20} />}
+                title="No reviews yet."
+                description="Create your first performance review cycle and bring employee, manager, and peer feedback into one structured process."
+              />
+            ) : (
+              <EmptyState
+                icon={<ClipboardCheck size={20} />}
+                title="Nothing matches these filters."
+                description="Widen the date range or clear a filter to see the reviews that exist."
+              />
+            )
           ) : (
             <table style={{ width: '100%', minWidth: 1100, borderCollapse: 'collapse' }}>
               <thead>
@@ -3016,11 +3025,11 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--danger)', fontSize: 13 }}>{feedbackError}</div>
           )}
           {!feedbackLoading && !feedbackError && total === 0 && (
-            <div style={{ textAlign: 'center', padding: '48px 0' }}>
-              <div style={{ fontSize: 28, marginBottom: 12 }}>⭐</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>No feedback requests yet</div>
-              <div style={{ fontSize: 13, color: 'var(--text-faint)' }}>Managers send feedback requests from Peer Reviews in the manager portal.</div>
-            </div>
+            <EmptyState
+              icon={<UserRoundCheck size={20} />}
+              title="Great feedback shouldn't wait for review season."
+              description="Managers request peer feedback from Peer Reviews in the manager portal; requests and responses appear here as they come in."
+            />
           )}
           {!feedbackLoading && !feedbackError && total > 0 && (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -3868,7 +3877,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
               {profileTab === 'reviews' && (() => {
                 const empReviews = reviews.filter(r => r.employee_name === profileUser.name || (profileUser.name && r.employee_name?.toLowerCase() === profileUser.name?.toLowerCase()))
-                if (empReviews.length === 0) return <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 13 }}>No reviews on file for this employee.</div>
+                if (empReviews.length === 0) return <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 13 }}>No reviews recorded yet for this employee.</div>
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {empReviews.map(r => {
@@ -3897,7 +3906,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 profileDataLoading
                   ? <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 13 }}>Loading…</div>
                   : profileGoals.length === 0
-                    ? <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 13 }}>No goals on file.</div>
+                    ? <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 13 }}>No goals set for this review period yet.</div>
                     : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {profileGoals.map(g => (
