@@ -1,156 +1,221 @@
 @import "tailwindcss";
 
-/* ─── Calibr design tokens ──────────────────────────────────────────────────
- *
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Calibr — design tokens
  * Align People. Unlock Potential.
  *
- * The portals are styled with inline styles, so every colour is referenced as
- * var(--token). The token names describe a ROLE, not a shade, which is what
- * lets one set of styles serve both themes: --surface is "the colour a card
- * sits on", dark in one theme and white in the other.
+ * Two layers, deliberately:
  *
- * Brand palette (from the brand guidelines):
- *   Primary Teal #14B8A6   Teal Dark #0F766E   Charcoal #0F172A
- *   Slate #64748B          Light Gray #E2E8F0  Off White #F8FAFC
+ *   1. PALETTE (--calibr-*, --space-*, --radius-*, --motion-*)
+ *      The brand guidelines verbatim. The source of truth, and the only place
+ *      a brand value is written down.
  *
- * Status colours (success / warning / danger / info) stay outside the brand
- * palette on purpose: they signal state, and recolouring them to teal would
- * lose the meaning that makes them useful.
- * ------------------------------------------------------------------------- */
+ *   2. ROLE tokens (--surface, --text, --border, --brand, …)
+ *      What the UI references. A role says what a colour is FOR — --surface is
+ *      "what a card sits on" — which is what lets one set of styles serve both
+ *      themes. Roles are assigned from the palette.
+ *
+ * The app is styled with inline styles, so roles are consumed as var(--role) in
+ * ~3,450 places. Changing a brand value means editing layer 1 only.
+ *
+ * Light is the primary brand expression (§37); dark is fully supported.
+ * ═══════════════════════════════════════════════════════════════════════════ */
 
+:root {
+  /* ── Palette: brand (§8) ────────────────────────────────────────────────── */
+  --calibr-teal: #14b8a6;
+  --calibr-teal-dark: #0f766e;
+  --calibr-teal-deep: #115e59;
+  --calibr-teal-soft: #f0fdfa;
+
+  --calibr-charcoal: #0f172a;
+  --calibr-slate: #64748b;
+  --calibr-gray: #e2e8f0;
+  --calibr-background: #f8fafc;
+  --calibr-surface: #ffffff;
+
+  /* ── Palette: semantic (§9) — kept separate from brand on purpose.
+   *    Teal does not mean "successful employee". ─────────────────────────── */
+  --calibr-success: #16a34a;
+  --calibr-success-soft: #f0fdf4;
+  --calibr-warning: #d97706;
+  --calibr-warning-soft: #fffbeb;
+  --calibr-danger: #dc2626;
+  --calibr-danger-soft: #fef2f2;
+  --calibr-info: #2563eb;
+  --calibr-info-soft: #eff6ff;
+  --calibr-neutral: #64748b;
+  --calibr-neutral-soft: #f1f5f9;
+
+  /* ── Palette: performance ratings (§10) ─────────────────────────────────
+   *    Restrained by design: a lower rating must not render as an alarm.
+   *    Always paired with a text label in the UI, never colour alone. */
+  --rating-exceptional: #0f766e;
+  --rating-exceeds: #2563eb;
+  --rating-meets: #64748b;
+  --rating-developing: #d97706;
+  --rating-needs-improvement: #dc2626;
+
+  /* ── Spacing, 8px system (§14) ──────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ── Radius (§34) ───────────────────────────────────────────────────────── */
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-pill: 999px;
+
+  /* ── Motion (§36) ───────────────────────────────────────────────────────── */
+  --motion-fast: 120ms;
+  --motion-normal: 180ms;
+  --motion-slow: 240ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ── Typography (§11) — a high-information product, not a landing page ─── */
+  --font-sans: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  --font-display: 700 36px/1.15 var(--font-sans);
+  --font-page: 700 28px/1.2 var(--font-sans);
+  --font-section: 600 20px/1.3 var(--font-sans);
+  --font-card: 600 16px/1.4 var(--font-sans);
+  --font-body: 400 14px/1.5 var(--font-sans);
+  --font-label: 500 13px/1.4 var(--font-sans);
+  --font-meta: 400 12px/1.4 var(--font-sans);
+
+  --tracking-display: -0.035em;
+  --tracking-page: -0.025em;
+}
+
+/* ─── Roles: light (primary brand expression) ─────────────────────────────── */
 :root,
 [data-theme='light'] {
   color-scheme: light;
 
-  /* Brand */
-  --brand: #14b8a6;
-  --brand-strong: #0f766e;
-  --brand-soft: #99f6e4;
-  /* Accent TEXT. Separate from --brand-soft, which is a background tint: one
-     value cannot be both a pale fill and readable type in both themes. */
-  --brand-text: #0f766e;
-  --brand-tint: #f0fdfa;
+  --brand: var(--calibr-teal);
+  --brand-strong: var(--calibr-teal-dark);
+  --brand-deep: var(--calibr-teal-deep);
+  --brand-soft: var(--calibr-teal-soft);
+  --brand-tint: var(--calibr-teal-soft);
+  --brand-text: var(--calibr-teal-dark);
   --brand-contrast: #ffffff;
-  --brand-gradient: linear-gradient(135deg, #14b8a6, #0f766e);
+  --text-on-brand: #ffffff;
+  --brand-gradient: linear-gradient(135deg, var(--calibr-teal), var(--calibr-teal-dark));
 
-  /* Surfaces */
-  --page: #f8fafc;
-  --surface: #ffffff;
-  --surface-raised: #ffffff;
-  --surface-sunken: #f1f5f9;
-  --surface-hover: #f1f5f9;
-  --surface-inset: #f8fafc;
+  --page: var(--calibr-background);
+  --surface: var(--calibr-surface);
+  --surface-raised: var(--calibr-surface);
+  --surface-sunken: var(--calibr-neutral-soft);
+  --surface-hover: var(--calibr-neutral-soft);
+  --surface-inset: var(--calibr-background);
 
-  /* Lines */
-  --border: #e2e8f0;
+  --border: var(--calibr-gray);
   --border-strong: #cbd5e1;
   --border-subtle: #eef2f6;
 
-  /* Text */
-  --text: #0f172a;
-  --text-strong: #0f172a;
+  --text: var(--calibr-charcoal);
+  --text-strong: var(--calibr-charcoal);
   --text-secondary: #475569;
-  --text-muted: #64748b;
+  --text-muted: var(--calibr-slate);
   --text-faint: #94a3b8;
-  --text-on-brand: #ffffff;
 
-  /* Status */
-  --success: #0f766e;
-  --success-text: #065f46;
-  --success-bg: #ecfdf5;
-  --success-border: #a7f3d0;
+  --success: var(--calibr-success);
+  --success-text: #15803d;
+  --success-bg: var(--calibr-success-soft);
+  --success-border: #bbf7d0;
 
-  --warning: #b45309;
-  --warning-text: #92400e;
-  --warning-bg: #fffbeb;
+  --warning: var(--calibr-warning);
+  --warning-text: #b45309;
+  --warning-bg: var(--calibr-warning-soft);
   --warning-border: #fde68a;
 
-  --danger: #dc2626;
-  --danger-text: #991b1b;
-  --danger-bg: #fef2f2;
+  --danger: var(--calibr-danger);
+  --danger-text: #b91c1c;
+  --danger-bg: var(--calibr-danger-soft);
   --danger-border: #fecaca;
 
-  --info: #0369a1;
-  --info-bg: #f0f9ff;
-  --info-border: #bae6fd;
+  --info: var(--calibr-info);
+  --info-bg: var(--calibr-info-soft);
+  --info-border: #bfdbfe;
 
-  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-card: var(--shadow-sm);
 }
 
+/* ─── Roles: dark (§37) — no pure black ──────────────────────────────────── */
 [data-theme='dark'] {
   color-scheme: dark;
 
-  /* Brand — lifted slightly so teal keeps its punch on near-black */
-  --brand: #2dd4bf;
-  --brand-strong: #14b8a6;
+  --brand: var(--calibr-teal);
+  --brand-strong: #2dd4bf;
+  --brand-deep: var(--calibr-teal-dark);
   --brand-soft: #134e4a;
+  --brand-tint: #10312f;
   --brand-text: #5eead4;
-  --brand-tint: #0c2624;
   --brand-contrast: #052e2b;
-  --brand-gradient: linear-gradient(135deg, #14b8a6, #0f766e);
-
-  /* Surfaces */
-  --page: #0a0f14;
-  --surface: #111820;
-  --surface-raised: #16202a;
-  --surface-sunken: #0c1218;
-  --surface-hover: #1a242f;
-  --surface-inset: #0c1218;
-
-  /* Lines */
-  --border: #1e2a35;
-  --border-strong: #2b3a47;
-  --border-subtle: #17212a;
-
-  /* Text */
-  --text: #e8eef4;
-  --text-strong: #f8fafc;
-  --text-secondary: #a3b2c2;
-  --text-muted: #7d8b9a;
-  --text-faint: #5b6874;
   --text-on-brand: #052e2b;
+  --brand-gradient: linear-gradient(135deg, var(--calibr-teal), var(--calibr-teal-dark));
 
-  /* Status */
-  --success: #34d399;
-  --success-text: #6ee7b7;
-  --success-bg: #0d2b23;
-  --success-border: #1a4a3c;
+  --page: #0b1120;
+  --surface: #111827;
+  --surface-raised: #1e293b;
+  --surface-sunken: #0d1424;
+  --surface-hover: #1e293b;
+  --surface-inset: #0d1424;
+
+  --border: #334155;
+  --border-strong: #475569;
+  --border-subtle: #1e293b;
+
+  --text: #f8fafc;
+  --text-strong: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-faint: #64748b;
+
+  /* Semantic hues lifted for contrast on dark; same meanings. */
+  --success: #4ade80;
+  --success-text: #86efac;
+  --success-bg: #0f2a1c;
+  --success-border: #1d5236;
 
   --warning: #fbbf24;
   --warning-text: #fcd34d;
-  --warning-bg: #2a1f0d;
-  --warning-border: #4a3a1a;
+  --warning-bg: #2a1f0a;
+  --warning-border: #4d3a12;
 
   --danger: #f87171;
   --danger-text: #fca5a5;
-  --danger-bg: #2b1315;
-  --danger-border: #5c2a2a;
+  --danger-bg: #2c1416;
+  --danger-border: #5f2a2c;
 
   --info: #60a5fa;
-  --info-bg: #0f2337;
-  --info-border: #1e3a5f;
+  --info-bg: #101f38;
+  --info-border: #1e3a6b;
 
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-card: var(--shadow-sm);
+
+  /* Ratings lifted too, so a label never falls below contrast. */
+  --rating-exceptional: #2dd4bf;
+  --rating-exceeds: #60a5fa;
+  --rating-meets: #94a3b8;
+  --rating-developing: #fbbf24;
+  --rating-needs-improvement: #f87171;
 }
 
-/* ─── Typography ───────────────────────────────────────────────────────────
- * Inter, per the brand guidelines. The scale below matches the sheet's
- * H1 48/56 · H2 32/40 · H3 24/32 · H4 20/28 · Body 16/24 · Small 14/20 ·
- * Caption 12/16.
- * ----------------------------------------------------------------------- */
-
-:root {
-  --font-sans: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont,
-    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-
-  --text-h1: 700 48px/56px var(--font-sans);
-  --text-h2: 700 32px/40px var(--font-sans);
-  --text-h3: 600 24px/32px var(--font-sans);
-  --text-h4: 600 20px/28px var(--font-sans);
-  --text-body: 400 16px/24px var(--font-sans);
-  --text-small: 400 14px/20px var(--font-sans);
-  --text-caption: 400 12px/16px var(--font-sans);
-}
+/* ─── Base ────────────────────────────────────────────────────────────────── */
 
 html {
   background: var(--page);
@@ -160,12 +225,11 @@ body {
   margin: 0;
   background: var(--page);
   color: var(--text);
-  font-family: var(--font-sans);
+  font: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Themed form controls and scrollbars, so native chrome follows the theme */
 input,
 textarea,
 select,
@@ -178,8 +242,26 @@ button {
   color: var(--text-on-brand);
 }
 
+/* Visible focus everywhere (§40) */
+:focus-visible {
+  outline: 2px solid var(--calibr-teal);
+  outline-offset: 2px;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* §40 — respect a reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

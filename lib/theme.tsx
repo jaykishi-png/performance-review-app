@@ -19,7 +19,8 @@ export type ThemeSetting = 'light' | 'dark' | 'system'
 export type ResolvedTheme = 'light' | 'dark'
 
 const STORAGE_KEY = 'calibr-theme'
-const DEFAULT_SETTING: ThemeSetting = 'dark'
+// §37: light is the primary brand expression; dark is fully supported.
+const DEFAULT_SETTING: ThemeSetting = 'light'
 
 /**
  * Runs before paint in the document head. Kept dependency-free and small, and
@@ -131,12 +132,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
  */
 export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext)
-  const [fallback, setFallback] = useState<ResolvedTheme>('dark')
+  const [fallback, setFallback] = useState<ResolvedTheme>('light')
 
   useEffect(() => {
     if (ctx) return
     const current = document.documentElement.getAttribute('data-theme')
-    setFallback(current === 'light' ? 'light' : 'dark')
+    setFallback(current === 'dark' ? 'dark' : 'light')
   }, [ctx])
 
   if (ctx) return ctx
