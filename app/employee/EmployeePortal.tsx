@@ -176,8 +176,8 @@ function EmployeePipPanel() {
 
   const activePip = pipPlans.find(p => p.status === 'active') || pipPlans[0]
   const sCard: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', marginBottom: 16 }
-  const statusColor: Record<string, string> = { active: 'var(--warning)', completed: 'var(--success)', escalated: 'var(--danger)', withdrawn: 'var(--text-muted)' }
-  const statusBg: Record<string, string> = { active: 'var(--warning-bg)', completed: 'var(--success-bg)', escalated: 'var(--danger-bg)', withdrawn: 'var(--surface)' }
+  const statusColor: Record<string, string> = { active: 'var(--info)', completed: 'var(--success)', escalated: 'var(--danger)', withdrawn: 'var(--text-muted)' }
+  const statusBg: Record<string, string> = { active: 'var(--info-bg)', completed: 'var(--success-bg)', escalated: 'var(--danger-bg)', withdrawn: 'var(--surface)' }
 
   if (pipLoading) return <div style={{ padding: 32, color: 'var(--text-muted)', fontSize: 13 }}>Loading…</div>
 

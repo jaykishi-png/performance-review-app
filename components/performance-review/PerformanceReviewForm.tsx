@@ -7,12 +7,16 @@ import { useCompetencies } from '@/lib/use-competencies'
 import { CalibrIcon, ThemeToggle } from '@/components/Brand'
 import { EmptyState, Button as CButton } from '@/components/calibr'
 
+// §10 — the five scores map onto the restrained rating scale rather than a
+// red-amber-green scoreboard. The notable change is 3: "Meets Expectations" is
+// the expected outcome, so it reads neutral slate instead of an alarming yellow.
+// Colour is never the only signal — every use below sits beside the label.
 const SCORE_LABELS: Record<number, { label: string; description: string; color: string }> = {
-  1: { label: 'Unsatisfactory', description: 'Demonstrates an unacceptable level of skills and competencies.', color: 'text-red-400' },
-  2: { label: 'Needs Improvement', description: 'Does not consistently meet the expected job requirements.', color: 'text-orange-400' },
-  3: { label: 'Meets Expectations', description: 'Job requirements are being met at a satisfactory level.', color: 'text-yellow-400' },
-  4: { label: 'Exceeds Job Requirements', description: 'Meets and at times exceeds performance requirements (above average).', color: 'text-emerald-400' },
-  5: { label: 'Outstanding', description: 'Consistently exceeds performance requirements.', color: 'text-purple-400' },
+  1: { label: 'Unsatisfactory', description: 'Demonstrates an unacceptable level of skills and competencies.', color: 'var(--rating-needs-improvement)' },
+  2: { label: 'Needs Improvement', description: 'Does not consistently meet the expected job requirements.', color: 'var(--rating-developing)' },
+  3: { label: 'Meets Expectations', description: 'Job requirements are being met at a satisfactory level.', color: 'var(--rating-meets)' },
+  4: { label: 'Exceeds Job Requirements', description: 'Meets and at times exceeds performance requirements (above average).', color: 'var(--rating-exceeds)' },
+  5: { label: 'Outstanding', description: 'Consistently exceeds performance requirements.', color: 'var(--rating-exceptional)' },
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1369,7 +1373,7 @@ function StepGoals({
         </div>
         {form.overallScore > 0 && (
           <div className={`p-3 rounded-xl border border-[var(--surface)] bg-[var(--page)]`}>
-            <p className={`text-sm font-semibold ${SCORE_LABELS[form.overallScore].color}`}>
+            <p className="text-sm font-semibold" style={{ color: SCORE_LABELS[form.overallScore].color }}>
               {form.overallScore}★ — {SCORE_LABELS[form.overallScore].label}
             </p>
             <p className="text-[11px] text-gray-600 mt-0.5">{SCORE_LABELS[form.overallScore].description}</p>
@@ -2461,7 +2465,7 @@ function StepOutput({
               {scoreInfo ? (
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-[10px] text-gray-600 uppercase tracking-wider">OVERALL SCORE</span>
-                  <span className={`text-sm font-bold ${scoreInfo.color}`}>{form.overallScore}</span>
+                  <span className="text-sm font-bold" style={{ color: scoreInfo.color }}>{form.overallScore}</span>
                   <span className={`text-[12px] font-semibold ${scoreInfo.color}`}>{scoreInfo.label}</span>
                 </div>
               ) : (
@@ -4023,8 +4027,8 @@ export function PerformanceReviewForm() {
     const lbl2: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'block' }
     const selectedPip = pipPlans.find(p => p.id === pipSelectedId)
 
-    const statusColor: Record<string, string> = { active: 'var(--warning)', completed: 'var(--success)', escalated: 'var(--danger)', withdrawn: 'var(--text-muted)' }
-    const statusBg: Record<string, string> = { active: 'var(--warning-bg)', completed: 'var(--success-bg)', escalated: 'var(--danger-bg)', withdrawn: 'var(--surface)' }
+    const statusColor: Record<string, string> = { active: 'var(--info)', completed: 'var(--success)', escalated: 'var(--danger)', withdrawn: 'var(--text-muted)' }
+    const statusBg: Record<string, string> = { active: 'var(--info-bg)', completed: 'var(--success-bg)', escalated: 'var(--danger-bg)', withdrawn: 'var(--surface)' }
 
     return (
       <div style={{ padding: '28px 32px', maxWidth: 860, margin: '0 auto' }}>

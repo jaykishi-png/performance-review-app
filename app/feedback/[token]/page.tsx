@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2, Lock, Eye, Clock, CalendarDays } from 'lucide-react';
 import { CalibrIcon, ThemeToggle } from '@/components/Brand';
 
 interface FeedbackRequest {
@@ -13,6 +13,7 @@ interface FeedbackRequest {
   year: number;
   message?: string;
   is_anonymous: boolean;
+  due_at?: string | null;
   already_submitted: boolean;
 }
 
@@ -450,18 +451,49 @@ export default function FeedbackPage() {
         {/* Header */}
         <h1 style={styles.heading}>{request.requestor_name}'s 360 Feedback</h1>
         <p style={styles.subheading}>Review Year: {request.year}</p>
+        <p style={{ margin: '10px 0 0', fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+          Your feedback helps create a more complete picture of {firstName}&apos;s contributions and development.
+        </p>
 
         {/* Message callout */}
         {request.message && (
           <div style={styles.callout}>{request.message}</div>
         )}
 
-        {/* Anonymous badge */}
-        {request.is_anonymous && (
-          <div style={styles.anonBadge}>
-            <span>🔒</span> Your response will be anonymous.
+        {/* §28 — what happens to this response, said before anything is asked.
+            Reviewers were previously told nothing about who reads it. */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 10,
+          background: 'var(--surface-sunken)', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginTop: 16,
+        }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            {request.is_anonymous
+              ? <Lock size={15} style={{ color: 'var(--brand-text)', marginTop: 1, flexShrink: 0 }} />
+              : <Eye size={15} style={{ color: 'var(--text-muted)', marginTop: 1, flexShrink: 0 }} />}
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+              {request.is_anonymous ? (
+                <>Your response is <strong style={{ color: 'var(--text)' }}>anonymous</strong>. {firstName} will
+                  not see who wrote it.</>
+              ) : (
+                <>Your response is shared with <strong style={{ color: 'var(--text)' }}>{firstName}'s manager</strong> and
+                  your HR administrators, with your name attached. {firstName} does not see it directly.</>
+              )}
+            </div>
           </div>
-        )}
+
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', paddingLeft: 25 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+              <Clock size={13} /> About 5 minutes
+            </span>
+            {request.due_at && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+                <CalendarDays size={13} /> Due{' '}
+                {new Date(request.due_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+              </span>
+            )}
+          </div>
+        </div>
 
         <div style={styles.divider} />
 

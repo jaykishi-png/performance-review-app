@@ -1,5 +1,45 @@
 @import "tailwindcss";
 
+/* ─── Tailwind palette remap ───────────────────────────────────────────────
+ * One section of the manager portal predates the inline-style approach and
+ * colours itself with Tailwind utilities — 400 of them, all still on the old
+ * indigo/violet brand and none of them theme-aware.
+ *
+ * Rather than rewrite 400 call sites, redefine the palette entries those
+ * utilities compile against. text-purple-400 now emits Calibr teal and follows
+ * light/dark, with no change to the JSX.
+ *
+ * Only the BRAND hues are remapped. The greys and semantic hues are left as
+ * Tailwind ships them: remapping those blind risks contrast regressions in
+ * screens behind SSO that I cannot inspect.
+ * ---------------------------------------------------------------------- */
+
+@theme {
+  --color-purple-300: var(--brand-text);
+  --color-purple-400: var(--brand);
+  --color-purple-500: var(--brand);
+  --color-purple-600: var(--brand-strong);
+  --color-purple-700: var(--brand-strong);
+  --color-purple-800: var(--brand-deep);
+  --color-purple-900: var(--brand-deep);
+
+  --color-indigo-300: var(--brand-text);
+  --color-indigo-400: var(--brand);
+  --color-indigo-500: var(--brand);
+  --color-indigo-600: var(--brand-strong);
+  --color-indigo-700: var(--brand-strong);
+  --color-indigo-800: var(--brand-deep);
+  --color-indigo-900: var(--brand-deep);
+
+  --color-violet-300: var(--brand-text);
+  --color-violet-400: var(--brand);
+  --color-violet-500: var(--brand);
+  --color-violet-600: var(--brand-strong);
+  --color-violet-700: var(--brand-strong);
+  --color-violet-800: var(--brand-deep);
+  --color-violet-900: var(--brand-deep);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * Calibr — design tokens
  * Align People. Unlock Potential.

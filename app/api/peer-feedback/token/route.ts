@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   // always opens.
   const { data: request, error: requestError } = await svc
     .from('feedback_requests')
-    .select('id, year, message, is_anonymous, status, requestor_id')
+    .select('id, year, message, is_anonymous, status, requestor_id, due_at')
     .eq('token', token)
     .maybeSingle()
 
@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
     is_anonymous: boolean
     status: string
     requestor_id: string
+    due_at: string | null
   }
 
   const { data: requestorProfile } = await svc
@@ -68,6 +69,7 @@ export async function GET(req: NextRequest) {
     message: r.message,
     is_anonymous: r.is_anonymous,
     status: r.status,
+    due_at: r.due_at,
   })
 }
 
