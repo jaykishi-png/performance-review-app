@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Calibr tab icon.
+       A solid teal tile with a white mark: a favicon sits on browser chrome
+       that may be light or dark, and a tile reads on either, where a bare
+       teal-on-transparent ring would vanish against one of them.
+       §7 permits a simplified asset at very small sizes, so the ring carries
+       wider gaps and a heavier stroke than the full logo to survive 16px.
+       Colours are literal — a favicon has no CSS context. -->
+  <rect width="100" height="100" rx="22" fill="#0F766E"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round">
+    <path d="M 50 18 A 32 32 0 0 1 82 50"/>
+    <path d="M 82 50 A 32 32 0 0 1 62 79"/>
+    <path d="M 38 79 A 32 32 0 0 1 18 50"/>
+    <path d="M 18 50 A 32 32 0 0 1 50 18"/>
+  </g>
+  <path d="M 35 51 L 45 61 L 66 39" fill="none" stroke="#FFFFFF"
+        stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

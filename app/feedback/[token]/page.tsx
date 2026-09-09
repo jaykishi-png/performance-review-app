@@ -117,7 +117,7 @@ export default function FeedbackPage() {
             style={{
               marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5,
               background: 'none', border: 'none', cursor: 'pointer',
-              color: state.open ? 'var(--brand-soft)' : 'var(--brand)', fontSize: 12, fontWeight: 600, padding: 0,
+              color: state.open ? 'var(--brand-text)' : 'var(--brand-text)', fontSize: 12, fontWeight: 600, padding: 0,
             }}
           >
             <Sparkles size={12} />
@@ -310,7 +310,7 @@ export default function FeedbackPage() {
     star: (filled: boolean) => ({
       fontSize: '28px',
       cursor: 'pointer',
-      color: filled ? 'var(--warning)' : 'var(--border)',
+      color: filled ? 'var(--warning)' : 'var(--rating-empty)',
       transition: 'color 0.1s, transform 0.1s',
       userSelect: 'none' as const,
       lineHeight: 1,
@@ -320,7 +320,7 @@ export default function FeedbackPage() {
       padding: '14px',
       background: submitting
         ? 'var(--border)'
-        : 'linear-gradient(135deg, var(--brand-strong) 0%, var(--brand) 100%)',
+        : 'var(--brand-strong)',
       color: '#fff',
       border: 'none',
       borderRadius: 'var(--radius-lg)',

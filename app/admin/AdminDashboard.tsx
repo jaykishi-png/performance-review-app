@@ -232,7 +232,7 @@ const STATUS_META = {
   sa_draft:     { label: 'Self-Assessment',  color: 'var(--info)', bg: 'var(--info-bg)', border: 'var(--info-border)' },
   sa_submitted: { label: 'Awaiting Manager', color: 'var(--danger)', bg: 'var(--danger-bg)', border: 'var(--danger-border)' },
   exported:    { label: 'Exported',    color: 'var(--success)', bg: 'var(--success-bg)', border: 'var(--success-border)' },
-  complete:    { label: 'Complete',    color: 'var(--brand)', bg: 'var(--surface)', border: 'rgba(129,140,248,0.3)' },
+  complete:    { label: 'Complete',    color: 'var(--brand-text)', bg: 'var(--surface)', border: 'rgba(129,140,248,0.3)' },
   in_progress: { label: 'In Progress', color: 'var(--warning)', bg: 'var(--warning-bg)', border: 'var(--warning-text)' },
   not_started: { label: 'Not Started', color: 'var(--text-muted)', bg: 'var(--surface)', border: 'var(--border)' },
 }
@@ -884,7 +884,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
     borderRadius: 'var(--radius-md)', border: active ? '1px solid rgba(129,140,248,0.3)' : '1px solid transparent',
     background: active ? 'var(--brand-tint)' : 'transparent',
     cursor: 'pointer', marginBottom: 2, transition: 'all 0.15s',
-    fontSize: 12, fontWeight: active ? 600 : 400, color: active ? 'var(--brand-soft)' : 'var(--text-secondary)',
+    fontSize: 12, fontWeight: active ? 600 : 400, color: active ? 'var(--brand-text)' : 'var(--text-secondary)',
   })
 
   // ── API helpers ───────────────────────────────────────────────────────────
@@ -1007,7 +1007,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <div style={{ display: 'flex', gap: 10 }}>
               {[
                 { label: 'Submitted',   value: selfAssessments.filter(s => s.status === 'submitted').length, color: 'var(--success)', bg: 'var(--success-bg)', border: 'var(--success-border)' },
-                { label: 'In Draft',    value: selfAssessments.filter(s => s.status === 'draft').length,     color: 'var(--brand)', bg: 'var(--surface)', border: 'rgba(129,140,248,0.3)' },
+                { label: 'In Draft',    value: selfAssessments.filter(s => s.status === 'draft').length,     color: 'var(--brand-text)', bg: 'var(--surface)', border: 'rgba(129,140,248,0.3)' },
                 { label: 'Not Started', value: activeUsers.filter(u => u.role === 'employee' && !saMap[u.id]).length, color: 'var(--text-muted)', bg: 'var(--surface)', border: 'var(--border)' },
               ].map(s => (
                 <div key={s.label} style={{ padding: '10px 16px', background: s.bg, border: `1px solid ${s.border}`, borderRadius: 'var(--radius-lg)', textAlign: 'center', minWidth: 90 }}>
@@ -1082,7 +1082,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Manage roles, manager assignments, start dates, and access.</p>
           </div>
           <button onClick={() => { setShowInviteModal(true); setInviteLink('') }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
             <Plus size={14} /> Invite User
           </button>
         </div>
@@ -1106,7 +1106,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   <td style={td}>
                     <div style={{ fontWeight: 500, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
                       {u.name || '—'}
-                      {u.id === currentUser.id && <span style={{ fontSize: 10, color: 'var(--brand)' }}>(you)</span>}
+                      {u.id === currentUser.id && <span style={{ fontSize: 10, color: 'var(--brand-text)' }}>(you)</span>}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{u.email}</div>
                   </td>
@@ -1177,7 +1177,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       </select>
                     ) : (
                       <span onClick={() => setEditingPronouns(u.id)}
-                        style={{ fontSize: 12, color: u.pronouns ? 'var(--brand-soft)' : 'var(--text-faint)', cursor: 'pointer' }}
+                        style={{ fontSize: 12, color: u.pronouns ? 'var(--brand-text)' : 'var(--text-faint)', cursor: 'pointer' }}
                         title="Click to set pronouns">
                         {u.pronouns || <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>— ✏️</span>}
                       </span>
@@ -1215,7 +1215,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                   </td>
                   <td style={td}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button onClick={() => openProfile(u)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: 'var(--brand)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 500 }}>
+                      <button onClick={() => openProfile(u)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: 'var(--brand-text)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 500 }}>
                         👤 Profile
                       </button>
                       {u.id !== currentUser.id && (
@@ -1261,7 +1261,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                         <button
                           onClick={() => { navigator.clipboard.writeText(inviteLink); setCopiedInviteId(inv.id); setTimeout(() => setCopiedInviteId(null), 2000) }}
-                          style={{ padding: '4px 12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: copiedInviteId === inv.id ? 'var(--success)' : 'var(--brand)', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}>
+                          style={{ padding: '4px 12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: copiedInviteId === inv.id ? 'var(--success)' : 'var(--brand-text)', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}>
                           {copiedInviteId === inv.id ? '✓ Copied!' : '📋 Copy Link'}
                         </button>
                         {resentInviteId === inv.id ? (
@@ -1270,7 +1270,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                           <button
                             onClick={() => resendInvite(inv)}
                             disabled={resendingInviteId === inv.id}
-                            style={{ padding: '4px 12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: resendingInviteId === inv.id ? 'var(--text-faint)' : 'var(--brand)', fontSize: 12, cursor: resendingInviteId === inv.id ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
+                            style={{ padding: '4px 12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: resendingInviteId === inv.id ? 'var(--text-faint)' : 'var(--brand-text)', fontSize: 12, cursor: resendingInviteId === inv.id ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
                             {resendingInviteId === inv.id ? 'Sending…' : '↩ Resend'}
                           </button>
                         )}
@@ -1363,7 +1363,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                           <td style={{ padding: '10px 14px' }}>
                             {r.drive_url ? (
                               <a href={r.drive_url} target="_blank" rel="noopener noreferrer"
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', background: 'var(--surface-inset)', color: 'var(--brand)', borderRadius: 'var(--radius-sm)', fontSize: 11, fontWeight: 600, textDecoration: 'none', border: '1px solid var(--info-bg)' }}>
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', background: 'var(--surface-inset)', color: 'var(--brand-text)', borderRadius: 'var(--radius-sm)', fontSize: 11, fontWeight: 600, textDecoration: 'none', border: '1px solid var(--info-bg)' }}>
                                 Open Doc
                               </a>
                             ) : '—'}
@@ -1514,7 +1514,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                         onClick={() => empId && openSA(empId, r.employee_name || '', r.employee_position || null)}
                         onMouseEnter={e => { if (empId) e.currentTarget.style.background = 'rgba(129,140,248,0.08)' }}
                         onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-                        <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, color: empId ? 'var(--brand)' : 'var(--text-faint)', fontSize: 12, fontWeight: 600 }}>
+                        <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, color: empId ? 'var(--brand-text)' : 'var(--text-faint)', fontSize: 12, fontWeight: 600 }}>
                           {empId ? <><span>📋</span><span>View</span></> : <span>—</span>}
                         </div>
                       </td>
@@ -1710,7 +1710,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
   const EMP_PHASE_META: Record<string, { label: string; color: string; bg: string; border: string; step: number }> = {
     pending:         { label: 'Pending',        color: 'var(--text-muted)', bg: 'var(--surface)', border: 'var(--border)', step: 0 },
-    sa_open:         { label: 'SA Open',         color: 'var(--brand)', bg: 'var(--surface)', border: 'rgba(129,140,248,0.3)', step: 1 },
+    sa_open:         { label: 'SA Open',         color: 'var(--brand-text)', bg: 'var(--surface)', border: 'rgba(129,140,248,0.3)', step: 1 },
     review_open:     { label: 'Review Open',     color: 'var(--warning)', bg: 'var(--warning-bg)', border: 'var(--warning-text)', step: 2 },
     meeting:         { label: 'Meeting',         color: 'var(--info)', bg: 'var(--surface-inset)', border: 'var(--info-border)', step: 3 },
     signed:          { label: 'Awaiting Admin',  color: 'var(--danger)', bg: 'var(--brand-tint)', border: 'var(--brand-tint)', step: 4 },
@@ -1748,12 +1748,12 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => { setShowTriggerModal(true); setTriggerError(null) }}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'transparent', color: 'var(--brand)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'transparent', color: 'var(--brand-text)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
               <Plus size={14} /> Trigger Cycle
             </button>
             {cyclesTab === 'manual' && (
               <button onClick={openNewCycle}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
                 <Plus size={14} /> New Cycle
               </button>
             )}
@@ -1797,7 +1797,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 <p style={{ fontSize: 13, color: 'var(--text-faint)', maxWidth: 400, margin: '0 auto 20px', lineHeight: 1.7 }}>
                   Create a named cycle like &quot;2025 Annual Review&quot; to define org-wide review windows.
                 </p>
-                <button onClick={openNewCycle} style={{ padding: '9px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                <button onClick={openNewCycle} style={{ padding: '9px 20px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                   + Create First Cycle
                 </button>
               </div>
@@ -1835,7 +1835,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                         <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
                           <div style={{ display: 'flex', gap: 10 }}>
                             {[
-                              { label: 'SAs Submitted', count: stats.saCount, total: stats.totalEmployees, pct: saPercent, color: 'var(--brand)' },
+                              { label: 'SAs Submitted', count: stats.saCount, total: stats.totalEmployees, pct: saPercent, color: 'var(--brand-text)' },
                               { label: 'Reviews Exported', count: stats.reviewCount, total: stats.totalEmployees, pct: revPercent, color: 'var(--success)' },
                             ].map(s => (
                               <div key={s.label} style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '8px 12px', textAlign: 'center', minWidth: 100 }}>
@@ -2114,7 +2114,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               <input value={compNewDef} onChange={e => setCompNewDef(e.target.value)} placeholder="How this competency is demonstrated" style={inputStyle} />
             </div>
             <button onClick={addCompetency} disabled={!compNewName.trim() || compSaving}
-              style={{ padding: '9px 18px', background: !compNewName.trim() || compSaving ? 'var(--border)' : 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: !compNewName.trim() || compSaving ? 'var(--text-faint)' : '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: !compNewName.trim() || compSaving ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
+              style={{ padding: '9px 18px', background: !compNewName.trim() || compSaving ? 'var(--border)' : 'var(--brand-strong)', color: !compNewName.trim() || compSaving ? 'var(--text-faint)' : '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: !compNewName.trim() || compSaving ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
               {compSaving ? 'Adding…' : 'Add'}
             </button>
           </div>
@@ -2159,7 +2159,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                             await patchCompetency(row.id, { name: compEditName, definition: compEditDef })
                             setCompEditId(null)
                           }}
-                            style={{ padding: '7px 16px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                            style={{ padding: '7px 16px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                             Save
                           </button>
                           <button onClick={() => setCompEditId(null)}
@@ -2221,7 +2221,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             onClick={() => onChange(!checked)}
             style={{
               width: 44, height: 24, borderRadius: 'var(--radius-lg)', border: 'none', cursor: 'pointer', flexShrink: 0,
-              background: checked ? 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))' : 'var(--border)',
+              background: checked ? 'var(--brand-strong)' : 'var(--border)',
               position: 'relative', transition: 'background 0.2s',
             }}
           >
@@ -2248,7 +2248,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             )}
             <button
               onClick={saveSettings}
-              style={{ padding: '8px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              style={{ padding: '8px 20px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
             >
               Save Settings
             </button>
@@ -2268,7 +2268,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               <button
                 onClick={saveDriveSettings}
                 disabled={driveSaving}
-                style={{ padding: '7px 16px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: driveSaving ? 'not-allowed' : 'pointer', opacity: driveSaving ? 0.7 : 1, whiteSpace: 'nowrap' }}
+                style={{ padding: '7px 16px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: driveSaving ? 'not-allowed' : 'pointer', opacity: driveSaving ? 0.7 : 1, whiteSpace: 'nowrap' }}
               >
                 {driveSaving ? 'Saving…' : 'Save Drive Settings'}
               </button>
@@ -2392,10 +2392,10 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           <div style={sectionDesc}>Connect a Gmail account to send invite and notification emails without domain verification.</div>
 
           <div style={{ background: 'var(--surface-hover)', border: '1px solid var(--surface-hover)', borderRadius: 'var(--radius-md)', padding: '10px 16px', marginBottom: 20, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-            <span style={{ color: 'var(--brand)', fontSize: 14, flexShrink: 0 }}>ℹ</span>
-            <span style={{ fontSize: 12, color: 'var(--brand)', lineHeight: 1.5 }}>
+            <span style={{ color: 'var(--brand-text)', fontSize: 14, flexShrink: 0 }}>ℹ</span>
+            <span style={{ fontSize: 12, color: 'var(--brand-text)', lineHeight: 1.5 }}>
               Use a Gmail App Password — not your regular password. Generate one at{' '}
-              <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)' }}>myaccount.google.com/apppasswords</a>.
+              <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand-text)' }}>myaccount.google.com/apppasswords</a>.
               2-Step Verification must be enabled on the account.
             </span>
           </div>
@@ -2437,7 +2437,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <button
               onClick={saveSmtpSettings}
               disabled={smtpSaving}
-              style={{ flex: 1, padding: '10px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: smtpSaving ? 0.6 : 1 }}
+              style={{ flex: 1, padding: '10px 20px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: smtpSaving ? 0.6 : 1 }}
             >
               {smtpSaving ? 'Saving…' : 'Save Email Settings'}
             </button>
@@ -2553,7 +2553,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: 'var(--text-strong)' }}>Analytics</h1>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Organization-wide performance data and reporting.</p>
           </div>
-          <button onClick={downloadCSV} style={{ padding: '9px 18px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={downloadCSV} style={{ padding: '9px 18px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             ⬇ Export CSV
           </button>
         </div>
@@ -2568,7 +2568,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         {/* 360 Feedback Overview */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: 'var(--brand-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Star size={18} color="#fff" />
             </div>
             <div>
@@ -2649,7 +2649,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-strong)' }}>Self-Assessment Tracking</div>
             <span style={{ background: 'var(--success-bg)', color: 'var(--success)', padding: '2px 10px', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600 }}>Submitted: {saSubmitted.length}</span>
-            <span style={{ background: 'var(--brand-tint)', color: 'var(--brand)', padding: '2px 10px', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600 }}>Draft: {saDraft}</span>
+            <span style={{ background: 'var(--brand-tint)', color: 'var(--brand-text)', padding: '2px 10px', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600 }}>Draft: {saDraft}</span>
             <span style={{ background: 'var(--border)', color: 'var(--text-muted)', padding: '2px 10px', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600 }}>Not Started: {saNotStarted}</span>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -2748,7 +2748,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         {/* Summary row */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 20px', marginBottom: 20, display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
-            <span style={{ color: 'var(--brand)', fontWeight: 700 }}>{managerSubmitted}</span> manager check-in{managerSubmitted !== 1 ? 's' : ''} submitted
+            <span style={{ color: 'var(--brand-text)', fontWeight: 700 }}>{managerSubmitted}</span> manager check-in{managerSubmitted !== 1 ? 's' : ''} submitted
           </span>
           <span style={{ color: 'var(--text-faint)' }}>·</span>
           <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
@@ -2802,7 +2802,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
 
   const ACTION_META: Record<string, { label: string; color: string; bg: string; border: string; icon: string }> = {
     user_update:     { label: 'User Update',    color: 'var(--info)', bg: 'var(--surface-inset)', border: 'var(--info-border)',                 icon: '✏️' },
-    role_change:     { label: 'Role Change',     color: 'var(--brand)', bg: 'var(--surface)', border: 'rgba(129,140,248,0.3)', icon: '🔑' },
+    role_change:     { label: 'Role Change',     color: 'var(--brand-text)', bg: 'var(--surface)', border: 'rgba(129,140,248,0.3)', icon: '🔑' },
     user_invite:     { label: 'Invite Sent',     color: 'var(--success)', bg: 'var(--success-bg)', border: 'var(--success-border)',               icon: '✉️' },
     user_deactivate: { label: 'Deactivated',     color: 'var(--danger)', bg: 'var(--danger-bg)', border: 'var(--danger-border)',               icon: '🚫' },
     user_reactivate: { label: 'Reactivated',     color: 'var(--success)', bg: 'var(--success-bg)', border: 'var(--success-border)',               icon: '✅' },
@@ -3068,7 +3068,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                     <td style={{ padding: '10px 12px', textAlign: 'right' }}>
                       {r.status === 'submitted' ? (
                         <button onClick={() => toggleFeedbackDetail(r.id)}
-                          style={{ padding: '4px 10px', background: 'var(--border)', color: 'var(--brand)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                          style={{ padding: '4px 10px', background: 'var(--border)', color: 'var(--brand-text)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                           {fbExpanded === r.id ? 'Hide' : 'View'}
                         </button>
                       ) : (
@@ -3149,7 +3149,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 8, textAlign: 'left' }}>
             {items.map((item, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}>
-                <span style={{ color: 'var(--brand-strong)', fontSize: 10 }}>▸</span> {item}
+                <span style={{ color: 'var(--brand-text)', fontSize: 10 }}>▸</span> {item}
               </div>
             ))}
           </div>
@@ -3172,7 +3172,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <CalibrIcon size={20} />
               <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em', color: 'var(--text-strong)', whiteSpace: 'nowrap' }}>Calibr</span>
-              <span style={{ padding: '2px 7px', borderRadius: 'var(--radius-pill)', fontSize: 9, fontWeight: 700, background: isDevAdmin ? 'var(--brand-tint)' : 'var(--brand-tint)', color: isDevAdmin ? 'var(--danger)' : 'var(--brand)', whiteSpace: 'nowrap' }}>{isDevAdmin ? 'DEV' : 'ADMIN'}</span>
+              <span style={{ padding: '2px 7px', borderRadius: 'var(--radius-pill)', fontSize: 9, fontWeight: 700, background: isDevAdmin ? 'var(--brand-tint)' : 'var(--brand-tint)', color: isDevAdmin ? 'var(--danger)' : 'var(--brand-text)', whiteSpace: 'nowrap' }}>{isDevAdmin ? 'DEV' : 'ADMIN'}</span>
             </div>
           )}
           {collapsed && <CalibrIcon size={20} />}
@@ -3193,10 +3193,10 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 style={navBtn(active)}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--surface)' }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
-                <Icon size={15} color={active ? 'var(--brand)' : 'var(--text-muted)'} />
+                <Icon size={15} color={active ? 'var(--brand-text)' : 'var(--text-muted)'} />
                 {!collapsed && item.label}
                 {badge > 0 && !collapsed && (
-                  <span style={{ marginLeft: 'auto', background: item.id === 'dashboard' && urgentCount > 0 ? 'var(--warning)' : 'var(--brand-strong)', color: item.id === 'dashboard' && urgentCount > 0 ? 'var(--surface-inset)' : 'white', fontSize: 9, fontWeight: 700, borderRadius: 'var(--radius-lg)', padding: '1px 5px' }}>{badge}</span>
+                  <span style={{ marginLeft: 'auto', background: item.id === 'dashboard' && urgentCount > 0 ? 'var(--warning)' : 'var(--brand-strong)', color: 'var(--text-on-brand)', fontSize: 9, fontWeight: 700, borderRadius: 'var(--radius-lg)', padding: '1px 5px' }}>{badge}</span>
                 )}
               </button>
             )
@@ -3216,7 +3216,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           )}
           <div title={collapsed ? (currentUser.email) : undefined}
             style={{ display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '8px' : '8px 8px', overflow: 'hidden', justifyContent: collapsed ? 'center' : 'flex-start' }}>
-            <div style={{ width: 22, height: 22, borderRadius: '50%', background: isDevAdmin ? 'linear-gradient(135deg,var(--brand-strong),var(--danger))' : 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+            <div style={{ width: 22, height: 22, borderRadius: '50%', background: isDevAdmin ? 'linear-gradient(135deg,var(--brand-strong),var(--danger))' : 'var(--brand-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: 'white', flexShrink: 0 }}>
               {currentUser.email.charAt(0).toUpperCase()}
             </div>
             {!collapsed && <span style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentUser.email}</span>}
@@ -3280,7 +3280,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             {inviteLink ? (
               <>
                 <div style={{ background: inviteEmailSent ? 'var(--success-bg)' : 'var(--brand-tint)', border: `1px solid ${inviteEmailSent ? 'var(--success-border)' : 'var(--border-strong)'}`, borderRadius: 'var(--radius-lg)', padding: '16px', marginBottom: 16 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: inviteEmailSent ? 'var(--success)' : 'var(--brand)', marginBottom: 6 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: inviteEmailSent ? 'var(--success)' : 'var(--brand-text)', marginBottom: 6 }}>
                     {inviteEmailSent ? '✓ Invitation email sent!' : '✓ Invite created'}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
@@ -3293,7 +3293,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 <div style={{ display: 'flex', gap: 8 }}>
                   {!inviteEmailSent && <button onClick={() => navigator.clipboard.writeText(inviteLink)} style={{ flex: 1, padding: '10px', background: 'var(--border)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, cursor: 'pointer' }}>Copy Link</button>}
                   <button onClick={() => { setShowInviteModal(false); setInviteEmail(''); setInviteLink(''); setInviteManagerId(''); setInvitePosition(''); setInviteStartDate(''); setInviteEmailSent(false) }}
-                    style={{ flex: 1, padding: '10px', background: inviteEmailSent ? 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))' : 'transparent', color: inviteEmailSent ? '#fff' : 'var(--text-muted)', border: inviteEmailSent ? 'none' : '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: inviteEmailSent ? 600 : 400, cursor: 'pointer' }}>Done</button>
+                    style={{ flex: 1, padding: '10px', background: inviteEmailSent ? 'var(--brand-strong)' : 'transparent', color: inviteEmailSent ? '#fff' : 'var(--text-muted)', border: inviteEmailSent ? 'none' : '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: inviteEmailSent ? 600 : 400, cursor: 'pointer' }}>Done</button>
                 </div>
               </>
             ) : (
@@ -3335,7 +3335,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
                   <button onClick={() => { setShowInviteModal(false); setInviteEmail(''); setInviteManagerId(''); setInvitePosition(''); setInviteStartDate('') }} style={{ flex: 1, padding: '11px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
                   <button onClick={sendInvite} disabled={!inviteEmail || inviteLoading}
-                    style={{ flex: 2, padding: '11px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: !inviteEmail || inviteLoading ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                    style={{ flex: 2, padding: '11px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: !inviteEmail || inviteLoading ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                     {inviteLoading ? 'Sending…' : '✉️ Send Invitation'}
                   </button>
                 </div>
@@ -3388,7 +3388,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 <button onClick={() => { setShowTriggerModal(false); setTriggerError(null) }}
                   style={{ flex: 1, padding: '11px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
                 <button onClick={handleTriggerCycle} disabled={!triggerEmployeeId || triggeringCycle}
-                  style={{ flex: 1, padding: '11px', background: triggerEmployeeId && !triggeringCycle ? 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))' : 'var(--border)', color: triggerEmployeeId && !triggeringCycle ? '#fff' : 'var(--text-faint)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: triggerEmployeeId && !triggeringCycle ? 'pointer' : 'not-allowed' }}>
+                  style={{ flex: 1, padding: '11px', background: triggerEmployeeId && !triggeringCycle ? 'var(--brand-strong)' : 'var(--border)', color: triggerEmployeeId && !triggeringCycle ? '#fff' : 'var(--text-faint)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: triggerEmployeeId && !triggeringCycle ? 'pointer' : 'not-allowed' }}>
                   {triggeringCycle ? 'Creating…' : 'Trigger Cycle'}
                 </button>
               </div>
@@ -3453,7 +3453,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 Cancel
               </button>
               <button onClick={saveCycle} disabled={!cycleName.trim() || cycleLoading}
-                style={{ flex: 2, padding: '11px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: !cycleName.trim() || cycleLoading ? 0.5 : 1 }}>
+                style={{ flex: 2, padding: '11px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: !cycleName.trim() || cycleLoading ? 0.5 : 1 }}>
                 {cycleLoading ? 'Saving…' : editingCycle ? 'Save Changes' : 'Create Cycle'}
               </button>
             </div>
@@ -3617,7 +3617,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 { label: `Competency 5 — ${fd.competencyFiveType === 'constructive' ? 'Constructive' : 'Positive'}`, data: fd.competencyFive },
               ].filter(c => c.data?.competency)
               const sectionHead = (label: string) => (
-                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12, paddingBottom: 6, borderBottom: '1px solid rgba(99,102,241,0.2)' }}>{label}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--brand-text)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12, paddingBottom: 6, borderBottom: '1px solid rgba(99,102,241,0.2)' }}>{label}</div>
               )
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -3640,7 +3640,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                             <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600, marginBottom: 8 }}>{isDevAdmin ? <Redacted>{c.data!.competency}</Redacted> : c.data!.competency}</div>
                             {c.data!.examples.filter(Boolean).map((ex, ei) => (
                               <div key={ei} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-                                <span style={{ color: 'var(--brand)', flexShrink: 0, marginTop: 1 }}>•</span>
+                                <span style={{ color: 'var(--brand-text)', flexShrink: 0, marginTop: 1 }}>•</span>
                                 <span style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{isDevAdmin ? <Redacted>{ex}</Redacted> : ex}</span>
                               </div>
                             ))}
@@ -3658,7 +3658,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                           <div key={gi} style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '12px 16px' }}>
                             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: g.explanation ? 8 : 0 }}>
                               <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600, flex: 1 }}>{isDevAdmin ? <Redacted>{g.text}</Redacted> : g.text}</div>
-                              {g.status && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-lg)', flexShrink: 0, background: g.status === 'Met' ? 'rgba(52,211,153,0.12)' : g.status === 'Exceeded' ? 'rgba(99,102,241,0.15)' : 'rgba(251,191,36,0.12)', color: g.status === 'Met' ? 'var(--success)' : g.status === 'Exceeded' ? 'var(--brand)' : 'var(--warning)' }}>{g.status}</span>}
+                              {g.status && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-lg)', flexShrink: 0, background: g.status === 'Met' ? 'rgba(52,211,153,0.12)' : g.status === 'Exceeded' ? 'rgba(99,102,241,0.15)' : 'rgba(251,191,36,0.12)', color: g.status === 'Met' ? 'var(--success)' : g.status === 'Exceeded' ? 'var(--brand-text)' : 'var(--warning)' }}>{g.status}</span>}
                             </div>
                             {g.explanation && <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{isDevAdmin ? <Redacted>{g.explanation}</Redacted> : g.explanation}</div>}
                           </div>
@@ -3667,7 +3667,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                           <div style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 16 }}>
                             <div>
                               <div style={{ fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Overall Score</div>
-                              <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--brand)' }}>{isDevAdmin ? <Redacted>{String(fd.overallScore)}</Redacted> : fd.overallScore}<span style={{ fontSize: 13, color: 'var(--text-faint)' }}>{isDevAdmin ? '' : '/5'}</span></div>
+                              <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--brand-text)' }}>{isDevAdmin ? <Redacted>{String(fd.overallScore)}</Redacted> : fd.overallScore}<span style={{ fontSize: 13, color: 'var(--text-faint)' }}>{isDevAdmin ? '' : '/5'}</span></div>
                             </div>
                             {fd.overallSummary && <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, flex: 1 }}>{isDevAdmin ? <Redacted>{fd.overallSummary}</Redacted> : fd.overallSummary}</div>}
                           </div>
@@ -3683,7 +3683,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                         {fd.nextGoals.filter(g => g.text).map((g, gi) => (
                           <div key={gi} style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '12px 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                             <div style={{ display: 'flex', gap: 8 }}>
-                              <span style={{ color: 'var(--brand)', flexShrink: 0, marginTop: 1 }}>•</span>
+                              <span style={{ color: 'var(--brand-text)', flexShrink: 0, marginTop: 1 }}>•</span>
                               <span style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>{isDevAdmin ? <Redacted>{g.text}</Redacted> : g.text}</span>
                             </div>
                             {g.targetDate && <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0, marginTop: 2 }}>Target: {isDevAdmin ? <Redacted>{g.targetDate}</Redacted> : g.targetDate}</span>}
@@ -3800,7 +3800,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               <button
                 onClick={() => exportUserData(confirmDeactivateUser.id, confirmDeactivateUser.name || confirmDeactivateUser.email)}
                 disabled={exportingUserId === confirmDeactivateUser.id}
-                style={{ padding: '7px 14px', fontSize: 12, fontWeight: 600, background: 'var(--border)', color: exportingUserId === confirmDeactivateUser.id ? 'var(--text-faint)' : 'var(--brand)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: exportingUserId === confirmDeactivateUser.id ? 'default' : 'pointer' }}>
+                style={{ padding: '7px 14px', fontSize: 12, fontWeight: 600, background: 'var(--border)', color: exportingUserId === confirmDeactivateUser.id ? 'var(--text-faint)' : 'var(--brand-text)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: exportingUserId === confirmDeactivateUser.id ? 'default' : 'pointer' }}>
                 {exportingUserId === confirmDeactivateUser.id ? '⏳ Exporting…' : '⬇ Export User Data'}
               </button>
             </div>
@@ -3825,7 +3825,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
           <div style={{ width: 640, maxWidth: '95vw', background: 'var(--surface-inset)', borderLeft: '1px solid var(--border)', height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             {/* Header */}
             <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
-              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--brand-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, color: 'white', flexShrink: 0 }}>
                 {(profileUser.name || profileUser.email).charAt(0).toUpperCase()}
               </div>
               <div style={{ flex: 1 }}>
@@ -3836,7 +3836,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                 onClick={() => exportUserData(profileUser.id, profileUser.name || profileUser.email)}
                 disabled={exportingUserId === profileUser.id}
                 title="Export all user data as JSON"
-                style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, background: 'var(--surface)', color: exportingUserId === profileUser.id ? 'var(--text-faint)' : 'var(--brand)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: exportingUserId === profileUser.id ? 'default' : 'pointer' }}>
+                style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, background: 'var(--surface)', color: exportingUserId === profileUser.id ? 'var(--text-faint)' : 'var(--brand-text)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: exportingUserId === profileUser.id ? 'default' : 'pointer' }}>
                 {exportingUserId === profileUser.id ? '⏳ Exporting…' : '⬇ Export Data'}
               </button>
               <button onClick={() => setProfileUser(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
@@ -3846,7 +3846,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', padding: '0 24px', flexShrink: 0 }}>
               {(['profile', 'reviews', 'goals', 'notes'] as const).map(t => (
                 <button key={t} onClick={() => setProfileTab(t)}
-                  style={{ padding: '10px 14px', fontSize: 12, fontWeight: profileTab === t ? 700 : 400, color: profileTab === t ? 'var(--brand)' : 'var(--text-muted)', border: 'none', borderBottom: profileTab === t ? '2px solid var(--brand)' : '2px solid transparent', background: 'none', cursor: 'pointer' }}>
+                  style={{ padding: '10px 14px', fontSize: 12, fontWeight: profileTab === t ? 700 : 400, color: profileTab === t ? 'var(--brand-text)' : 'var(--text-muted)', border: 'none', borderBottom: profileTab === t ? '2px solid var(--brand)' : '2px solid transparent', background: 'none', cursor: 'pointer' }}>
                   {t === 'profile' ? '👤 Profile' : t === 'reviews' ? '📋 Reviews' : t === 'goals' ? '🎯 Goals' : '📝 Notes'}
                 </button>
               ))}
@@ -3890,7 +3890,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                             <span style={{ marginLeft: 'auto', padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 600, background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>{sm.label}</span>
                           </div>
                           <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
-                            {!isDevAdmin && r.drive_url && <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)' }}>📄 View Doc</a>}
+                            {!isDevAdmin && r.drive_url && <a href={r.drive_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand-text)' }}>📄 View Doc</a>}
                             {r.manager_signed_at && <span>✍️ Signed {new Date(r.manager_signed_at).toLocaleDateString()}</span>}
                             {r.admin_approved_at && <span>✅ Approved</span>}
                             <span>Updated {new Date(r.updated_at).toLocaleDateString()}</span>
@@ -3918,7 +3918,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                               </div>
                               <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 10, fontWeight: 600, flexShrink: 0,
                                 background: g.status === 'complete' ? 'var(--success-bg)' : g.status === 'in_progress' ? 'var(--info-bg)' : 'var(--surface)',
-                                color: g.status === 'complete' ? 'var(--success)' : g.status === 'in_progress' ? 'var(--brand)' : 'var(--text-muted)',
+                                color: g.status === 'complete' ? 'var(--success)' : g.status === 'in_progress' ? 'var(--brand-text)' : 'var(--text-muted)',
                                 border: `1px solid ${g.status === 'complete' ? 'var(--success-border)' : g.status === 'in_progress' ? 'var(--brand-tint)' : 'var(--border)'}` }}>
                                 {g.status === 'complete' ? '✓ Complete' : g.status === 'in_progress' ? 'In Progress' : 'Not Started'}
                               </span>
@@ -3951,7 +3951,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                             <div style={{ fontSize: 13, color: 'var(--text)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{isDevAdmin ? <Redacted>{n.note}</Redacted> : n.note}</div>
                             {n.tags?.length > 0 && (
                               <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                                {n.tags.map(tag => <span key={tag} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 'var(--radius-lg)', background: 'var(--info-bg)', color: 'var(--brand)' }}>{isDevAdmin ? <Redacted>{tag}</Redacted> : tag}</span>)}
+                                {n.tags.map(tag => <span key={tag} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 'var(--radius-lg)', background: 'var(--info-bg)', color: 'var(--brand-text)' }}>{isDevAdmin ? <Redacted>{tag}</Redacted> : tag}</span>)}
                               </div>
                             )}
                           </div>

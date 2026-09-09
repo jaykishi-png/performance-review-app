@@ -423,7 +423,7 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
                     ) : (
                       <button
                         onClick={() => setSigningAs('manager')}
-                        style={{ padding: '10px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                        style={{ padding: '10px 20px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                       >
                         ✍️ Sign as Manager
                       </button>
@@ -457,7 +457,7 @@ export default function ReviewSignPage({ review, saData, currentUserRole, curren
                     ) : (
                       <button
                         onClick={() => setSigningAs('employee')}
-                        style={{ padding: '10px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                        style={{ padding: '10px 20px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                       >
                         ✍️ Sign &amp; Acknowledge
                       </button>

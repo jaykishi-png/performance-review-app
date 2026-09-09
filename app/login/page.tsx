@@ -134,7 +134,7 @@ function LoginContent() {
               display: 'inline-flex', alignItems: 'center', gap: 6,
               background: 'rgba(79,70,229,0.15)', border: '1px solid rgba(79,70,229,0.3)',
               borderRadius: 'var(--radius-pill)', padding: '4px 12px', marginBottom: 20,
-              fontSize: 12, fontWeight: 600, color: 'var(--brand)', letterSpacing: '0.03em',
+              fontSize: 12, fontWeight: 600, color: 'var(--brand-text)', letterSpacing: '0.03em',
             }}>
               <span>✉️</span> You&apos;ve been invited
             </div>

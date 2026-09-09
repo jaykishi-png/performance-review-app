@@ -42,7 +42,7 @@ const PULSE_LABELS = ['', 'Struggling', 'Below Expectations', 'On Track', 'Going
 const PULSE_COLORS = ['', 'var(--danger)', 'var(--warning)', 'var(--warning)', 'var(--success)', 'var(--success)']
 const GOAL_STATUSES: { value: GoalProgress['checkin_status']; label: string; color: string; bg: string }[] = [
   { value: 'on_track',  label: 'On Track',  color: 'var(--success)', bg: 'rgba(52,211,153,0.12)' },
-  { value: 'completed', label: 'Completed', color: 'var(--brand)', bg: 'rgba(129,140,248,0.12)' },
+  { value: 'completed', label: 'Completed', color: 'var(--brand-text)', bg: 'rgba(129,140,248,0.12)' },
   { value: 'at_risk',   label: 'At Risk',   color: 'var(--warning)', bg: 'rgba(251,191,36,0.12)' },
   { value: 'blocked',   label: 'Blocked',   color: 'var(--danger)', bg: 'rgba(248,113,113,0.12)' },
 ]
@@ -81,7 +81,7 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
     ...unreviewedEmployees.map(dr => ({
       name: dr.name || dr.email,
       action: saSubmittedIds.has(dr.id) ? 'Self-assessment submitted — ready for review' : 'No review started yet',
-      color: saSubmittedIds.has(dr.id) ? 'var(--brand)' : 'var(--danger)',
+      color: saSubmittedIds.has(dr.id) ? 'var(--brand-text)' : 'var(--danger)',
       cta: 'Start Review',
       ctaFn: () => router.push('/performance-review'),
     })),
@@ -236,7 +236,7 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
               )}
               {statCard(
                 'Completed',
-                <span style={{ color: reviewsComplete > 0 ? 'var(--brand)' : 'var(--text-strong)' }}>{reviewsComplete}</span>,
+                <span style={{ color: reviewsComplete > 0 ? 'var(--brand-text)' : 'var(--text-strong)' }}>{reviewsComplete}</span>,
                 'Reviews finalized',
                 'var(--brand)'
               )}
@@ -279,7 +279,7 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
               {/* Team Overview */}
               <div style={card}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                  <Users size={16} color="var(--brand)" />
+                  <Users size={16} color="var(--brand-text)" />
                   <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-strong)' }}>Team Overview</div>
                 </div>
                 {directReports.length === 0 ? (
@@ -297,7 +297,7 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
                       </div>
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                         {sa ? (
-                          <span style={{ padding: '2px 7px', borderRadius: 99, background: sa.status === 'submitted' ? '#6366f122' : '#f59e0b22', color: sa.status === 'submitted' ? 'var(--brand)' : 'var(--warning)', fontSize: 10, fontWeight: 700 }}>
+                          <span style={{ padding: '2px 7px', borderRadius: 99, background: sa.status === 'submitted' ? '#6366f122' : '#f59e0b22', color: sa.status === 'submitted' ? 'var(--brand-text)' : 'var(--warning)', fontSize: 10, fontWeight: 700 }}>
                             SA {sa.status}
                           </span>
                         ) : (
@@ -322,10 +322,10 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
               <div style={card}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <FileText size={16} color="var(--brand)" />
+                    <FileText size={16} color="var(--brand-text)" />
                     <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-strong)' }}>Recent Reviews</div>
                   </div>
-                  <button onClick={() => setActiveTab('reviews')} style={{ fontSize: 12, color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>View all →</button>
+                  <button onClick={() => setActiveTab('reviews')} style={{ fontSize: 12, color: 'var(--brand-text)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>View all →</button>
                 </div>
                 {reviews.slice(0, 5).map((r, i) => (
                   <div key={r.id} style={{ padding: '12px 0', borderBottom: i < Math.min(reviews.length, 5) - 1 ? '1px solid var(--info-border)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
@@ -397,7 +397,7 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <span style={{ padding: '2px 8px', borderRadius: 99, background: '#34d39922', color: 'var(--success)', fontSize: 11, fontWeight: 700 }}>Active</span>
                       {sa ? (
-                        <span style={{ padding: '2px 8px', borderRadius: 99, background: sa.status === 'submitted' ? '#6366f122' : '#f59e0b22', color: sa.status === 'submitted' ? 'var(--brand)' : 'var(--warning)', fontSize: 11, fontWeight: 700 }}>
+                        <span style={{ padding: '2px 8px', borderRadius: 99, background: sa.status === 'submitted' ? '#6366f122' : '#f59e0b22', color: sa.status === 'submitted' ? 'var(--brand-text)' : 'var(--warning)', fontSize: 11, fontWeight: 700 }}>
                           Self-assessment: {sa.status}
                         </span>
                       ) : (
@@ -578,7 +578,7 @@ export default function ManagerDashboard({ currentUser, directReports, reviews, 
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                           <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-strong)' }}>My Response</h3>
                           {mgrSubmittedAt && (
-                            <span style={{ fontSize: 11, color: 'var(--brand)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: 11, color: 'var(--brand-text)', display: 'flex', alignItems: 'center', gap: 4 }}>
                               <CheckCircle2 size={12} /> Submitted {new Date(mgrSubmittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                             </span>
                           )}

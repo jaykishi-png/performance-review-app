@@ -52,7 +52,7 @@ async function renderTypedSignature(name: string): Promise<string> {
   ctx.fillRect(0, 0, canvas.width, canvas.height)
 
   // Dashed baseline
-  ctx.strokeStyle = 'var(--text-secondary)'
+  ctx.strokeStyle = '#9ca3af'
   ctx.lineWidth = 1
   ctx.setLineDash([4, 4])
   ctx.beginPath()
@@ -66,7 +66,7 @@ async function renderTypedSignature(name: string): Promise<string> {
 
   const baseSize = 58
   ctx.font = `${baseSize}px "Dancing Script", "Brush Script MT", "Segoe Script", cursive`
-  ctx.fillStyle = 'var(--surface-inset)'
+  ctx.fillStyle = '#0f172a'
   ctx.textBaseline = 'alphabetic'
 
   // Scale down if the text overflows
@@ -91,6 +91,9 @@ interface SignaturePadProps {
 
 type SignMode = 'draw' | 'type'
 
+// Canvas 2D resolves no CSS variables: ctx.strokeStyle = 'var(--x)' is invalid
+// and silently ignored. The pad is a fixed white sheet in both themes, so the
+// colours below are literals on purpose — do not tokenise them.
 export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sign', onCancel }: SignaturePadProps) {
   const [mode, setMode] = useState<SignMode>('draw')
 
@@ -125,7 +128,7 @@ export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sig
     if (!ctx) return
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.strokeStyle = 'var(--text-secondary)'
+    ctx.strokeStyle = '#9ca3af'
     ctx.lineWidth = 1
     ctx.setLineDash([4, 4])
     ctx.beginPath()
@@ -151,7 +154,7 @@ export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sig
   function drawTo(pos: { x: number; y: number }) {
     const ctx = canvasRef.current?.getContext('2d')
     if (!ctx || !lastPos.current) return
-    ctx.strokeStyle = 'var(--surface-inset)'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
     ctx.beginPath(); ctx.moveTo(lastPos.current.x, lastPos.current.y); ctx.lineTo(pos.x, pos.y); ctx.stroke()
     lastPos.current = pos
     setHasDrawn(true)
@@ -191,7 +194,7 @@ export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sig
   const tabStyle = (active: boolean): React.CSSProperties => ({
     flex: 1, padding: '7px 0', background: active ? 'var(--brand-tint)' : 'transparent',
     border: 'none', borderBottom: active ? '2px solid var(--brand-strong)' : '2px solid transparent',
-    color: active ? 'var(--brand)' : 'var(--text-muted)', fontSize: 12, fontWeight: active ? 600 : 400,
+    color: active ? 'var(--brand-text)' : 'var(--text-muted)', fontSize: 12, fontWeight: active ? 600 : 400,
     cursor: 'pointer', transition: 'all 0.15s',
   })
 
@@ -252,7 +255,8 @@ export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sig
               paddingLeft: 20, paddingBottom: 8, width: '100%', overflow: 'hidden', whiteSpace: 'nowrap',
               fontFamily: '"Dancing Script", "Brush Script MT", "Segoe Script", cursive',
               fontSize: typedSig.length > 20 ? 'clamp(24px, 3.5vw, 40px)' : 48,
-              color: typedSig ? 'var(--surface-inset)' : 'var(--text-secondary)',
+              // The pad is a fixed white sheet in both themes, so the ink is fixed too.
+              color: typedSig ? 'var(--calibr-charcoal)' : 'var(--calibr-slate)',
               userSelect: 'none', pointerEvents: 'none',
             }}>
               {typedSig || 'Preview'}
@@ -271,7 +275,7 @@ export function SignaturePad({ onSign, loading, error, buttonLabel = '✍️ Sig
           </button>
         )}
         <button type="button" onClick={handleSubmit} disabled={!canSubmit}
-          style={{ flex: 2, padding: '10px 20px', background: canSubmit ? 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))' : 'var(--border)', color: canSubmit ? '#fff' : 'var(--text-faint)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed' }}>
+          style={{ flex: 2, padding: '10px 20px', background: canSubmit ? 'var(--brand-strong)' : 'var(--border)', color: canSubmit ? '#fff' : 'var(--text-faint)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed' }}>
           {loading || typeRendering ? 'Signing…' : buttonLabel}
         </button>
       </div>

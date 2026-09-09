@@ -195,7 +195,7 @@ export default function ConsentPage() {
             )}
             <a
               href={portalUrl}
-              style={{ marginTop: 20, display: 'inline-block', padding: '12px 28px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', borderRadius: 'var(--radius-lg)', fontWeight: 600, fontSize: 14, textDecoration: 'none' }}
+              style={{ marginTop: 20, display: 'inline-block', padding: '12px 28px', background: 'var(--brand-strong)', color: '#fff', borderRadius: 'var(--radius-lg)', fontWeight: 600, fontSize: 14, textDecoration: 'none' }}
             >
               {portalLabel} →
             </a>
@@ -396,7 +396,7 @@ const styles: Record<string, React.CSSProperties> = {
   quarterBadge: {
     display: 'inline-block',
     fontSize: 12,
-    color: 'var(--brand)',
+    color: 'var(--brand-text)',
     backgroundColor: 'var(--brand-tint)',
     border: '1px solid var(--brand-strong)',
     borderRadius: 'var(--radius-sm)',

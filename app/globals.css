@@ -161,12 +161,17 @@
   --border: var(--calibr-gray);
   --border-strong: #cbd5e1;
   --border-subtle: #eef2f6;
+  /* Unselected rating stars: a UI control, so 3:1 against the surface. */
+  --rating-empty: #8693a5;
 
+  /* Every step clears WCAG AA 4.5:1 against white, --page, --surface-sunken and
+   * --brand-tint. The previous faint step was #94a3b8 at 2.5:1 — visibly hard to
+   * read, which is what §40 exists to prevent. */
   --text: var(--calibr-charcoal);
   --text-strong: var(--calibr-charcoal);
-  --text-secondary: #475569;
-  --text-muted: var(--calibr-slate);
-  --text-faint: #94a3b8;
+  --text-secondary: #334155;
+  --text-muted: #475569;
+  --text-faint: #5e6e85;
 
   --success: var(--calibr-success);
   --success-text: #15803d;
@@ -197,7 +202,7 @@
   color-scheme: dark;
 
   --brand: var(--calibr-teal);
-  --brand-strong: #2dd4bf;
+  --brand-strong: var(--calibr-teal-dark);
   --brand-deep: var(--calibr-teal-dark);
   --brand-soft: #134e4a;
   --brand-tint: #10312f;
@@ -216,12 +221,13 @@
   --border: #334155;
   --border-strong: #475569;
   --border-subtle: #1e293b;
+  --rating-empty: #64748b;
 
   --text: #f8fafc;
   --text-strong: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
-  --text-faint: #64748b;
+  --text-faint: #7d8b9a;
 
   /* Semantic hues lifted for contrast on dark; same meanings. */
   --success: #4ade80;

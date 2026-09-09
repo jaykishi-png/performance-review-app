@@ -16,10 +16,10 @@ export function CalibrIcon({ size = 32 }: { size?: number }) {
   // Four arcs of a 44-radius circle, each leaving a gap, drawn light-to-dark
   // clockwise from the top as in the guidelines.
   const arcs = [
-    { d: 'M 50 6 A 44 44 0 0 1 94 50', color: 'var(--brand)' },
-    { d: 'M 94 50 A 44 44 0 0 1 68 90', color: 'var(--brand-strong)' },
-    { d: 'M 62 94 A 44 44 0 0 1 16 71', color: 'var(--brand-strong)' },
-    { d: 'M 9 62 A 44 44 0 0 1 50 6', color: 'var(--brand)' },
+    { d: 'M 50 6 A 44 44 0 0 1 94 50', color: 'var(--brand-text)' },
+    { d: 'M 94 50 A 44 44 0 0 1 68 90', color: 'var(--brand-text)' },
+    { d: 'M 62 94 A 44 44 0 0 1 16 71', color: 'var(--brand-text)' },
+    { d: 'M 9 62 A 44 44 0 0 1 50 6', color: 'var(--brand-text)' },
   ]
   return (
     <svg

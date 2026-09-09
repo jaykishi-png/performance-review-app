@@ -2537,7 +2537,7 @@ function StepOutput({
       <div style={{ marginTop: 24, padding: '14px 18px', background: 'rgba(79,70,229,0.08)', border: '1px solid rgba(79,70,229,0.25)', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <span style={{ fontSize: 20, lineHeight: 1 }}>📅</span>
         <div>
-          <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 600, color: 'var(--brand)' }}>Ready for the Performance Review Meeting?</p>
+          <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 600, color: 'var(--brand-text)' }}>Ready for the Performance Review Meeting?</p>
           <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
             After submitting, you&apos;ll be taken to the <strong style={{ color: 'var(--text-secondary)' }}>Performance Review Meeting</strong> step where you can generate a side-by-side comparison report and send signing invitation emails to the employee and yourself.
           </p>
@@ -2549,7 +2549,7 @@ function StepOutput({
         <button
           type="button"
           onClick={onSubmit}
-          style={{ padding: '11px 32px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-lg)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+          style={{ padding: '11px 32px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-lg)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
         >
           Submit &amp; Proceed to Review Meeting →
         </button>
@@ -3256,7 +3256,7 @@ export function PerformanceReviewForm() {
     if (!rmSave) {
       return (
         <div style={{ padding: '28px 32px' }}>
-          <button onClick={() => setRmDetailId(null)} style={{ background: 'none', border: 'none', color: 'var(--brand)', cursor: 'pointer', fontSize: 13, marginBottom: 16, padding: 0 }}>← Back to Performance Review Meeting</button>
+          <button onClick={() => setRmDetailId(null)} style={{ background: 'none', border: 'none', color: 'var(--brand-text)', cursor: 'pointer', fontSize: 13, marginBottom: 16, padding: 0 }}>← Back to Performance Review Meeting</button>
           <div style={{ color: 'var(--text-muted)' }}>Review not found.</div>
         </div>
       )
@@ -3269,7 +3269,7 @@ export function PerformanceReviewForm() {
 
     return (
       <div style={{ padding: '28px 32px', maxWidth: 1200, margin: '0 auto' }}>
-        <button onClick={() => setRmDetailId(null)} style={{ background: 'none', border: 'none', color: 'var(--brand)', cursor: 'pointer', fontSize: 13, marginBottom: 16, padding: 0 }}>
+        <button onClick={() => setRmDetailId(null)} style={{ background: 'none', border: 'none', color: 'var(--brand-text)', cursor: 'pointer', fontSize: 13, marginBottom: 16, padding: 0 }}>
           ← Back to Performance Review Meeting
         </button>
 
@@ -3475,7 +3475,7 @@ export function PerformanceReviewForm() {
                           setRmConfirmLoading(false)
                         }
                       }}
-                      style={{ padding: '7px 14px', background: 'var(--border)', color: rmConfirmLoading ? 'var(--text-muted)' : 'var(--brand)', border: '1px solid var(--surface-raised)', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600, cursor: rmConfirmLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                      style={{ padding: '7px 14px', background: 'var(--border)', color: rmConfirmLoading ? 'var(--text-muted)' : 'var(--brand-text)', border: '1px solid var(--surface-raised)', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600, cursor: rmConfirmLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
                     >
                       {rmConfirmLoading ? 'Sending…' : 'Resend Invitations'}
                     </button>
@@ -3511,7 +3511,7 @@ export function PerformanceReviewForm() {
                           setRmConfirmLoading(false)
                         }
                       }}
-                      style={{ padding: '10px 24px', background: rmConfirmLoading ? 'var(--border)' : 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: rmConfirmLoading ? 'var(--text-muted)' : '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: rmConfirmLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
+                      style={{ padding: '10px 24px', background: rmConfirmLoading ? 'var(--border)' : 'var(--brand-strong)', color: rmConfirmLoading ? 'var(--text-muted)' : '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: rmConfirmLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
                     >
                       {rmConfirmLoading ? 'Sending invitations…' : 'Confirm Meeting & Send Signing Invitations'}
                     </button>
@@ -3572,7 +3572,7 @@ export function PerformanceReviewForm() {
                   href={`/sign/${rmSave.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 20px', background: 'var(--brand-strong)', color: '#fff', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
                 >
                   <ExternalLink size={14} /> Open Signing Page
                 </a>
@@ -3600,7 +3600,7 @@ export function PerformanceReviewForm() {
             <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
             <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>No self-assessment yet</div>
             <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--text-faint)', lineHeight: 1.7 }}>Fill out your self-assessment in the Employee Portal. It will be shared with your manager as part of your review.</p>
-            <a href="/employee" style={{ display: 'inline-block', padding: '10px 24px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>Open Self-Assessment Form</a>
+            <a href="/employee" style={{ display: 'inline-block', padding: '10px 24px', background: 'var(--brand-strong)', color: '#fff', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>Open Self-Assessment Form</a>
           </div>
         ) : (
           <>
@@ -3610,7 +3610,7 @@ export function PerformanceReviewForm() {
                 <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--text-muted)' }}>
                   <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 600,
                     background: mySAData.status === 'submitted' ? 'var(--success-bg)' : 'var(--surface-hover)',
-                    color: mySAData.status === 'submitted' ? 'var(--success)' : 'var(--brand)',
+                    color: mySAData.status === 'submitted' ? 'var(--success)' : 'var(--brand-text)',
                     border: `1px solid ${mySAData.status === 'submitted' ? 'var(--success-border)' : 'var(--surface-hover)'}` }}>
                     {mySAData.status === 'submitted' ? 'Submitted' : 'Draft'}
                   </span>
@@ -3618,7 +3618,7 @@ export function PerformanceReviewForm() {
                   {mySAData.overall_rating && <span>{'★'.repeat(mySAData.overall_rating)} ({mySAData.overall_rating}/5)</span>}
                 </div>
               </div>
-              <a href="/employee" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--surface)', color: 'var(--brand)', border: '1px solid var(--surface-hover)', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+              <a href="/employee" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--surface)', color: 'var(--brand-text)', border: '1px solid var(--surface-hover)', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
                 {mySAData.status === 'submitted' ? 'View in Employee Portal' : 'Continue in Employee Portal'}
               </a>
             </div>
@@ -3626,7 +3626,7 @@ export function PerformanceReviewForm() {
             {/* Competencies */}
             {(mySAData.competencies ?? []).filter(c => c.term).length > 0 && (
               <div style={card}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>Competencies</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand-text)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>Competencies</div>
                 {(mySAData.competencies ?? []).filter(c => c.term).map((c, i) => (
                   <div key={i} style={{ marginBottom: 14, paddingBottom: i < (mySAData.competencies ?? []).filter(c => c.term).length - 1 ? 14 : 0, borderBottom: i < (mySAData.competencies ?? []).filter(c => c.term).length - 1 ? '1px solid var(--border)' : 'none' }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>{c.term}</div>
@@ -4038,7 +4038,7 @@ export function PerformanceReviewForm() {
             <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Create and manage performance improvement plans for your direct reports.</p>
           </div>
           <button onClick={() => { setPipShowCreate(true); setPipSelectedId(null); fetchPipPlans() }}
-            style={{ padding: '8px 18px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            style={{ padding: '8px 18px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             + New PIP
           </button>
         </div>
@@ -4084,7 +4084,7 @@ export function PerformanceReviewForm() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <label style={lbl2}>Milestones</label>
                 <button onClick={() => setPipCreateMilestones(prev => [...prev, { text: '', due_date: '', completed: false }])}
-                  style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>+ Add Milestone</button>
+                  style={{ fontSize: 11, color: 'var(--brand-text)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>+ Add Milestone</button>
               </div>
               {pipCreateMilestones.map((m, i) => (
                 <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
@@ -4102,7 +4102,7 @@ export function PerformanceReviewForm() {
 
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={createPip} disabled={pipCreating}
-                style={{ padding: '8px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: pipCreating ? 0.6 : 1 }}>
+                style={{ padding: '8px 20px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: pipCreating ? 0.6 : 1 }}>
                 {pipCreating ? 'Creating…' : 'Create PIP'}
               </button>
               <button onClick={() => { setPipShowCreate(false); setPipError('') }}
@@ -4226,7 +4226,7 @@ export function PerformanceReviewForm() {
                     </button>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => savePipEdit(selectedPip.id)} disabled={pipSaving}
-                        style={{ padding: '8px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: pipSaving ? 0.6 : 1 }}>
+                        style={{ padding: '8px 20px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: pipSaving ? 0.6 : 1 }}>
                         {pipSaving ? 'Saving…' : 'Save Changes'}
                       </button>
                       <button onClick={() => { setPipEditing(false); setPipError('') }}
@@ -4270,7 +4270,7 @@ export function PerformanceReviewForm() {
                       const notes = [...((selectedPip.check_in_notes as any[]) || []), { text: pipCheckInNote, date: new Date().toISOString() }]
                       updatePip(selectedPip.id, { check_in_notes: notes })
                       setPipCheckInNote('')
-                    }} style={{ padding: '8px 16px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: !pipCheckInNote || pipSaving ? 0.5 : 1 }}>
+                    }} style={{ padding: '8px 16px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: !pipCheckInNote || pipSaving ? 0.5 : 1 }}>
                       Add
                     </button>
                   </div>
@@ -4359,9 +4359,9 @@ export function PerformanceReviewForm() {
                 <div style={{ background: 'rgba(52,211,153,0.06)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 'var(--radius-md)', padding: 14 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--success)', marginBottom: 8 }}>✓ Request sent! Share this link with the reviewer:</div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input readOnly value={pf360SentLink} style={{ flex: 1, padding: '6px 10px', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--brand)', fontSize: 12 }} />
+                    <input readOnly value={pf360SentLink} style={{ flex: 1, padding: '6px 10px', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--brand-text)', fontSize: 12 }} />
                     <button onClick={() => { navigator.clipboard.writeText(pf360SentLink!); setPf360SentCopied(true); setTimeout(() => setPf360SentCopied(false), 2000) }}
-                      style={{ padding: '6px 14px', background: pf360SentCopied ? 'var(--success-bg)' : 'var(--info-bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: pf360SentCopied ? 'var(--success)' : 'var(--brand)', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      style={{ padding: '6px 14px', background: pf360SentCopied ? 'var(--success-bg)' : 'var(--info-bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: pf360SentCopied ? 'var(--success)' : 'var(--brand-text)', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                       {pf360SentCopied ? '✓ Copied' : '📋 Copy'}
                     </button>
                     <button onClick={() => setPf360SentLink(null)} style={{ padding: '6px 12px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }}>
@@ -4375,7 +4375,7 @@ export function PerformanceReviewForm() {
                     <div>
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Feedback About</label>
                       <select value={pf360SendForId} onChange={e => setPf360SendForId(e.target.value)}
-                        style={{ width: '100%', padding: '8px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: pf360SendForId ? 'var(--brand-soft)' : 'var(--text-muted)', fontSize: 13 }}>
+                        style={{ width: '100%', padding: '8px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: pf360SendForId ? 'var(--brand-text)' : 'var(--text-muted)', fontSize: 13 }}>
                         <option value=''>— Select employee —</option>
                         {activeEmployees.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                       </select>
@@ -4383,7 +4383,7 @@ export function PerformanceReviewForm() {
                     <div>
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Reviewer (gives feedback)</label>
                       <select value={pf360SendReviewerId} onChange={e => setPf360SendReviewerId(e.target.value)}
-                        style={{ width: '100%', padding: '8px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: pf360SendReviewerId ? 'var(--brand-soft)' : 'var(--text-muted)', fontSize: 13 }}>
+                        style={{ width: '100%', padding: '8px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: pf360SendReviewerId ? 'var(--brand-text)' : 'var(--text-muted)', fontSize: 13 }}>
                         <option value=''>{pf360AllUsers.length === 0 ? 'Loading…' : '— Select reviewer —'}</option>
                         {reviewerOptions.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
                       </select>
@@ -4399,7 +4399,7 @@ export function PerformanceReviewForm() {
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                     <button onClick={handleSendRequest} disabled={!pf360SendForId || !pf360SendReviewerId || pf360Sending}
-                      style={{ padding: '8px 20px', background: !pf360SendForId || !pf360SendReviewerId ? 'var(--border)' : 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: !pf360SendForId || !pf360SendReviewerId ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: !pf360SendForId || !pf360SendReviewerId ? 'not-allowed' : 'pointer' }}>
+                      style={{ padding: '8px 20px', background: !pf360SendForId || !pf360SendReviewerId ? 'var(--border)' : 'var(--brand-strong)', color: !pf360SendForId || !pf360SendReviewerId ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: !pf360SendForId || !pf360SendReviewerId ? 'not-allowed' : 'pointer' }}>
                       {pf360Sending ? 'Sending…' : 'Send Request →'}
                     </button>
                   </div>
@@ -4471,7 +4471,7 @@ export function PerformanceReviewForm() {
                     <div key={idx} style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 20 }}>
                       {/* Card header */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: item.is_anonymous ? 'var(--border)' : 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: item.is_anonymous ? 'var(--border)' : 'var(--brand-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'white', flexShrink: 0 }}>
                           {item.is_anonymous ? '?' : reviewerName.charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -4505,7 +4505,7 @@ export function PerformanceReviewForm() {
 
                       {item.q3_collab_text && (
                         <div style={{ marginBottom: 12 }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Collaboration Notes</div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--brand-text)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Collaboration Notes</div>
                           <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6, background: 'var(--surface)', borderRadius: 'var(--radius-md)', padding: '10px 12px' }}>{item.q3_collab_text}</div>
                         </div>
                       )}
@@ -4613,7 +4613,7 @@ export function PerformanceReviewForm() {
                   ['T', 'Time-Bound', 'Set a realistic date and stick to it.'],
                 ].map(([letter, word, desc]) => (
                   <div key={letter} style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
-                    <div style={{ fontWeight: 800, color: 'var(--brand)', fontSize: 16, minWidth: 16 }}>{letter}</div>
+                    <div style={{ fontWeight: 800, color: 'var(--brand-text)', fontSize: 16, minWidth: 16 }}>{letter}</div>
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{word}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{desc}</div>
@@ -4626,7 +4626,7 @@ export function PerformanceReviewForm() {
               <div style={{ marginBottom: 14, padding: '14px 16px', background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--surface)' }}>
                 <div style={{ fontWeight: 700, color: 'var(--brand-text)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Goals vs. Objectives vs. Accomplishments</div>
                 {[
-                  { title: 'Goal', color: 'var(--brand)', desc: 'Broad, longer-term, achievable outcomes agreed upon by the employee and manager as a plan of action for the following review cycle.', example: 'Improve public speaking skills.' },
+                  { title: 'Goal', color: 'var(--brand-text)', desc: 'Broad, longer-term, achievable outcomes agreed upon by the employee and manager as a plan of action for the following review cycle.', example: 'Improve public speaking skills.' },
                   { title: 'Objective', color: 'var(--success)', desc: 'Shorter, more specific, measurable steps toward achieving a goal. Generally determined by the employee with manager support.', example: 'Attend a public speaking course and practice presentations to a colleague one time per quarter.' },
                   { title: 'Accomplishment', color: 'var(--warning)', desc: 'Tangible achievements or milestones as a result of pursuing goals and objectives.', example: 'Successfully delivered a confident presentation at a Company-wide meeting that received positive feedback from senior management.' },
                 ].map(item => (
@@ -4653,7 +4653,7 @@ export function PerformanceReviewForm() {
                   'Communication — Do they have the information and resources needed to grow?',
                 ].map((q, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--surface)', fontSize: 12, color: 'var(--text-secondary)' }}>
-                    <span style={{ color: 'var(--brand)', fontSize: 10, marginTop: 3, flexShrink: 0 }}>▸</span> {q}
+                    <span style={{ color: 'var(--brand-text)', fontSize: 10, marginTop: 3, flexShrink: 0 }}>▸</span> {q}
                   </div>
                 ))}
               </div>
@@ -4696,7 +4696,7 @@ export function PerformanceReviewForm() {
                 )
                 .map(c => (
                   <div key={c.name} style={{ marginBottom: 10, padding: '12px 14px', background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--surface)' }}>
-                    <div style={{ fontWeight: 700, color: 'var(--brand)', fontSize: 13, marginBottom: 4 }}>{c.name}</div>
+                    <div style={{ fontWeight: 700, color: 'var(--brand-text)', fontSize: 13, marginBottom: 4 }}>{c.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{c.definition}</div>
                   </div>
                 ))
@@ -4794,7 +4794,7 @@ export function PerformanceReviewForm() {
           <button onClick={() => setShowEmployeePicker(true)} style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
             gap: 8, padding: sidebarCollapsed ? '8px' : '8px 12px',
-            background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: 'white',
+            background: 'var(--brand-strong)', color: 'white',
             border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
           }} title={sidebarCollapsed ? 'New Review' : undefined}>
             <Plus size={14} />
@@ -4811,10 +4811,10 @@ export function PerformanceReviewForm() {
             const active = activePage === 'dashboard'
             return (
               <button onClick={() => setActivePage('dashboard')} title={sidebarCollapsed ? 'Dashboard' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-soft)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-text)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = 'var(--surface)' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? 'var(--brand-tint)' : 'transparent' }}>
-                <House size={15} color={active ? 'var(--brand)' : 'var(--text-muted)'} />
+                <House size={15} color={active ? 'var(--brand-text)' : 'var(--text-muted)'} />
                 {!sidebarCollapsed && 'Dashboard'}
               </button>
             )
@@ -4833,8 +4833,8 @@ export function PerformanceReviewForm() {
                   <button
                     onClick={() => { setMeetingDetailId(null); setActivePage('reviews'); if (!reviewsExpanded) setReviewsExpanded(true) }}
                     title={sidebarCollapsed ? 'Performance Review Forms' : undefined}
-                    style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', background: 'none', border: 'none', color: active ? 'var(--brand-soft)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start' }}>
-                    <ClipboardCheck size={15} color={active ? 'var(--brand)' : 'var(--text-muted)'} />
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', background: 'none', border: 'none', color: active ? 'var(--brand-text)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start' }}>
+                    <ClipboardCheck size={15} color={active ? 'var(--brand-text)' : 'var(--text-muted)'} />
                     {!sidebarCollapsed && 'Performance Review Forms'}
                     {!sidebarCollapsed && inProgressSaves.length > 0 && (
                       <span style={{ marginLeft: 4, background: 'var(--brand-strong)', color: 'white', fontSize: 9, fontWeight: 700, borderRadius: 'var(--radius-lg)', padding: '1px 5px' }}>{inProgressSaves.length}</span>
@@ -4863,11 +4863,11 @@ export function PerformanceReviewForm() {
                           {/* Main clickable area */}
                           <div onClick={() => { if (!isConfirming) { handleLoad(save); setActivePage('reviews') } }}
                             style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, cursor: isConfirming ? 'default' : 'pointer' }}>
-                            <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: isActive ? 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: isActive ? 'white' : 'var(--text-muted)' }}>
+                            <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: isActive ? 'var(--brand-strong)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: isActive ? 'white' : 'var(--text-muted)' }}>
                               {save.employeeName?.charAt(0).toUpperCase() || '?'}
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 12, fontWeight: 500, color: isActive ? 'var(--brand-soft)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{save.employeeName || 'Untitled'}</div>
+                              <div style={{ fontSize: 12, fontWeight: 500, color: isActive ? 'var(--brand-text)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{save.employeeName || 'Untitled'}</div>
                               <div style={{ fontSize: 10, color: 'var(--text-faint)', marginTop: 1 }}>{pct}% complete</div>
                             </div>
                           </div>
@@ -4912,12 +4912,12 @@ export function PerformanceReviewForm() {
               <button
                 onClick={() => { setRmDetailId(null); setActivePage('review-meeting') }}
                 title={sidebarCollapsed ? 'Performance Review Meeting' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-soft)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-text)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = 'var(--surface)' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? 'var(--brand-tint)' : 'transparent' }}>
-                <Users size={15} color={active ? 'var(--brand)' : 'var(--text-muted)'} />
+                <Users size={15} color={active ? 'var(--brand-text)' : 'var(--text-muted)'} />
                 {!sidebarCollapsed && 'Performance Review Meeting'}
-                {confirmedCount > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: 'var(--success)', color: 'var(--success-bg)', fontSize: 9, fontWeight: 700, borderRadius: 'var(--radius-lg)', padding: '1px 5px' }}>{confirmedCount}</span>}
+                {confirmedCount > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: 'var(--success)', color: 'var(--success-text)', fontSize: 9, fontWeight: 700, borderRadius: 'var(--radius-lg)', padding: '1px 5px' }}>{confirmedCount}</span>}
               </button>
             )
           })()}
@@ -4927,10 +4927,10 @@ export function PerformanceReviewForm() {
             const active = activePage === 'history'
             return (
               <button onClick={() => setActivePage('history')} title={sidebarCollapsed ? 'History' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-soft)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-text)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = 'var(--surface)' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? 'var(--brand-tint)' : 'transparent' }}>
-                <History size={15} color={active ? 'var(--brand)' : 'var(--text-muted)'} />
+                <History size={15} color={active ? 'var(--brand-text)' : 'var(--text-muted)'} />
                 {!sidebarCollapsed && 'History'}
               </button>
             )
@@ -4942,10 +4942,10 @@ export function PerformanceReviewForm() {
             const pending = dbTeam.filter(r => dbTeamSaMap[r.id]?.status === 'submitted').length
             return (
               <button onClick={() => setActivePage('team')} title={sidebarCollapsed ? 'Team' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-soft)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-text)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = 'var(--surface)' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? 'var(--brand-tint)' : 'transparent' }}>
-                <Users size={15} color={active ? 'var(--brand)' : 'var(--text-muted)'} />
+                <Users size={15} color={active ? 'var(--brand-text)' : 'var(--text-muted)'} />
                 {!sidebarCollapsed && 'Team'}
                 {pending > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: 'var(--brand-strong)', color: 'white', fontSize: 9, fontWeight: 700, borderRadius: 'var(--radius-lg)', padding: '1px 5px' }}>{pending}</span>}
               </button>
@@ -4960,10 +4960,10 @@ export function PerformanceReviewForm() {
             const active = activePage === 'peer-feedback'
             return (
               <button onClick={() => setActivePage('peer-feedback')} title={sidebarCollapsed ? 'Peer Reviews' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-soft)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-text)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = 'var(--surface)' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? 'var(--brand-tint)' : 'transparent' }}>
-                <UserRoundCheck size={15} color={active ? 'var(--brand)' : 'var(--text-muted)'} />
+                <UserRoundCheck size={15} color={active ? 'var(--brand-text)' : 'var(--text-muted)'} />
                 {!sidebarCollapsed && 'Peer Reviews'}
               </button>
             )
@@ -4975,10 +4975,10 @@ export function PerformanceReviewForm() {
             const activePips = pipPlans.filter(p => p.status === 'active').length
             return (
               <button onClick={() => { setActivePage('pip'); fetchPipPlans() }} title={sidebarCollapsed ? 'PIPs' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-soft)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-text)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = 'var(--surface)' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? 'var(--brand-tint)' : 'transparent' }}>
-                <ClipboardList size={15} color={active ? 'var(--brand)' : 'var(--text-muted)'} />
+                <ClipboardList size={15} color={active ? 'var(--brand-text)' : 'var(--text-muted)'} />
                 {!sidebarCollapsed && 'PIPs'}
                 {activePips > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: 'var(--warning)', color: 'var(--text-on-brand)', fontSize: 9, fontWeight: 700, borderRadius: 'var(--radius-lg)', padding: '1px 5px' }}>{activePips}</span>}
               </button>
@@ -4995,12 +4995,12 @@ export function PerformanceReviewForm() {
                 const submitted = mySAData?.status === 'submitted'
                 return (
                   <button onClick={() => setActivePage('my-sa')} title={sidebarCollapsed ? 'My Self-Assessment' : undefined}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand-soft)' : '3px solid transparent', border: active ? '1px solid rgba(167,139,250,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-soft)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand-soft)' : '3px solid transparent', border: active ? '1px solid rgba(167,139,250,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-text)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                     onMouseOver={e => { if (!active) e.currentTarget.style.background = 'var(--surface)' }}
                     onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? 'var(--brand-tint)' : 'transparent' }}>
-                    <FileText size={15} color={active ? 'var(--brand-soft)' : 'var(--text-muted)'} />
+                    <FileText size={15} color={active ? 'var(--brand-text)' : 'var(--text-muted)'} />
                     {!sidebarCollapsed && 'My Self-Assessment'}
-                    {submitted && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: 'var(--success)', color: 'var(--success-bg)', fontSize: 9, fontWeight: 700, borderRadius: 'var(--radius-lg)', padding: '1px 5px' }}>✓</span>}
+                    {submitted && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: 'var(--success)', color: 'var(--success-text)', fontSize: 9, fontWeight: 700, borderRadius: 'var(--radius-lg)', padding: '1px 5px' }}>✓</span>}
                   </button>
                 )
               })()}
@@ -5009,12 +5009,12 @@ export function PerformanceReviewForm() {
                 const confirmedCount = myReviews.filter(r => r.meeting_confirmed_at).length
                 return (
                   <button onClick={() => setActivePage('my-review')} title={sidebarCollapsed ? 'My Performance Review' : undefined}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand-soft)' : '3px solid transparent', border: active ? '1px solid rgba(167,139,250,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-soft)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand-soft)' : '3px solid transparent', border: active ? '1px solid rgba(167,139,250,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-text)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                     onMouseOver={e => { if (!active) e.currentTarget.style.background = 'var(--surface)' }}
                     onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? 'var(--brand-tint)' : 'transparent' }}>
-                    <BarChart2 size={15} color={active ? 'var(--brand-soft)' : 'var(--text-muted)'} />
+                    <BarChart2 size={15} color={active ? 'var(--brand-text)' : 'var(--text-muted)'} />
                     {!sidebarCollapsed && 'My Performance Review'}
-                    {confirmedCount > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: 'var(--success)', color: 'var(--success-bg)', fontSize: 9, fontWeight: 700, borderRadius: 'var(--radius-lg)', padding: '1px 5px' }}>{confirmedCount}</span>}
+                    {confirmedCount > 0 && !sidebarCollapsed && <span style={{ marginLeft: 'auto', background: 'var(--success)', color: 'var(--success-text)', fontSize: 9, fontWeight: 700, borderRadius: 'var(--radius-lg)', padding: '1px 5px' }}>{confirmedCount}</span>}
                   </button>
                 )
               })()}
@@ -5026,10 +5026,10 @@ export function PerformanceReviewForm() {
             const active = activePage === 'guide'
             return (
               <button onClick={() => setActivePage('guide')} title={sidebarCollapsed ? 'Manager Guide' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-soft)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-text)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = 'var(--surface)' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? 'var(--brand-tint)' : 'transparent' }}>
-                <BookOpen size={15} color={active ? 'var(--brand)' : 'var(--text-muted)'} />
+                <BookOpen size={15} color={active ? 'var(--brand-text)' : 'var(--text-muted)'} />
                 {!sidebarCollapsed && 'Manager Guide'}
               </button>
             )
@@ -5040,10 +5040,10 @@ export function PerformanceReviewForm() {
             const active = activePage === 'glossary'
             return (
               <button onClick={() => setActivePage('glossary')} title={sidebarCollapsed ? 'Competency Glossary' : undefined}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-soft)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: sidebarCollapsed ? '8px' : '8px 10px', borderRadius: 'var(--radius-md)', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent', background: active ? 'var(--brand-tint)' : 'transparent', color: active ? 'var(--brand-text)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', marginBottom: 2 }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = 'var(--surface)' }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? 'var(--brand-tint)' : 'transparent' }}>
-                <BookMarked size={15} color={active ? 'var(--brand)' : 'var(--text-muted)'} />
+                <BookMarked size={15} color={active ? 'var(--brand-text)' : 'var(--text-muted)'} />
                 {!sidebarCollapsed && 'Competency Glossary'}
               </button>
             )
@@ -5054,7 +5054,7 @@ export function PerformanceReviewForm() {
         <div style={{ borderTop: '1px solid var(--border)', padding: '8px', flexShrink: 0 }}>
           {/* Settings */}
           <button onClick={() => setShowSettings(true)} title={sidebarCollapsed ? 'Settings' : undefined}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px', borderRadius: 'var(--radius-md)', border: 'none', background: 'transparent', color: settings.driveFolderUrl ? 'var(--brand)' : 'var(--text-muted)', cursor: 'pointer', fontSize: 12, fontWeight: 500, justifyContent: sidebarCollapsed ? 'center' : 'flex-start' }}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px', borderRadius: 'var(--radius-md)', border: 'none', background: 'transparent', color: settings.driveFolderUrl ? 'var(--brand-text)' : 'var(--text-muted)', cursor: 'pointer', fontSize: 12, fontWeight: 500, justifyContent: sidebarCollapsed ? 'center' : 'flex-start' }}
             onMouseOver={e => { e.currentTarget.style.background = 'var(--surface)' }}
             onMouseOut={e => { e.currentTarget.style.background = 'transparent' }}>
             <Settings size={15} />
@@ -5065,7 +5065,7 @@ export function PerformanceReviewForm() {
             style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px', borderRadius: 'var(--radius-md)', border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, fontWeight: 500, justifyContent: sidebarCollapsed ? 'center' : 'flex-start' }}
             onMouseOver={e => { e.currentTarget.style.background = 'var(--surface)' }}
             onMouseOut={e => { e.currentTarget.style.background = 'transparent' }}>
-            <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+            <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--brand-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: 'white', flexShrink: 0 }}>
               {(profileName || profileEmail).charAt(0).toUpperCase() || '?'}
             </div>
             {!sidebarCollapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profileName || profileEmail || 'Profile'}</span>}
@@ -5073,7 +5073,7 @@ export function PerformanceReviewForm() {
           {/* Admin Portal */}
           {profileRole === 'admin' && (
             <a href="/admin" title={sidebarCollapsed ? 'Admin Portal' : undefined}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px', borderRadius: 'var(--radius-md)', border: 'none', background: 'transparent', color: 'var(--brand)', cursor: 'pointer', fontSize: 12, fontWeight: 500, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', textDecoration: 'none' }}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px', borderRadius: 'var(--radius-md)', border: 'none', background: 'transparent', color: 'var(--brand-text)', cursor: 'pointer', fontSize: 12, fontWeight: 500, justifyContent: sidebarCollapsed ? 'center' : 'flex-start', textDecoration: 'none' }}
               onMouseOver={e => { e.currentTarget.style.background = 'var(--surface)' }}
               onMouseOut={e => { e.currentTarget.style.background = 'transparent' }}>
               <span style={{ fontSize: 14 }}>⚙️</span>
@@ -5118,7 +5118,7 @@ export function PerformanceReviewForm() {
             dbTeam.forEach(r => {
               const sa = dbTeamSaMap[r.id]
               if (sa?.status === 'submitted') {
-                items.push({ icon: '📋', color: 'var(--brand)', label: `${r.name || r.email} submitted their self-assessment`, detail: `Submitted ${sa.submitted_at ? new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'recently'}. Start their review when ready.`, action: () => { setShowEmployeePicker(true); setActivePage('reviews'); setShowNotifDropdown(false) } })
+                items.push({ icon: '📋', color: 'var(--brand-text)', label: `${r.name || r.email} submitted their self-assessment`, detail: `Submitted ${sa.submitted_at ? new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'recently'}. Start their review when ready.`, action: () => { setShowEmployeePicker(true); setActivePage('reviews'); setShowNotifDropdown(false) } })
               }
             })
             saves.filter(s => { const p = reviewPct(s); return p > 0 && p < 100 }).forEach(s => {
@@ -5134,7 +5134,7 @@ export function PerformanceReviewForm() {
               <div>
                 <button
                   onClick={() => setShowNotifDropdown(v => !v)}
-                  style={{ position: 'relative', background: showNotifDropdown ? 'var(--brand-tint)' : 'transparent', border: `1px solid ${showNotifDropdown ? 'rgba(79,70,229,0.4)' : 'var(--border)'}`, borderRadius: 'var(--radius-md)', padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: showNotifDropdown ? 'var(--brand)' : 'var(--text-muted)' }}
+                  style={{ position: 'relative', background: showNotifDropdown ? 'var(--brand-tint)' : 'transparent', border: `1px solid ${showNotifDropdown ? 'rgba(79,70,229,0.4)' : 'var(--border)'}`, borderRadius: 'var(--radius-md)', padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: showNotifDropdown ? 'var(--brand-text)' : 'var(--text-muted)' }}
                   onMouseOver={e => { if (!showNotifDropdown) { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = 'var(--surface-raised)' } }}
                   onMouseOut={e => { if (!showNotifDropdown) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--border)' } }}>
                   <Bell size={16} />
@@ -5218,7 +5218,7 @@ export function PerformanceReviewForm() {
               {/* Team member review status table */}
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginBottom: 24 }}>
                 <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Users size={14} color="var(--brand)" />
+                  <Users size={14} color="var(--brand-text)" />
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand-text)' }}>Team Review Status</span>
                 </div>
                 {dbTeam.length === 0 ? (
@@ -5246,7 +5246,7 @@ export function PerformanceReviewForm() {
                           <tr key={member.id} style={{ borderTop: '1px solid var(--border)', background: idx % 2 === 0 ? 'transparent' : 'var(--surface-inset)' }}>
                             <td style={{ padding: '10px 16px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--brand-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
                                   {(member.name || member.email).charAt(0).toUpperCase()}
                                 </div>
                                 <div>
@@ -5282,7 +5282,7 @@ export function PerformanceReviewForm() {
 
               {/* Quick actions */}
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <button onClick={() => setActivePage('reviews')} style={{ padding: '9px 18px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                <button onClick={() => setActivePage('reviews')} style={{ padding: '9px 18px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                   Go to Annual Reviews
                 </button>
                 <button onClick={() => setActivePage('team')} style={{ padding: '9px 18px', background: 'var(--surface)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
@@ -5302,7 +5302,7 @@ export function PerformanceReviewForm() {
                 <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>All performance reviews you&apos;ve created, including completed and exported ones.</p>
               </div>
               <button onClick={() => setShowEmployeePicker(true)}
-                style={{ padding: '8px 16px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                style={{ padding: '8px 16px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
                 + New Review
               </button>
             </div>
@@ -5377,7 +5377,7 @@ export function PerformanceReviewForm() {
                   style={{ background: 'var(--surface)', border: `1px solid ${isConfirming ? 'var(--danger-border)' : 'var(--border)'}`, borderRadius: 'var(--radius-lg)', padding: '16px 20px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 16, transition: 'border-color 0.15s, background 0.15s', cursor: isConfirming ? 'default' : 'pointer' }}
                   onMouseEnter={e => { if (!isConfirming) e.currentTarget.style.background = 'var(--surface-hover)' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)' }}>
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: pct === 100 ? 'var(--success-bg)' : 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', border: pct === 100 ? '2px solid var(--success)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: pct === 100 ? 'var(--success)' : 'white', flexShrink: 0 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: pct === 100 ? 'var(--success-bg)' : 'var(--brand-strong)', border: pct === 100 ? '2px solid var(--success)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: pct === 100 ? 'var(--success)' : 'white', flexShrink: 0 }}>
                     {pct === 100 ? '✓' : save.employeeName?.charAt(0).toUpperCase() || '?'}
                   </div>
                   <div style={{ flex: 1 }}>
@@ -5438,7 +5438,7 @@ export function PerformanceReviewForm() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
                   {[
                     { label: 'Direct Reports', value: dbTeam.length, color: 'var(--text-secondary)', bg: 'var(--surface)', border: 'var(--border)' },
-                    { label: 'SAs Submitted', value: saSubmitted, color: 'var(--brand)', bg: 'var(--brand-tint)', border: 'rgba(129,140,248,0.3)' },
+                    { label: 'SAs Submitted', value: saSubmitted, color: 'var(--brand-text)', bg: 'var(--brand-tint)', border: 'rgba(129,140,248,0.3)' },
                     { label: 'Reviews In Progress', value: reviewsInProgress, color: 'var(--warning)', bg: 'var(--warning-bg)', border: 'var(--warning-text)' },
                     { label: 'Reviews Complete', value: reviewsComplete, color: 'var(--success)', bg: 'var(--success-bg)', border: 'var(--success-border)' },
                   ].map(s => (
@@ -5468,7 +5468,7 @@ export function PerformanceReviewForm() {
                   <div key={r.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '18px 20px', marginBottom: 10 }}>
                     {/* Header row */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--brand-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: 'white', flexShrink: 0 }}>
                         {displayName.charAt(0).toUpperCase()}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -5478,7 +5478,7 @@ export function PerformanceReviewForm() {
                       <div style={{ display: 'flex', gap: 8 }}>
                         {sa?.status === 'submitted' && (
                           <button onClick={() => openSA(r.id, r.name || r.email, r.position || '')}
-                            style={{ padding: '6px 12px', background: 'var(--surface)', color: 'var(--brand)', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                            style={{ padding: '6px 12px', background: 'var(--surface)', color: 'var(--brand-text)', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                             📋 View SA
                           </button>
                         )}
@@ -5490,7 +5490,7 @@ export function PerformanceReviewForm() {
                           }
                           setActivePage('reviews')
                         }}
-                          style={{ padding: '6px 14px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                          style={{ padding: '6px 14px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                           {existingReview ? '▶ Continue Review' : sa?.status === 'submitted' ? '✨ Start Review' : 'Start Review'}
                         </button>
                       </div>
@@ -5503,7 +5503,7 @@ export function PerformanceReviewForm() {
                         <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Self-Assessment</div>
                         {sa ? (
                           <>
-                            <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 700, background: sa.status === 'submitted' ? 'var(--brand-tint)' : 'var(--warning-bg)', color: sa.status === 'submitted' ? 'var(--brand)' : 'var(--warning)', border: `1px solid ${sa.status === 'submitted' ? 'rgba(129,140,248,0.4)' : 'var(--warning-text)'}` }}>
+                            <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 700, background: sa.status === 'submitted' ? 'var(--brand-tint)' : 'var(--warning-bg)', color: sa.status === 'submitted' ? 'var(--brand-text)' : 'var(--warning)', border: `1px solid ${sa.status === 'submitted' ? 'rgba(129,140,248,0.4)' : 'var(--warning-text)'}` }}>
                               {sa.status === 'submitted' ? '✓ Submitted' : 'In Draft'}
                             </span>
                             {sa.submitted_at && <div style={{ fontSize: 10, color: 'var(--text-faint)', marginTop: 4 }}>{new Date(sa.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
@@ -5629,7 +5629,7 @@ export function PerformanceReviewForm() {
             <input value={managerGlossarySearch} onChange={e => setManagerGlossarySearch(e.target.value)} placeholder="Search by term or definition…" style={{ width: '100%', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '8px 12px', fontSize: 13, color: 'var(--text)', boxSizing: 'border-box', outline: 'none', marginBottom: 16 }} />
             {COMPETENCIES.filter(c => c.name.toLowerCase().includes(managerGlossarySearch.toLowerCase()) || c.definition.toLowerCase().includes(managerGlossarySearch.toLowerCase())).map(c => (
               <div key={c.name} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 18px', marginBottom: 8 }}>
-                <div style={{ fontWeight: 700, color: 'var(--brand)', fontSize: 14, marginBottom: 5 }}>{c.name}</div>
+                <div style={{ fontWeight: 700, color: 'var(--brand-text)', fontSize: 14, marginBottom: 5 }}>{c.name}</div>
                 <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{c.definition}</div>
               </div>
             ))}
@@ -5691,7 +5691,7 @@ export function PerformanceReviewForm() {
           if (!mSave) {
             return (
               <div style={{ padding: '28px 32px' }}>
-                <button onClick={() => setMeetingDetailId(null)} style={{ background: 'none', border: 'none', color: 'var(--brand)', cursor: 'pointer', fontSize: 13, marginBottom: 16 }}>← Back to Annual Reviews</button>
+                <button onClick={() => setMeetingDetailId(null)} style={{ background: 'none', border: 'none', color: 'var(--brand-text)', cursor: 'pointer', fontSize: 13, marginBottom: 16 }}>← Back to Annual Reviews</button>
                 <div style={{ color: 'var(--text-muted)' }}>Meeting not found.</div>
               </div>
             )
@@ -5749,7 +5749,7 @@ export function PerformanceReviewForm() {
               {/* Back nav */}
               <button
                 onClick={() => setMeetingDetailId(null)}
-                style={{ background: 'none', border: 'none', color: 'var(--brand)', cursor: 'pointer', fontSize: 13, marginBottom: 16, padding: 0 }}
+                style={{ background: 'none', border: 'none', color: 'var(--brand-text)', cursor: 'pointer', fontSize: 13, marginBottom: 16, padding: 0 }}
               >
                 ← Back to Annual Reviews
               </button>
@@ -5998,7 +5998,7 @@ export function PerformanceReviewForm() {
                 <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
                   {meetingDriveError && (
                     <div style={{ marginBottom: 12, padding: '10px 14px', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 'var(--radius-md)', fontSize: 12, color: 'var(--danger)' }}>
-                      Drive export failed: {meetingDriveError} — <button onClick={() => setMeetingDriveError('')} style={{ background: 'none', border: 'none', color: 'var(--brand)', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>Retry</button>
+                      Drive export failed: {meetingDriveError} — <button onClick={() => setMeetingDriveError('')} style={{ background: 'none', border: 'none', color: 'var(--brand-text)', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>Retry</button>
                     </div>
                   )}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
@@ -6090,7 +6090,7 @@ export function PerformanceReviewForm() {
                 <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: 'var(--text-strong)' }}>Performance Review Forms</h1>
                 <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Track each team member through the full performance review cycle.</p>
               </div>
-              <button onClick={() => setShowEmployeePicker(true)} style={{ padding: '9px 18px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>+ New Review</button>
+              <button onClick={() => setShowEmployeePicker(true)} style={{ padding: '9px 18px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>+ New Review</button>
             </div>
             {dbTeam.length === 0 ? (
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 40, textAlign: 'center' }}>
@@ -6137,7 +6137,7 @@ export function PerformanceReviewForm() {
                   const isHighlighted = pct === 100 && !save?.managerSignedAt
                   return (
                     <div key={r.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: save?.driveUrl || bothSigned ? 'var(--success-bg)' : pct > 0 ? 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))' : 'var(--border)', border: save?.driveUrl || bothSigned ? '2px solid var(--success)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: save?.driveUrl || bothSigned ? 'var(--success)' : pct > 0 ? 'white' : 'var(--text-muted)', flexShrink: 0 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: save?.driveUrl || bothSigned ? 'var(--success-bg)' : pct > 0 ? 'var(--brand-strong)' : 'var(--border)', border: save?.driveUrl || bothSigned ? '2px solid var(--success)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: save?.driveUrl || bothSigned ? 'var(--success)' : pct > 0 ? 'white' : 'var(--text-muted)', flexShrink: 0 }}>
                         {displayName.charAt(0).toUpperCase()}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -6148,7 +6148,7 @@ export function PerformanceReviewForm() {
                         <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 'var(--radius-pill)', background: stageBg, border: `1px solid ${stageBorder}`, color: stageColor, whiteSpace: 'nowrap' }}>{stage}</span>
                         <button
                           onClick={actionFn}
-                          style={{ padding: '7px 14px', background: isHighlighted ? 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))' : 'var(--border)', color: isHighlighted ? '#fff' : 'var(--brand-soft)', border: '1px solid var(--surface-raised)', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          style={{ padding: '7px 14px', background: isHighlighted ? 'var(--brand-strong)' : 'var(--border)', color: isHighlighted ? '#fff' : 'var(--brand-text)', border: '1px solid var(--surface-raised)', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                         >
                           {actionLabel}
                         </button>
@@ -6442,7 +6442,7 @@ export function PerformanceReviewForm() {
                 }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', cursor: 'pointer', textAlign: 'left', width: '100%' }}
                   onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(79,70,229,0.5)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-tint)' }}
                   onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface)' }}>
-                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--brand-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'white', flexShrink: 0 }}>
                     {(r.name || r.email).charAt(0).toUpperCase()}
                   </div>
                   <div>
@@ -6452,7 +6452,7 @@ export function PerformanceReviewForm() {
                   {saves.find(s => s.employeeId === r.id || s.employeeName === (r.name || r.email))
                     ? <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: 'var(--success)', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 'var(--radius-sm)', padding: '2px 7px' }}>In Progress</span>
                     : dbTeamSaMap[r.id]?.status === 'submitted'
-                      ? <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: 'var(--brand)', background: 'rgba(79,70,229,0.15)', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 'var(--radius-sm)', padding: '2px 7px' }}>SA Ready</span>
+                      ? <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: 'var(--brand-text)', background: 'rgba(79,70,229,0.15)', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 'var(--radius-sm)', padding: '2px 7px' }}>SA Ready</span>
                       : null
                   }
                 </button>

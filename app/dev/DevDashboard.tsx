@@ -108,7 +108,7 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={pill('var(--danger)')}>Dev Admin</span>
           <button onClick={() => router.push('/admin')}
-            style={{ padding: '6px 14px', background: 'var(--surface-raised)', color: 'var(--brand)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+            style={{ padding: '6px 14px', background: 'var(--surface-raised)', color: 'var(--brand-text)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
             Admin View
           </button>
           <button
@@ -301,7 +301,7 @@ export default function DevDashboard({ currentUser, stats, recentAuditLogs, user
                 <div style={{ display: 'flex', gap: 8 }}>
                   {(['employee', 'manager'] as const).map(r => (
                     <button type="button" key={r} onClick={() => setInviteRole(r)}
-                      style={{ flex: 1, padding: '8px 0', borderRadius: 'var(--radius-md)', border: '2px solid', borderColor: inviteRole === r ? 'var(--brand)' : 'var(--text-faint)', background: inviteRole === r ? '#6366f133' : 'transparent', color: inviteRole === r ? 'var(--brand)' : 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer', textTransform: 'capitalize' }}>
+                      style={{ flex: 1, padding: '8px 0', borderRadius: 'var(--radius-md)', border: '2px solid', borderColor: inviteRole === r ? 'var(--brand)' : 'var(--text-faint)', background: inviteRole === r ? '#6366f133' : 'transparent', color: inviteRole === r ? 'var(--brand-text)' : 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer', textTransform: 'capitalize' }}>
                       {r}
                     </button>
                   ))}

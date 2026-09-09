@@ -264,7 +264,7 @@ function EmployeePipPanel() {
                     setPipPlans(prev => prev.map(p => p.id === activePip.id ? { ...p, check_in_notes: notes } : p))
                     setPipNote('')
                     setPipSaving(false)
-                  }} style={{ padding: '8px 16px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: !pipNote || pipSaving ? 0.5 : 1 }}>
+                  }} style={{ padding: '8px 16px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: !pipNote || pipSaving ? 0.5 : 1 }}>
                     Add
                   </button>
                 </div>
@@ -709,7 +709,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   // Computed notifications
   const notifications: { id: string; label: string; detail: string; color: string; action?: () => void }[] = []
   if (!isSubmitted) notifications.push({ id: 'draft', label: 'Self-assessment pending', detail: 'Your self-assessment is in draft. Submit it so your manager can review it.', color: 'var(--warning)', action: () => setPage('self-assessment') })
-  if (isSubmitted && !driveUrl) notifications.push({ id: 'drive', label: 'Export ready', detail: 'Your submitted self-assessment can be exported to Google Drive.', color: 'var(--brand)', action: () => { setPage('self-assessment'); setStep(8) } })
+  if (isSubmitted && !driveUrl) notifications.push({ id: 'drive', label: 'Export ready', detail: 'Your submitted self-assessment can be exported to Google Drive.', color: 'var(--brand-text)', action: () => { setPage('self-assessment'); setStep(8) } })
   if (goals.some(g => g.target_date && g.status !== 'complete' && new Date(g.target_date) < new Date())) notifications.push({ id: 'overdue', label: 'Overdue goals', detail: 'You have goals past their target date that are not yet complete.', color: 'var(--danger)', action: () => setPage('goals') })
 
   function updateComp(i: number, field: string, value: unknown) {
@@ -740,7 +740,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     borderRadius: 'var(--radius-md)', border: active ? '1px solid rgba(79,70,229,0.3)' : '1px solid transparent',
     background: active ? 'var(--brand-tint)' : 'transparent',
     cursor: 'pointer', marginBottom: 2, transition: 'all 0.15s',
-    fontSize: 12, fontWeight: active ? 600 : 400, color: active ? 'var(--brand-soft)' : 'var(--text-secondary)',
+    fontSize: 12, fontWeight: active ? 600 : 400, color: active ? 'var(--brand-text)' : 'var(--text-secondary)',
   })
 
   // ── Step tabs for Self Assessment ─────────────────────────────────────────
@@ -753,7 +753,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           return (
             <button key={s.id} onClick={() => goStep(i)} style={{
               padding: '10px 14px', fontSize: 12, fontWeight: active ? 700 : 400,
-              color: active ? 'var(--brand)' : done ? 'var(--success)' : 'var(--text-muted)',
+              color: active ? 'var(--brand-text)' : done ? 'var(--success)' : 'var(--text-muted)',
               borderBottom: `2px solid ${active ? 'var(--brand)' : 'transparent'}`,
               background: 'transparent', border: 'none',
               cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5, transition: 'color 0.15s',
@@ -773,7 +773,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
       <div>
         {/* Manager card */}
         <div style={{ ...card, borderLeft: '3px solid var(--brand-strong)', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+          <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--brand-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
             {(manager?.name || manager?.email || '?').charAt(0).toUpperCase()}
           </div>
           <div style={{ flex: 1 }}>
@@ -798,7 +798,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         <div style={{ ...card, background: 'var(--surface-inset)', border: '1px solid var(--border)' }}>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.7 }}>
             <strong style={{ color: 'var(--text-secondary)' }}>What to expect:</strong> You&apos;ll evaluate five competency words (two positive, two constructive, one of your choice), reflect on your goals and accomplishments, rate your overall performance, and set goals for the coming year.
-            Use the <button onClick={() => setPage('guide')} style={{ color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 0, textDecoration: 'underline' }}>Employee Guide</button> and <button onClick={() => setPage('glossary')} style={{ color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 0, textDecoration: 'underline' }}>Competency Glossary</button> in the sidebar for reference.
+            Use the <button onClick={() => setPage('guide')} style={{ color: 'var(--brand-text)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 0, textDecoration: 'underline' }}>Employee Guide</button> and <button onClick={() => setPage('glossary')} style={{ color: 'var(--brand-text)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 0, textDecoration: 'underline' }}>Competency Glossary</button> in the sidebar for reference.
           </p>
         </div>
       </div>
@@ -825,7 +825,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
               })}
               {ci !== 4 && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Select a competency and provide 1–3 specific examples.</span>}
             </div>
-            <button onClick={() => setPage('glossary')} style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', flexShrink: 0 }}>Browse Glossary →</button>
+            <button onClick={() => setPage('glossary')} style={{ fontSize: 11, color: 'var(--brand-text)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', flexShrink: 0 }}>Browse Glossary →</button>
           </div>
           {/* Resolve accent for C5 based on selected type */}
           {(() => {
@@ -846,7 +846,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           <div style={card}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <div style={lbl}>Examples (1–3 specific situations)</div>
-              {!isSubmitted && <span style={{ fontSize: 11, color: 'var(--brand)' }}>Use ✨ AI Draft on any example for help</span>}
+              {!isSubmitted && <span style={{ fontSize: 11, color: 'var(--brand-text)' }}>Use ✨ AI Draft on any example for help</span>}
             </div>
             {[0, 1, 2].map(ei => {
               const aiState = getCompAI(ci, ei)
@@ -864,7 +864,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                             onClick={() => setCompAIKey(ci, ei, { showPrompt: !aiState.showPrompt, error: '' })}
                             disabled={!canDraft}
                             title={!canDraft ? 'Select a competency first' : undefined}
-                            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: canDraft ? 'pointer' : 'not-allowed', color: aiState.showPrompt ? 'var(--brand-soft)' : 'var(--brand)', fontSize: 11, fontWeight: 600, padding: 0, opacity: canDraft ? 1 : 0.3 }}>
+                            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: canDraft ? 'pointer' : 'not-allowed', color: aiState.showPrompt ? 'var(--brand-text)' : 'var(--brand-text)', fontSize: 11, fontWeight: 600, padding: 0, opacity: canDraft ? 1 : 0.3 }}>
                             <Sparkles size={11} />
                             {aiState.showPrompt ? 'Cancel' : 'AI Draft'}
                           </button>
@@ -923,7 +923,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                         onClick={() => draftGoalExplanation(i)}
                         disabled={!g.description.trim() || !g.outcome || !!goalAI[i]?.loading}
                         title={!g.description.trim() || !g.outcome ? 'Fill in description and outcome first' : undefined}
-                        style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: (!g.description.trim() || !g.outcome) ? 'not-allowed' : 'pointer', color: 'var(--brand)', fontSize: 11, fontWeight: 600, padding: 0, opacity: (!g.description.trim() || !g.outcome) ? 0.3 : 1 }}>
+                        style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: (!g.description.trim() || !g.outcome) ? 'not-allowed' : 'pointer', color: 'var(--brand-text)', fontSize: 11, fontWeight: 600, padding: 0, opacity: (!g.description.trim() || !g.outcome) ? 0.3 : 1 }}>
                         {goalAI[i]?.loading ? <><Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> Drafting…</> : <><Sparkles size={11} /> AI Draft</>}
                       </button>
                     </div>
@@ -997,7 +997,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             <div><div style={lbl}>Employee</div><div style={{ fontSize: 13, color: 'var(--text)' }}>{profileName || profile.email}</div></div>
             <div><div style={lbl}>Supervisor</div><div style={{ fontSize: 13, color: 'var(--text)' }}>{manager?.name || manager?.email || '—'}</div></div>
           </div>
-          <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Part One — Competencies</div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--brand-text)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Part One — Competencies</div>
           {review.competencies.map((c, i) => c.term ? (
             <div key={i} style={{ padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', marginBottom: 6, borderLeft: `3px solid ${COMP_CONFIG[i].accent}` }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{COMP_CONFIG[i].label} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({COMP_CONFIG[i].sublabel})</span> — {c.term}</div>
@@ -1030,7 +1030,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           <div style={card}>
             <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', marginBottom: 8 }}>Ready to submit?</div>
             <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>Once submitted, your self-assessment is shared with your manager and cannot be edited. You&apos;ll then be able to export it to Google Drive.</p>
-            <button onClick={() => setSubmitConfirm(true)} style={{ width: '100%', padding: '11px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Submit Self-Assessment</button>
+            <button onClick={() => setSubmitConfirm(true)} style={{ width: '100%', padding: '11px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Submit Self-Assessment</button>
           </div>
         ) : driveUrl ? (
           <div style={{ ...card, background: 'var(--success-bg)', border: '1px solid var(--success-border)' }}>
@@ -1178,7 +1178,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             <div style={{ ...card, background: 'var(--surface-inset)', borderLeft: '3px solid var(--warning)', padding: '16px 20px', marginBottom: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--warning)', marginBottom: 4 }}>Complete your Self-Assessment first</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>Your self-assessment must be submitted before your manager can write your performance review.</div>
-              <button onClick={() => setPage('self-assessment')} style={{ padding: '7px 16px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Go to Self-Assessment</button>
+              <button onClick={() => setPage('self-assessment')} style={{ padding: '7px 16px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Go to Self-Assessment</button>
             </div>
           )}
           <div style={{ ...card, background: 'var(--surface-inset)', textAlign: 'center', padding: '48px 32px' }}>
@@ -1455,7 +1455,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                   ) : (
                     <button
                       onClick={() => { setSigningId(r.id); setSignError('') }}
-                      style={{ width: '100%', padding: '12px 20px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-lg)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+                      style={{ width: '100%', padding: '12px 20px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-lg)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
                     >
                       ✍️ Sign &amp; Acknowledge Review
                     </button>
@@ -1513,7 +1513,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Track your progress between review cycles. Click &apos;Import Goals into SA&apos; to pre-fill your Next Year&apos;s Goals.</p>
           </div>
           <button onClick={() => { setShowAddGoal(true); setGoalForm({ title: '', description: '', status: 'not_started', target_date: '', notes: '' }) }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
             <Plus size={14} /> Add Goal
           </button>
         </div>
@@ -1554,7 +1554,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                   setStep(7)
                 }, 1200)
               }}
-              style={{ flexShrink: 0, padding: '8px 18px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              style={{ flexShrink: 0, padding: '8px 18px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
             >
               Import Goals into SA →
             </button>
@@ -1568,7 +1568,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             {formFields}
             <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
               <button onClick={() => setShowAddGoal(false)} style={{ flex: 1, padding: '9px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={createGoal} disabled={goalSaving || !goalForm.title.trim()} style={{ flex: 2, padding: '9px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: (!goalForm.title.trim() || goalSaving) ? 0.6 : 1 }}>
+              <button onClick={createGoal} disabled={goalSaving || !goalForm.title.trim()} style={{ flex: 2, padding: '9px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: (!goalForm.title.trim() || goalSaving) ? 0.6 : 1 }}>
                 {goalSaving ? 'Saving…' : 'Add Goal'}
               </button>
             </div>
@@ -1596,11 +1596,11 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
               <div key={g.id} style={{ ...card, borderLeft: `3px solid ${sc.color}`, background: isEditing ? 'var(--brand-tint)' : 'var(--surface)' }}>
                 {isEditing ? (
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 12, color: 'var(--brand)', marginBottom: 14 }}>Editing Goal</div>
+                    <div style={{ fontWeight: 600, fontSize: 12, color: 'var(--brand-text)', marginBottom: 14 }}>Editing Goal</div>
                     {formFields}
                     <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
                       <button onClick={() => setEditingGoal(null)} style={{ flex: 1, padding: '8px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
-                      <button onClick={saveEditGoal} disabled={goalSaving} style={{ flex: 2, padding: '8px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{goalSaving ? 'Saving…' : 'Save Changes'}</button>
+                      <button onClick={saveEditGoal} disabled={goalSaving} style={{ flex: 2, padding: '8px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{goalSaving ? 'Saving…' : 'Save Changes'}</button>
                     </div>
                   </div>
                 ) : (
@@ -1737,7 +1737,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                                 <button onClick={() => { setKrAddingId(null); setKrForm({ title: '', type: 'percent', current: '', target: '', unit: '' }) }}
                                   style={{ flex: 1, padding: '7px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
                                 <button onClick={() => addKeyResult(g.id)} disabled={krSaving || !krForm.title.trim()}
-                                  style={{ flex: 2, padding: '7px', background: 'linear-gradient(135deg,var(--brand-strong),var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: (!krForm.title.trim() || krSaving) ? 0.6 : 1 }}>
+                                  style={{ flex: 2, padding: '7px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: (!krForm.title.trim() || krSaving) ? 0.6 : 1 }}>
                                   {krSaving ? 'Saving…' : 'Add Key Result'}
                                 </button>
                               </div>
@@ -1745,7 +1745,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                           </div>
                         ) : (
                           <button onClick={() => { setKrAddingId(g.id); setKrForm({ title: '', type: 'percent', current: '', target: '', unit: '' }) }}
-                            style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', background: 'transparent', color: 'var(--brand)', border: '1px dashed var(--brand-strong)', borderRadius: 'var(--radius-sm)', fontSize: 12, cursor: 'pointer' }}>
+                            style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', background: 'transparent', color: 'var(--brand-text)', border: '1px dashed var(--brand-strong)', borderRadius: 'var(--radius-sm)', fontSize: 12, cursor: 'pointer' }}>
                             <Plus size={12} /> Add Key Result
                           </button>
                         )}
@@ -1766,7 +1766,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     const events: { icon: string; label: string; time: string; color: string; sortKey: string }[] = []
     const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     if (review.submitted_at) events.push({ icon: '✅', label: 'Self-assessment submitted', time: fmtDate(review.submitted_at), color: 'var(--success)', sortKey: review.submitted_at })
-    if (driveUrl) events.push({ icon: '📤', label: 'Exported to Google Drive', time: 'Recent', color: 'var(--brand)', sortKey: '9999' })
+    if (driveUrl) events.push({ icon: '📤', label: 'Exported to Google Drive', time: 'Recent', color: 'var(--brand-text)', sortKey: '9999' })
     if (review.status === 'draft') events.push({ icon: '💾', label: 'Draft in progress', time: 'Auto-saved', color: 'var(--warning)', sortKey: '0000' })
 
     // Quarterly check-in events
@@ -1778,7 +1778,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         events.push({ icon: '🔘', label: `Q${qn} Check-in`, time: 'Pending', color: 'var(--text-faint)', sortKey: `pending-q${qn}` })
       }
       if (ci?.manager_submitted_at) {
-        events.push({ icon: '👤', label: `Q${qn} Manager Check-in`, time: fmtDate(ci.manager_submitted_at), color: 'var(--brand)', sortKey: ci.manager_submitted_at })
+        events.push({ icon: '👤', label: `Q${qn} Manager Check-in`, time: fmtDate(ci.manager_submitted_at), color: 'var(--brand-text)', sortKey: ci.manager_submitted_at })
       }
     }
 
@@ -1861,7 +1861,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           <div style={{ fontWeight: 700, color: 'var(--text-strong)', fontSize: 14, marginBottom: 14 }}>SMART Goal Method</div>
           {[['S', 'Specific', 'Goals should be specific and narrow enough for effective planning and attainability.'], ['M', 'Measurable', 'Define how progress towards the goal will be made.'], ['A', 'Attainable', 'Ensure goals are accomplished reasonably within a certain timeframe.'], ['R', 'Relevant', 'Goals should align with Company values and your job description.'], ['T', 'Time-Bound', 'Set a realistic date and stick to it.']].map(([l, w, d]) => (
             <div key={l} style={{ display: 'flex', gap: 14, marginBottom: 8, padding: '8px 12px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)' }}>
-              <div style={{ fontWeight: 800, color: 'var(--brand)', fontSize: 16, minWidth: 18 }}>{l}</div>
+              <div style={{ fontWeight: 800, color: 'var(--brand-text)', fontSize: 16, minWidth: 18 }}>{l}</div>
               <div><div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{w}</div><div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{d}</div></div>
             </div>
           ))}
@@ -1870,7 +1870,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         <div style={card}>
           <div style={{ fontWeight: 700, color: 'var(--text-strong)', fontSize: 14, marginBottom: 14 }}>Goals vs. Objectives vs. Accomplishments</div>
           {[
-            { title: 'Goal', color: 'var(--brand)', desc: 'Broad, longer-term, achievable outcomes agreed upon by the employee and manager as a plan of action for the following review cycle.', example: 'Improve public speaking skills.' },
+            { title: 'Goal', color: 'var(--brand-text)', desc: 'Broad, longer-term, achievable outcomes agreed upon by the employee and manager as a plan of action for the following review cycle.', example: 'Improve public speaking skills.' },
             { title: 'Objective', color: 'var(--success)', desc: 'Shorter, more specific, measurable steps toward achieving a goal. Generally determined by the employee with manager support.', example: 'Attend a public speaking course and practice presentations to a colleague one time per quarter.' },
             { title: 'Accomplishment', color: 'var(--warning)', desc: 'Tangible achievements or milestones from pursuing goals and objectives — what has been successfully met regardless of whether it was part of the goal-planning process.', example: 'Successfully delivered a presentation at a Company-wide meeting that received positive feedback from senior management.' },
           ].map(item => (
@@ -1886,7 +1886,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           <div style={{ fontWeight: 700, color: 'var(--text-strong)', fontSize: 14, marginBottom: 12 }}>Questions to Ask Yourself</div>
           {['How do you perform on the team and in comparison to your colleagues?', 'Does your performance limit the success of your colleagues or does it help them?', 'Are you transparent with yourself about your performance?', 'Are you efficient?', 'What is one small thing you would change that you feel would have the biggest impact to your performance?', 'How would you describe your work ethic in one word?', 'Where have you made the most progress?', 'What makes you most proud?', 'Where have you had the most impact on others and what word best describes that impact?'].map((q, i) => (
             <div key={i} style={{ display: 'flex', gap: 8, padding: '7px 0', borderBottom: '1px solid var(--border)', fontSize: 13, color: 'var(--text-secondary)' }}>
-              <span style={{ color: 'var(--brand)', fontSize: 10, marginTop: 4, flexShrink: 0 }}>▸</span> {q}
+              <span style={{ color: 'var(--brand-text)', fontSize: 10, marginTop: 4, flexShrink: 0 }}>▸</span> {q}
             </div>
           ))}
         </div>
@@ -1915,7 +1915,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         </div>
         {filtered.map(t => (
           <div key={t.term} style={{ ...card, padding: '14px 18px' }}>
-            <div style={{ fontWeight: 700, color: 'var(--brand)', fontSize: 14, marginBottom: 5 }}>{t.term}</div>
+            <div style={{ fontWeight: 700, color: 'var(--brand-text)', fontSize: 14, marginBottom: 5 }}>{t.term}</div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{t.definition}</div>
           </div>
         ))}
@@ -2022,7 +2022,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                 style={navBtn(active)}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--surface)' }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
-                <Icon size={15} color={active ? 'var(--brand)' : 'var(--text-muted)'} />
+                <Icon size={15} color={active ? 'var(--brand-text)' : 'var(--text-muted)'} />
                 {!collapsed && item.label}
                 {/* Draft indicator on self-assessment */}
                 {item.id === 'self-assessment' && !collapsed && !isSubmitted && (
@@ -2051,7 +2051,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
               <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Supervisor</div>
               {manager ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--brand-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
                     {(manager.name || manager.email).charAt(0).toUpperCase()}
                   </div>
                   <div style={{ minWidth: 0 }}>
@@ -2066,7 +2066,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           )}
           {collapsed && manager && (
             <div title={manager.name || manager.email} style={{ display: 'flex', justifyContent: 'center', padding: '6px 0', marginBottom: 2 }}>
-              <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff' }}>
+              <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--brand-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff' }}>
                 {(manager.name || manager.email).charAt(0).toUpperCase()}
               </div>
             </div>
@@ -2077,7 +2077,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '8px' : '8px 8px', borderRadius: 'var(--radius-md)', border: '1px solid transparent', background: 'transparent', cursor: 'pointer', justifyContent: collapsed ? 'center' : 'flex-start', transition: 'all 0.15s' }}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--surface)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--brand-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
               {displayName.charAt(0).toUpperCase()}
             </div>
             {!collapsed && (
@@ -2120,7 +2120,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>Supervisor:</span>
-                <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff' }}>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--brand-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff' }}>
                   {(manager?.name || manager?.email || '?').charAt(0).toUpperCase()}
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{manager?.name || manager?.email || 'Not assigned'}</span>
@@ -2219,7 +2219,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
               ))}
             </div>
             {step < SA_STEPS.length - 1 ? (
-              <button onClick={() => goStep(step + 1)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 18px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <button onClick={() => goStep(step + 1)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 18px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                 Next <ChevronRight size={14} />
               </button>
             ) : <div style={{ width: 80 }} />}
@@ -2246,7 +2246,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setShowProfileEdit(false)} style={{ flex: 1, padding: '10px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={saveProfile} disabled={profileSaving || !profileName.trim()} style={{ flex: 2, padding: '10px', background: profileSaved ? 'linear-gradient(135deg, var(--success), var(--success))' : 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: (!profileName.trim() || profileSaving) ? 0.6 : 1 }}>
+              <button onClick={saveProfile} disabled={profileSaving || !profileName.trim()} style={{ flex: 2, padding: '10px', background: profileSaved ? 'linear-gradient(135deg, var(--success), var(--success))' : 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: (!profileName.trim() || profileSaving) ? 0.6 : 1 }}>
                 {profileSaved ? <><Check size={14} /> Saved!</> : profileSaving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Saving…</> : 'Save Profile'}
               </button>
             </div>
@@ -2262,7 +2262,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
             <p style={{ margin: '0 0 22px', color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6 }}>Once submitted, your self-assessment will be shared with your manager and cannot be edited.</p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setSubmitConfirm(false)} style={{ flex: 1, padding: '10px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13, cursor: 'pointer' }}>Go Back</button>
-              <button onClick={submitReview} disabled={saving} style={{ flex: 2, padding: '10px', background: 'linear-gradient(135deg, var(--brand-strong), var(--brand-strong))', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              <button onClick={submitReview} disabled={saving} style={{ flex: 2, padding: '10px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                 {saving ? 'Submitting…' : 'Yes, Submit'}
               </button>
             </div>
