@@ -8,7 +8,7 @@ import {
   Plus, LogOut, ExternalLink, Bell, Star, TrendingUp, BookMarked, Trash2, Pencil,
   House, ClipboardCheck, RefreshCcw, ChartNoAxesCombined, UserRoundCheck, Files,
 } from 'lucide-react'
-import { CalibrIcon, ThemeToggle } from '@/components/Brand'
+import { CalibrIcon, CalibrLogo, ThemeToggle } from '@/components/Brand'
 import { EmptyState, ErrorState, LoadingState } from '@/components/calibr'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -3170,12 +3170,11 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
         <div style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: collapsed ? '0 12px' : '0 16px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
           {!collapsed && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <CalibrIcon size={20} />
-              <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em', color: 'var(--text-strong)', whiteSpace: 'nowrap' }}>Calibr</span>
+              <CalibrLogo height={26} />
               <span style={{ padding: '2px 7px', borderRadius: 'var(--radius-pill)', fontSize: 9, fontWeight: 700, background: isDevAdmin ? 'var(--brand-tint)' : 'var(--brand-tint)', color: isDevAdmin ? 'var(--danger)' : 'var(--brand-text)', whiteSpace: 'nowrap' }}>{isDevAdmin ? 'DEV' : 'ADMIN'}</span>
             </div>
           )}
-          {collapsed && <CalibrIcon size={20} />}
+          {collapsed && <CalibrIcon size={24} />}
           <button onClick={() => setCollapsed(c => !c)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
             {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
           </button>

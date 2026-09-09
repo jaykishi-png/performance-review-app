@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { House, ClipboardCheck, UserRoundCheck, ClipboardList, Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft, LogOut, BookOpen, BookMarked, Bell, TrendingUp, BarChart2, AlertCircle, LayoutDashboard, ExternalLink } from 'lucide-react'
 import { SignaturePad, SignatureDisplay, encodeSignature, type SignatureResult } from '@/components/SignaturePad'
 import { useCompetencies } from '@/lib/use-competencies'
-import { CalibrIcon, ThemeToggle } from '@/components/Brand'
+import { CalibrIcon, CalibrLogo, ThemeToggle } from '@/components/Brand'
 import { EmptyState, Button as CButton } from '@/components/calibr'
 
 // §10 — the five scores map onto the restrained rating scale rather than a
@@ -4779,11 +4779,10 @@ export function PerformanceReviewForm() {
         <div style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: sidebarCollapsed ? '0 12px' : '0 16px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
           {!sidebarCollapsed && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <CalibrIcon size={20} />
-              <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em', color: 'var(--text-strong)', whiteSpace: 'nowrap' }}>Calibr</span>
+              <CalibrLogo height={26} />
             </div>
           )}
-          {sidebarCollapsed && <CalibrIcon size={20} />}
+          {sidebarCollapsed && <CalibrIcon size={24} />}
           <button onClick={() => setSidebarCollapsed(c => !c)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
             {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>

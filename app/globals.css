@@ -294,6 +294,19 @@ button {
   outline-offset: 2px;
 }
 
+/* ─── Brand asset variants ─────────────────────────────────────────────────
+ * The logo ships as separate light and dark files and must not be recoloured,
+ * so both are rendered and CSS picks one. Doing it in CSS rather than from the
+ * theme hook means the correct mark is right on first paint, with no flash of
+ * the wrong variant before hydration.
+ * ---------------------------------------------------------------------- */
+
+.calibr-on-light { display: block !important; }
+.calibr-on-dark { display: none !important; }
+
+[data-theme='dark'] .calibr-on-light { display: none !important; }
+[data-theme='dark'] .calibr-on-dark { display: block !important; }
+
 /* §17 — one icon system, one weight. The CSS property overrides Lucide's
  * stroke-width presentation attribute, so this sets it everywhere at once
  * without touching 500+ call sites. Icons that deliberately carry weight

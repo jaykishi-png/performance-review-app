@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
-import { CalibrIcon, ThemeToggle } from '@/components/Brand'
+import { CalibrLogo, CalibrTagline, ThemeToggle } from '@/components/Brand'
 
 type InviteInfo = {
   email: string
@@ -86,17 +86,14 @@ function LoginContent() {
         <div style={{ position: 'absolute', top: 16, right: 16 }}>
           <ThemeToggle compact />
         </div>
-        {/* Logo */}
-        <div style={{ display: 'flex', justifyContent: 'center', margin: '0 auto 24px' }}>
-          <CalibrIcon size={56} />
+        {/* Supplied horizontal lockup — icon and wordmark at their designed spacing */}
+        <div style={{ display: 'flex', justifyContent: 'center', margin: '0 auto 20px' }}>
+          <CalibrLogo height={46} />
         </div>
 
         {inviteLoading ? (
           // Loading state while fetching invite
           <>
-            <h1 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: 'var(--text-strong)' }}>
-              Calibr
-            </h1>
             <p style={{ margin: '0 0 36px', fontSize: 14, color: 'var(--text-muted)' }}>
               Loading your invitation…
             </p>
@@ -190,12 +187,7 @@ function LoginContent() {
         ) : (
           // Standard login
           <>
-            <h1 style={{ margin: '0 0 6px', fontSize: 28, fontWeight: 700, color: 'var(--text-strong)', letterSpacing: '-0.02em' }}>
-              Calibr
-            </h1>
-            <p style={{ margin: '0 0 20px', fontSize: 10, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--brand-text)' }}>
-              Align People. Unlock Potential.
-            </p>
+            <CalibrTagline style={{ display: 'block', marginBottom: 20 }} />
             <p style={{ margin: '0 0 36px', fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5 }}>
               Sign in with your work Google account to continue
             </p>

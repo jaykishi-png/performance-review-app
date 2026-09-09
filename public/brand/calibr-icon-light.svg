@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Calibr icon logo for light mode">
+<defs>
+  <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#14B8A6"/><stop offset="0.48" stop-color="#0F766E"/><stop offset="1" stop-color="#07172A"/>
+  </linearGradient>
+  <linearGradient id="checkLight" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#0F766E"/><stop offset="1" stop-color="#07172A"/>
+  </linearGradient>
+</defs>
+<g transform="translate(0 0) scale(1.7777777777777777)">
+    <circle cx="72" cy="72" r="48" fill="none" stroke="url(#ring)" stroke-width="18" stroke-dasharray="49.32 11" stroke-dashoffset="4" transform="rotate(-90 72 72)"/>
+    <path d="M43.8 66.8 Q46.8 63.9 49.8 66.8 L63.1 79.8 L94.2 47.8 Q97.3 44.7 100.3 47.7 Q103.4 50.7 100.5 53.8 L68.3 88.5 Q63.3 94 58.1 88.9 L43.7 74.2 Q40.8 71.2 43.8 66.8 Z" fill="url(#checkLight)"/>
+  </g>
+</svg>

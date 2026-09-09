@@ -8,7 +8,7 @@ import { ThemeProvider, THEME_INIT_SCRIPT } from '@/lib/theme'
 const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
-  weight: ['400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700', '800'],
   variable: '--font-inter',
 })
 

@@ -1,98 +1,81 @@
 'use client'
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useTheme } from '@/lib/theme'
 
 /**
- * Calibr brand marks and the theme control.
+ * Calibr brand marks.
  *
- * The logo is drawn as an inline SVG rather than shipped as an image file so it
- * inherits the theme: the ring and wordmark read from CSS variables, which is
- * what the brand guidelines call for with their light and dark variants.
+ * These render the supplied asset files. The logo is not redrawn, recoloured or
+ * recomposed here — the package ships separate light and dark files and its
+ * README forbids recolouring or altering the icon-to-wordmark spacing, so both
+ * variants are rendered and CSS shows the right one (.calibr-on-light /
+ * .calibr-on-dark in globals.css). Choosing in CSS rather than from the theme
+ * hook means the correct mark is painted on the first frame, with no flash of
+ * the wrong variant before hydration.
  *
- * The ring is four arcs with gaps — the "calibration" motif — around a check.
+ * Format differs by asset, deliberately:
+ *
+ *   icon   → SVG. No text, so it stays crisp at any size.
+ *   lockup → PNG. The SVG sets the wordmark in Inter ExtraBold, and an SVG
+ *            loaded through <img> cannot reach the page's webfonts, so the
+ *            wordmark would quietly fall back to Arial — lighter and wider than
+ *            designed. The supplied PNG is 2048px wide, far beyond any
+ *            placement here, so nothing is lost by using it.
  */
 
+const ICON_LIGHT = '/brand/calibr-icon-light.svg'
+const ICON_DARK = '/brand/calibr-icon-dark.svg'
+const LOCKUP_LIGHT = '/brand/calibr-horizontal-light.png'
+const LOCKUP_DARK = '/brand/calibr-horizontal-dark.png'
+
+/** Calibration-ring symbol on its own. */
 export function CalibrIcon({ size = 32 }: { size?: number }) {
-  // Four arcs of a 44-radius circle, each leaving a gap, drawn light-to-dark
-  // clockwise from the top as in the guidelines.
-  const arcs = [
-    { d: 'M 50 6 A 44 44 0 0 1 94 50', color: 'var(--brand-text)' },
-    { d: 'M 94 50 A 44 44 0 0 1 68 90', color: 'var(--brand-text)' },
-    { d: 'M 62 94 A 44 44 0 0 1 16 71', color: 'var(--brand-text)' },
-    { d: 'M 9 62 A 44 44 0 0 1 50 6', color: 'var(--brand-text)' },
-  ]
+  // `display` is deliberately absent: the .calibr-on-* classes own it, and an
+  // inline value would outrank them and show both variants at once.
+  const common = { width: size, height: size, alt: 'Calibr', style: { flexShrink: 0 } }
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 100 100"
-      fill="none"
-      data-icon-raw
-      role="img"
-      aria-label="Calibr"
-      style={{ display: 'block', flexShrink: 0 }}
-    >
-      {arcs.map((a, i) => (
-        <path key={i} d={a.d} stroke={a.color} strokeWidth={11} strokeLinecap="round" />
-      ))}
-      <path
-        d="M 31 51 L 44 64 L 70 37"
-        stroke="var(--text-strong)"
-        strokeWidth={11}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <>
+      <img {...common} className="calibr-on-light" src={ICON_LIGHT} />
+      <img {...common} className="calibr-on-dark" src={ICON_DARK} />
+    </>
   )
 }
 
-export function CalibrLogo({
-  size = 28,
-  showTagline = false,
-  stacked = false,
-}: {
-  size?: number
-  showTagline?: boolean
-  stacked?: boolean
-}) {
+/**
+ * Primary horizontal lockup. The artwork is 600×160, so height drives the size
+ * and width follows the artwork's own ratio — the spacing between icon and
+ * wordmark is the designed one and is never adjusted here.
+ */
+export function CalibrLogo({ height = 30 }: { height?: number }) {
+  const width = Math.round(height * (600 / 160))
+  // `display` is owned by the .calibr-on-* classes — see CalibrIcon.
+  const common = { width, height, alt: 'Calibr', style: { flexShrink: 0 } }
   return (
-    <div
+    <>
+      <img {...common} className="calibr-on-light" src={LOCKUP_LIGHT} />
+      <img {...common} className="calibr-on-dark" src={LOCKUP_DARK} />
+    </>
+  )
+}
+
+/** The tagline, for the login screen and other brand moments. */
+export function CalibrTagline({ style }: { style?: React.CSSProperties }) {
+  return (
+    <span
       style={{
-        display: 'flex',
-        flexDirection: stacked ? 'column' : 'row',
-        alignItems: 'center',
-        gap: stacked ? 8 : 10,
+        fontSize: 10,
+        fontWeight: 600,
+        letterSpacing: '0.14em',
+        textTransform: 'uppercase',
+        color: 'var(--brand-text)',
+        whiteSpace: 'nowrap',
+        ...style,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <CalibrIcon size={size} />
-        <span
-          style={{
-            fontSize: size * 0.86,
-            fontWeight: 700,
-            letterSpacing: '-0.02em',
-            color: 'var(--text-strong)',
-            lineHeight: 1,
-          }}
-        >
-          Calibr
-        </span>
-      </div>
-      {showTagline && (
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 500,
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            color: 'var(--text-muted)',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Align People. Unlock Potential.
-        </span>
-      )}
-    </div>
+      Align People. Unlock Potential.
+    </span>
   )
 }
 
