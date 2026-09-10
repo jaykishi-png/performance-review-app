@@ -1117,6 +1117,11 @@ function GoalExplanationDraft({
 
 // ─── Goals step ───────────────────────────────────────────────────────────────
 
+/** Loose name key used to match saves that predate stored employee ids. */
+function normalizeName(name?: string): string {
+  return (name ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
 function StepGoals({
   form,
   update,
@@ -1135,10 +1140,16 @@ function StepGoals({
   const [trackerLoading, setTrackerLoading] = useState(false)
   const [trackerImported, setTrackerImported] = useState(false)
 
-  // Previous reviews that have at least one goal with text
-  const importable = saves.filter(
-    s => s.id !== currentReviewId && s.form.nextGoals?.some(g => g.text.trim())
-  )
+  // This employee's own previous reviews that have at least one goal with text.
+  // Never offer another employee's goals for import.
+  const importable = saves.filter(s => {
+    if (s.id === currentReviewId) return false
+    if (!s.form.nextGoals?.some(g => g.text.trim())) return false
+    // Prefer the stable employee id; fall back to the name for older saves without one.
+    if (employeeId && s.employeeId) return s.employeeId === employeeId
+    const name = normalizeName(form.employeeName)
+    return !!name && normalizeName(s.employeeName) === name
+  })
 
   function updateGoal(i: number, patch: Partial<GoalEntry>) {
     const goals = [...form.goals]
@@ -1224,8 +1235,8 @@ function StepGoals({
               {importConfirm ? (
                 <div className="rounded-lg border border-amber-700/40 bg-amber-900/10 p-3 space-y-2">
                   <p className="text-[12px] text-amber-300">
-                    Replace current goals with goals from <strong>{importConfirm.employeeName}</strong>
-                    {importConfirm.form.appraisalPeriod ? ` (${importConfirm.form.appraisalPeriod})` : ''}?
+                    Replace current goals with the goals from{' '}
+                    <strong>{importConfirm.form.appraisalPeriod || 'this employee’s previous review'}</strong>?
                   </p>
                   <div className="flex gap-2">
                     <button
@@ -1255,9 +1266,11 @@ function StepGoals({
                       className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-[var(--surface)] bg-[var(--surface-inset)] hover:border-blue-700/50 hover:bg-blue-900/10 transition-all text-left"
                     >
                       <div>
-                        <p className="text-[12px] font-medium text-gray-200">{s.employeeName}</p>
+                        <p className="text-[12px] font-medium text-gray-200">
+                          {s.form.appraisalPeriod || 'Previous review'}
+                        </p>
                         <p className="text-[10px] text-gray-600 mt-0.5">
-                          {s.form.appraisalPeriod || 'No period set'} · {goalCount} goal{goalCount !== 1 ? 's' : ''}
+                          {goalCount} goal{goalCount !== 1 ? 's' : ''}
                         </p>
                       </div>
                       <span className="text-[10px] text-blue-400 font-medium">Import →</span>
