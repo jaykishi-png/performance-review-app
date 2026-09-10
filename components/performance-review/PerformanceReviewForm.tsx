@@ -3362,7 +3362,7 @@ export function PerformanceReviewForm() {
 
               {/* Right: Performance Review */}
               <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 640, overflow: 'hidden' }}>
-                <div style={{ padding: '12px 16px', background: 'var(--surface-inset)', border: '1px solid var(--info-border)', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
+                <div style={{ padding: '12px 16px', background: 'var(--info-bg)', border: '1px solid var(--info-border)', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--info)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Performance Review</div>
                   {rmForm.reviewDate && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Review Date: {rmForm.reviewDate}</div>}
                 </div>
@@ -3808,7 +3808,7 @@ export function PerformanceReviewForm() {
 
           {/* Right: Manager's Review of Me */}
           <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 680, overflow: 'hidden' }}>
-            <div style={{ padding: '12px 16px', background: 'var(--surface-inset)', border: '1px solid var(--info-border)', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
+            <div style={{ padding: '12px 16px', background: 'var(--info-bg)', border: '1px solid var(--info-border)', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--info)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Manager Performance Review</div>
               {fd?.reviewDate ? <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Review Date: {String(fd.reviewDate)}</div> : null}
             </div>
@@ -5844,7 +5844,7 @@ export function PerformanceReviewForm() {
 
                       {/* Right: Performance Review */}
                       <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 640, overflow: 'hidden' }}>
-                        <div style={{ padding: '12px 16px', background: 'var(--surface-inset)', border: '1px solid var(--info-border)', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
+                        <div style={{ padding: '12px 16px', background: 'var(--info-bg)', border: '1px solid var(--info-border)', borderRadius: '10px 10px 0 0', borderBottom: 'none' }}>
                           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--info)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Performance Review</div>
                           {mForm.reviewDate && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Review Date: {mForm.reviewDate}</div>}
                         </div>
