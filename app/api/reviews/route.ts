@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     if (singleId) {
       const query = serviceClient
         .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at')
+        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at, meeting_scheduled_at, meeting_location')
         .eq('id', singleId)
       if (role === 'middle_manager') {
         // can access reviews they created OR reviews where they are the employee
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
     if (role === 'middle_manager') {
       const { data: mgrData, error: mgrErr } = await serviceClient
         .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at')
+        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at, meeting_scheduled_at, meeting_location')
         .eq('user_id', user.id)
         .order('saved_at', { ascending: false })
       if (mgrErr) return NextResponse.json({ error: mgrErr.message }, { status: 500 })
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
       // data in either capacity.
       const { data: empData, error: empErr } = await serviceClient
         .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at, meeting_confirmed_at')
+        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at, meeting_confirmed_at, meeting_scheduled_at, meeting_location')
         .eq('employee_id', user.id)
         .not('meeting_confirmed_at', 'is', null)
         .order('updated_at', { ascending: false })
@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
     if (role === 'employee') {
       const { data, error } = await serviceClient
         .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at, meeting_confirmed_at')
+        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at, meeting_confirmed_at, meeting_scheduled_at, meeting_location')
         .eq('employee_id', user.id)
         .not('meeting_confirmed_at', 'is', null)
         .order('updated_at', { ascending: false })
@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
     // Manager: own reviews only
     const { data, error } = await serviceClient
       .from('reviews')
-      .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at')
+      .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at, meeting_scheduled_at, meeting_location')
       .eq('user_id', user.id)
       .order('saved_at', { ascending: false })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

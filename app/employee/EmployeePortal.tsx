@@ -350,6 +350,8 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
   const [krExpandedIds, setKrExpandedIds] = useState<Set<string>>(new Set())
   // Notifications
   const [showNotifications, setShowNotifications] = useState(false)
+  // Scheduled review meeting — metadata only; the review itself stays gated
+  const [upcomingMeeting, setUpcomingMeeting] = useState<{ id: string; meeting_scheduled_at: string; meeting_location: string | null } | null>(null)
   const [managerReviews, setManagerReviews] = useState<Array<{
     id: string
     employee_name: string
@@ -597,6 +599,15 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     setGoalsLoading(true)
     fetch('/api/goals').then(r => r.json()).then(d => { if (d.goals) setGoals(d.goals) }).finally(() => setGoalsLoading(false))
   }, [page])
+
+  useEffect(() => {
+    fetch('/api/reviews/upcoming-meeting')
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { meeting: { id: string; meeting_scheduled_at: string; meeting_location: string | null } | null } | null) => {
+        setUpcomingMeeting(d?.meeting ?? null)
+      })
+      .catch(() => {})
+  }, [])
 
   // Fetch manager reviews when Reviews page opens
   useEffect(() => {
@@ -2145,6 +2156,20 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
         )}
 
 
+        {/* Upcoming review meeting — the employee's only signal that one is booked */}
+        {upcomingMeeting && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 28px', background: 'var(--brand-tint)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+            <span style={{ fontSize: 15 }}>🗓️</span>
+            <span style={{ fontSize: 13, color: 'var(--text)' }}>
+              Your performance review meeting is scheduled for{' '}
+              <strong style={{ color: 'var(--brand-text)' }}>
+                {new Date(upcomingMeeting.meeting_scheduled_at).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
+              </strong>
+              {upcomingMeeting.meeting_location ? ` · ${upcomingMeeting.meeting_location}` : ''}
+            </span>
+          </div>
+        )}
+
         {/* Content */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {page === 'self-assessment' && saLocked && (
@@ -2171,8 +2196,10 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                           {w.isDone && !isCurrent && <span style={{ fontSize: 10, color: 'var(--success)', flexShrink: 0 }}>✓</span>}
                           <span style={{ fontSize: 12, color: isCurrent ? 'var(--text-strong)' : w.isDone ? 'var(--text-muted)' : 'var(--text-secondary)', fontWeight: isCurrent ? 600 : 400 }}>{w.label}</span>
                         </div>
-                        <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>
-                          {w.phase !== 'complete' ? `${new Date(w.open).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(w.close).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : (bothSigned ? 'Complete' : 'Pending')}
+                        <span style={{ fontSize: 11, color: w.phase === 'meeting' && upcomingMeeting ? 'var(--brand-text)' : 'var(--text-faint)' }}>
+                          {w.phase === 'meeting' && upcomingMeeting
+                            ? new Date(upcomingMeeting.meeting_scheduled_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                            : w.phase !== 'complete' ? `${new Date(w.open).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(w.close).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : (bothSigned ? 'Complete' : 'Pending')}
                         </span>
                       </div>
                     )

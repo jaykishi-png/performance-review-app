@@ -37,6 +37,8 @@ type ReviewRecord = {
   manager_signature: string | null; employee_signature: string | null;
   admin_approved_at: string | null; employee_id?: string | null;
   meeting_confirmed_at?: string | null;
+  meeting_scheduled_at?: string | null;
+  meeting_location?: string | null;
   // Rows whose source is not 'review' are placeholders synthesised in
   // app/admin/page.tsx and have no `reviews` record behind them:
   // 'self_assessment' — employee has started one, manager has not created the review
@@ -208,6 +210,9 @@ function reviewStage(r: ReviewRecord): string {
   if (r.manager_signed_at) return 'Mgr signed'
   if (r.employee_signed_at) return 'Emp signed'
   if (r.meeting_confirmed_at) return 'Meeting confirmed'
+  // Display only — deliberately not weighted in reviewPct, so historical
+  // completion percentages stay comparable.
+  if (r.meeting_scheduled_at) return 'Meeting scheduled'
   if (r.max_step >= TOTAL_CONTENT_STEPS) return 'Review submitted'
   if (r.max_step > 0) return `Review step ${r.max_step}/${TOTAL_CONTENT_STEPS}`
   if (r.sa_submitted_at) return 'SA submitted'
@@ -3575,6 +3580,19 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
               <div style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '10px 14px' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Last Updated</div>
                 <div style={{ fontSize: 13, color: 'var(--text)' }}>{new Date(viewingReview.updated_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+              </div>
+              <div style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '10px 14px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Meeting</div>
+                <div style={{ fontSize: 13, color: viewingReview.meeting_confirmed_at ? 'var(--success)' : viewingReview.meeting_scheduled_at ? 'var(--text)' : 'var(--text-faint)' }}>
+                  {viewingReview.meeting_confirmed_at
+                    ? `Confirmed ${new Date(viewingReview.meeting_confirmed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                    : viewingReview.meeting_scheduled_at
+                      ? new Date(viewingReview.meeting_scheduled_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                      : 'Not scheduled'}
+                </div>
+                {!viewingReview.meeting_confirmed_at && viewingReview.meeting_location && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{viewingReview.meeting_location}</div>
+                )}
               </div>
               <div style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-md)', padding: '10px 14px' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Manager Signed</div>

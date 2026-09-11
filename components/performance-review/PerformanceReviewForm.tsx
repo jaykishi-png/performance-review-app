@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type CSSProperties } from 'react'
 import { House, ClipboardCheck, UserRoundCheck, ClipboardList, Copy, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Loader2, Star, History, X, Clock, RefreshCw, Users, Plus, Pencil, Trash2, Settings, FileText, Link, AlignLeft, LogOut, BookOpen, BookMarked, Bell, TrendingUp, BarChart2, AlertCircle, LayoutDashboard, ExternalLink, Lock } from 'lucide-react'
 import { SignaturePad, SignatureDisplay, encodeSignature, type SignatureResult } from '@/components/SignaturePad'
 import { useCompetencies } from '@/lib/use-competencies'
@@ -101,24 +101,44 @@ const STEPS = [
 
 // ─── Meeting sequence strip ───────────────────────────────────────────────────
 
+/** Renders a stored UTC timestamp in the viewer's own zone, never a bare time. */
+function formatMeetingDate(iso: string, opts?: { short?: boolean }): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleString('en-US', opts?.short
+    ? { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }
+    : { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
+}
+
+
 /**
  * Shows the three things that happen in order before a review is signed:
  * schedule the meeting, hold it, then confirm it and collect signatures.
- * Only `confirmed` and `bothSigned` are knowable today, so steps 1 and 2 stay
- * "to do" until the manager confirms the meeting took place.
+ *
+ * A scheduled time in the past does NOT mark the meeting as held — only the
+ * manager's confirmation does.
  */
 function MeetingSteps({
   employeeName,
+  scheduledAt,
   confirmed,
   bothSigned,
 }: {
   employeeName: string
+  scheduledAt?: string
   confirmed: boolean
   bothSigned: boolean
 }) {
+  const scheduled = !!scheduledAt
   const steps: Array<{ label: string; state: 'done' | 'current' | 'todo' }> = [
-    { label: 'Schedule the meeting', state: confirmed ? 'done' : 'current' },
-    { label: `Hold the meeting with ${employeeName || 'the employee'}`, state: confirmed ? 'done' : 'todo' },
+    {
+      label: scheduled ? `Scheduled for ${formatMeetingDate(scheduledAt!, { short: true })}` : 'Schedule the meeting',
+      state: scheduled || confirmed ? 'done' : 'current',
+    },
+    {
+      label: `Hold the meeting with ${employeeName || 'the employee'}`,
+      state: confirmed ? 'done' : scheduled ? 'current' : 'todo',
+    },
     {
       label: 'Confirm it took place, then sign',
       state: bothSigned ? 'done' : confirmed ? 'current' : 'todo',
@@ -186,6 +206,161 @@ function MeetingSteps({
   )
 }
 
+// ─── Schedule meeting card ────────────────────────────────────────────────────
+
+/** `datetime-local` wants local wall-clock time, so convert out of stored UTC. */
+function isoToLocalInput(iso?: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => `${n}`.padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+/** Next weekday at 10:00 — a sensible slot the manager can accept or change. */
+function defaultMeetingSlot(): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1)
+  d.setHours(10, 0, 0, 0)
+  return isoToLocalInput(d.toISOString())
+}
+
+function ScheduleMeetingCard({
+  reviewId,
+  employeeName,
+  scheduledAt,
+  location,
+  onScheduled,
+}: {
+  reviewId: string
+  employeeName: string
+  scheduledAt?: string
+  location?: string
+  onScheduled: (scheduledAt: string, location: string | null) => void
+}) {
+  const [editing, setEditing] = useState(!scheduledAt)
+  const [dateValue, setDateValue] = useState(() => isoToLocalInput(scheduledAt) || defaultMeetingSlot())
+  const [locationValue, setLocationValue] = useState(location ?? '')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function save(notify: boolean) {
+    if (!dateValue) { setError('Pick a date and time first.'); return }
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/reviews/schedule-meeting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reviewId,
+          scheduledAt: new Date(dateValue).toISOString(),
+          location: locationValue,
+          notify,
+        }),
+      })
+      const data = await res.json() as { ok?: boolean; scheduledAt?: string; location?: string | null; error?: string }
+      if (!res.ok) throw new Error(data.error ?? 'Failed to schedule the meeting')
+      onScheduled(data.scheduledAt ?? new Date(dateValue).toISOString(), data.location ?? null)
+      setEditing(false)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const inputStyle: CSSProperties = {
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-md)',
+    padding: '8px 12px',
+    fontSize: 13,
+    color: 'var(--text)',
+    outline: 'none',
+  }
+
+  return (
+    <div style={{ background: 'var(--surface-inset)', border: `1px solid ${scheduledAt ? 'var(--brand-tint)' : 'var(--border)'}`, borderRadius: 'var(--radius-lg)', padding: '20px 24px', marginBottom: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 12 }}>Schedule the Meeting</div>
+
+      {scheduledAt && !editing ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--brand-text)' }}>
+              {formatMeetingDate(scheduledAt)}
+            </div>
+            {location && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{location}</div>}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              style={{ padding: '7px 14px', background: 'var(--border)', color: 'var(--brand-text)', border: '1px solid var(--surface-raised)', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Reschedule
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => save(true)}
+              style={{ padding: '7px 14px', background: 'none', color: loading ? 'var(--text-muted)' : 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer' }}
+            >
+              {loading ? 'Sending…' : 'Resend details'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            This emails {employeeName || 'the employee'} the date, time and location. Times are shown in your own time zone.
+          </p>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <input
+              type="datetime-local"
+              value={dateValue}
+              onChange={e => setDateValue(e.target.value)}
+              style={{ ...inputStyle, flex: '0 0 auto' }}
+            />
+            <input
+              type="text"
+              value={locationValue}
+              onChange={e => setLocationValue(e.target.value)}
+              placeholder="Location or meeting link (optional)"
+              style={{ ...inputStyle, flex: '1 1 220px' }}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              disabled={loading || !dateValue}
+              onClick={() => save(true)}
+              style={{ padding: '9px 20px', background: (loading || !dateValue) ? 'var(--border)' : 'var(--brand-strong)', color: (loading || !dateValue) ? 'var(--text-muted)' : '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: (loading || !dateValue) ? 'not-allowed' : 'pointer' }}
+            >
+              {loading ? 'Scheduling…' : `Schedule Meeting & Notify ${employeeName || 'Employee'}`}
+            </button>
+            {scheduledAt && (
+              <button
+                type="button"
+                onClick={() => { setEditing(false); setDateValue(isoToLocalInput(scheduledAt)); setLocationValue(location ?? ''); setError('') }}
+                style={{ padding: '9px 14px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+          {error && (
+            <div style={{ padding: '8px 12px', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 'var(--radius-md)', fontSize: 12, color: 'var(--danger)' }}>
+              {error}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Direct Reports ───────────────────────────────────────────────────────────
 
 interface DirectReport {
@@ -248,6 +423,8 @@ interface SavedReview {
   managerSignedAt?: string
   managerSignature?: string
   meetingConfirmedAt?: string
+  meetingScheduledAt?: string
+  meetingLocation?: string
 }
 
 /** Returns true if a step's required fields are filled — independent of current position. */
@@ -2759,6 +2936,7 @@ export function PerformanceReviewForm() {
     comparison_report?: string | null; manager_signed_at?: string | null
     manager_signature?: string | null; employee_signed_at?: string | null
     employee_signature?: string | null; meeting_confirmed_at?: string | null
+    meeting_scheduled_at?: string | null; meeting_location?: string | null
     admin_approved_at?: string | null
   }>>([])
   const [myReviewEmpSigLoading, setMyReviewEmpSigLoading] = useState(false)
@@ -2847,6 +3025,8 @@ export function PerformanceReviewForm() {
       managerSignedAt: (r.manager_signed_at as string) || undefined,
       managerSignature: (r.manager_signature as string) || undefined,
       meetingConfirmedAt: (r.meeting_confirmed_at as string) || undefined,
+      meetingScheduledAt: (r.meeting_scheduled_at as string) || undefined,
+      meetingLocation: (r.meeting_location as string) || undefined,
     }
   }
 
@@ -2933,6 +3113,8 @@ export function PerformanceReviewForm() {
               employee_signed_at: r.employee_signed_at as string | null,
               employee_signature: r.employee_signature as string | null,
               meeting_confirmed_at: r.meeting_confirmed_at as string | null,
+              meeting_scheduled_at: r.meeting_scheduled_at as string | null,
+              meeting_location: r.meeting_location as string | null,
               admin_approved_at: r.admin_approved_at as string | null,
             })))
           }
@@ -3284,8 +3466,10 @@ export function PerformanceReviewForm() {
                   status = 'Awaiting Employee Signature'; statusColor = 'var(--warning)'; statusBg = 'var(--warning-bg)'; statusBorder = 'var(--warning-border)'
                 } else if (confirmed) {
                   status = 'Meeting Confirmed'; statusColor = 'var(--info)'; statusBg = 'var(--surface-inset)'; statusBorder = 'var(--info-border)'
+                } else if (s.meetingScheduledAt) {
+                  status = 'Meeting Scheduled'; statusColor = 'var(--info)'; statusBg = 'var(--surface-inset)'; statusBorder = 'var(--info-border)'
                 } else {
-                  status = 'Pending Meeting'; statusColor = 'var(--text-muted)'; statusBg = 'var(--surface)'; statusBorder = 'var(--border)'
+                  status = 'Not Scheduled'; statusColor = 'var(--text-muted)'; statusBg = 'var(--surface)'; statusBorder = 'var(--border)'
                 }
                 return (
                   <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: 'var(--surface-inset)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }}>
@@ -3295,7 +3479,11 @@ export function PerformanceReviewForm() {
                       </div>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{s.employeeName}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{s.employeePosition}{s.managerSignedAt ? ` · Signed ${new Date(s.managerSignedAt).toLocaleDateString()}` : ''}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                          {s.employeePosition}
+                          {s.meetingScheduledAt && !s.meetingConfirmedAt ? ` · ${formatMeetingDate(s.meetingScheduledAt, { short: true })}` : ''}
+                          {s.managerSignedAt ? ` · Signed ${new Date(s.managerSignedAt).toLocaleDateString()}` : ''}
+                        </div>
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
@@ -3348,6 +3536,7 @@ export function PerformanceReviewForm() {
         {/* Sequence: schedule → hold → sign. Signing stays locked until the meeting is confirmed. */}
         <MeetingSteps
           employeeName={rmSave.employeeName}
+          scheduledAt={rmSave.meetingScheduledAt}
           confirmed={rmConfirmed}
           bothSigned={rmBothSigned}
         />
@@ -3509,6 +3698,21 @@ export function PerformanceReviewForm() {
           </>
         )}
 
+        {/* Scheduling — hidden once the meeting is confirmed, since it has already happened */}
+        {!rmConfirmed && (
+          <ScheduleMeetingCard
+            reviewId={rmSave.id}
+            employeeName={rmSave.employeeName}
+            scheduledAt={rmSave.meetingScheduledAt}
+            location={rmSave.meetingLocation}
+            onScheduled={(when, where) => {
+              setSaves(prev => prev.map(s => s.id === rmSave.id
+                ? { ...s, meetingScheduledAt: when, meetingLocation: where ?? undefined }
+                : s))
+            }}
+          />
+        )}
+
         {/* Meeting Confirmation + Signatures */}
         <div style={{ background: 'var(--surface-inset)', border: `1px solid ${rmConfirmed ? 'var(--success-border)' : 'var(--border)'}`, borderRadius: 'var(--radius-lg)', padding: '20px 24px' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 16 }}>Confirm Meeting &amp; Signatures</div>
@@ -3565,6 +3769,13 @@ export function PerformanceReviewForm() {
                     place, signing invitations are emailed to you and {rmSave.employeeName} and the
                     signature fields below unlock.
                   </p>
+                  {!rmSave.meetingScheduledAt && (
+                    /* Not a block: a meeting held outside Calibr must still be confirmable */
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', background: 'var(--warning-bg)', border: '1px solid var(--warning-border)', borderRadius: 'var(--radius-md)', fontSize: 12, color: 'var(--warning)', lineHeight: 1.5 }}>
+                      <AlertCircle size={13} style={{ flexShrink: 0, marginTop: 1 }} />
+                      <span>No meeting was scheduled in Calibr — confirm only if the meeting took place.</span>
+                    </div>
+                  )}
                   <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
                     <input
                       type="checkbox"
@@ -5792,9 +6003,24 @@ export function PerformanceReviewForm() {
                     stage = 'Awaiting Employee Signature'; stageColor = 'var(--warning)'; stageBg = 'var(--warning-bg)'; stageBorder = 'var(--warning-border)'
                     actionLabel = 'Continue Meeting'
                     actionFn = () => openMeeting(save!.id)
+                  } else if (save?.meetingConfirmedAt) {
+                    stage = 'Awaiting Signatures'; stageColor = 'var(--warning)'; stageBg = 'var(--warning-bg)'; stageBorder = 'var(--warning-border)'
+                    actionLabel = 'Open Meeting'
+                    actionFn = () => openMeeting(save!.id)
+                  } else if (save?.meetingScheduledAt) {
+                    // A scheduled time already past is the state worth nudging
+                    const past = new Date(save.meetingScheduledAt) < new Date()
+                    stage = past
+                      ? `Meeting was ${formatMeetingDate(save.meetingScheduledAt, { short: true })} — confirm it took place`
+                      : `Meeting Scheduled — ${formatMeetingDate(save.meetingScheduledAt, { short: true })}`
+                    stageColor = past ? 'var(--warning)' : 'var(--info)'
+                    stageBg = past ? 'var(--warning-bg)' : 'var(--surface-inset)'
+                    stageBorder = past ? 'var(--warning-border)' : 'var(--info-border)'
+                    actionLabel = 'Open Meeting'
+                    actionFn = () => openMeeting(save!.id)
                   } else if (pct === 100) {
                     stage = 'Ready for 1:1 Meeting'; stageColor = 'var(--info)'; stageBg = 'var(--surface-inset)'; stageBorder = 'var(--info-border)'
-                    actionLabel = 'Conduct Meeting →'
+                    actionLabel = 'Schedule Meeting →'
                     actionFn = () => openMeeting(save!.id)
                   } else if (pct > 0) {
                     stage = 'Review In Progress'; stageColor = 'var(--brand-soft)'; stageBg = 'var(--brand-tint)'; stageBorder = 'var(--brand-tint)'

@@ -90,7 +90,7 @@ export default async function AdminPage() {
   // Fetch all reviews — redact comparison_report for dev_admin
   const { data: reviewsRaw } = await serviceClient
     .from('reviews')
-    .select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, admin_approved_at, employee_id, meeting_confirmed_at')
+    .select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, admin_approved_at, employee_id, meeting_confirmed_at, meeting_scheduled_at, meeting_location')
     .order('updated_at', { ascending: false })
 
   const reviews = (reviewsRaw ?? []).map(r => ({
@@ -228,6 +228,8 @@ export default async function AdminPage() {
         employee_signature: null,
         admin_approved_at: null,
         meeting_confirmed_at: null,
+        meeting_scheduled_at: null,
+        meeting_location: null,
         employee_id: c.employee_id,
         source: 'cycle' as const,
         sa_status: null,
@@ -259,6 +261,8 @@ export default async function AdminPage() {
         source?: 'review' | 'self_assessment' | 'cycle'; sa_status?: string | null; sa_submitted_at?: string | null;
         sa_progress?: number;
         meeting_confirmed_at?: string | null;
+        meeting_scheduled_at?: string | null;
+        meeting_location?: string | null;
       }[]}
       employeeCycles={(employeeCycles ?? []) as {
         id: string; employee_id: string; anniversary_year: number; phase: string
