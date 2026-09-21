@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { MEETING_SCHEDULE_COLUMNS, selectTolerant, type QueryError } from '@/lib/optional-columns'
 
 async function getActorRole(userId: string): Promise<string> {
   const serviceClient = createServiceClient()
@@ -10,6 +11,8 @@ async function getActorRole(userId: string): Promise<string> {
 export const dynamic = 'force-dynamic'
 
 // GET — load reviews scoped by role. Pass ?id=xxx to fetch a single review with full form_data.
+type ReviewRow = Record<string, unknown>
+
 export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient()
@@ -22,28 +25,32 @@ export async function GET(req: NextRequest) {
     // Single-review fetch — returns full form_data; dev_admin gets form_data but no comparison_report/drive_url
     const singleId = new URL(req.url).searchParams.get('id')
     if (singleId) {
-      const query = serviceClient
-        .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at, meeting_scheduled_at, meeting_location')
-        .eq('id', singleId)
-      if (role === 'middle_manager') {
-        // can access reviews they created OR reviews where they are the employee
-        query.or(`user_id.eq.${user.id},employee_id.eq.${user.id}`)
-      } else if (role !== 'admin' && role !== 'dev_admin') {
-        query.eq('user_id', user.id)
+      const buildSingle = async (columns: string) => {
+        const query = serviceClient
+          .from('reviews')
+          .select(columns)
+          .eq('id', singleId)
+        if (role === 'middle_manager') {
+          // can access reviews they created OR reviews where they are the employee
+          query.or(`user_id.eq.${user.id},employee_id.eq.${user.id}`)
+        } else if (role !== 'admin' && role !== 'dev_admin') {
+          query.eq('user_id', user.id)
+        }
+        const res = await query.single()
+        return res as unknown as { data: ReviewRow | null; error: QueryError | null }
       }
-      const { data, error } = await query.single()
+      const { data, error } = await selectTolerant('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at', MEETING_SCHEDULE_COLUMNS, buildSingle)
       if (error || !data) return NextResponse.json({ error: error?.message ?? 'Not found', code: error?.code, hint: error?.hint, role }, { status: 404 })
       // Reached as the employee rather than the author (middle_manager viewing their
       // own review): withhold until the manager has confirmed the review meeting.
-      const single = data as { user_id: string; employee_id: string | null; meeting_confirmed_at: string | null }
+      const single = data as unknown as { user_id: string; employee_id: string | null; meeting_confirmed_at: string | null }
       if (role !== 'admin' && role !== 'dev_admin'
           && single.employee_id === user.id && single.user_id !== user.id
           && !single.meeting_confirmed_at) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 })
       }
       if (role === 'dev_admin') {
-        return NextResponse.json({ review: { ...(data as Record<string, unknown>), comparison_report: null, drive_url: null, _contentRedacted: true } })
+        return NextResponse.json({ review: { ...(data as unknown as Record<string, unknown>), comparison_report: null, drive_url: null, _contentRedacted: true } })
       }
       return NextResponse.json({ review: data })
     }
@@ -68,22 +75,28 @@ export async function GET(req: NextRequest) {
 
     // Middle manager: reviews they created (as manager) + reviews where they are the employee
     if (role === 'middle_manager') {
-      const { data: mgrData, error: mgrErr } = await serviceClient
-        .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at, meeting_scheduled_at, meeting_location')
-        .eq('user_id', user.id)
-        .order('saved_at', { ascending: false })
+      const { data: mgrData, error: mgrErr } = await selectTolerant<ReviewRow[]>('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at', MEETING_SCHEDULE_COLUMNS, async columns => {
+        const res = await serviceClient
+          .from('reviews')
+          .select(columns)
+          .eq('user_id', user.id)
+          .order('saved_at', { ascending: false })
+        return res as unknown as { data: ReviewRow[] | null; error: QueryError | null }
+      })
       if (mgrErr) return NextResponse.json({ error: mgrErr.message }, { status: 500 })
 
       // Reviews where the middle_manager is the employee — same meeting-confirmed
       // gate as the plain employee branch below, so the same person sees the same
       // data in either capacity.
-      const { data: empData, error: empErr } = await serviceClient
-        .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at, meeting_confirmed_at, meeting_scheduled_at, meeting_location')
-        .eq('employee_id', user.id)
-        .not('meeting_confirmed_at', 'is', null)
-        .order('updated_at', { ascending: false })
+      const { data: empData, error: empErr } = await selectTolerant<ReviewRow[]>('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at, meeting_confirmed_at', MEETING_SCHEDULE_COLUMNS, async columns => {
+        const res = await serviceClient
+          .from('reviews')
+          .select(columns)
+          .eq('employee_id', user.id)
+          .not('meeting_confirmed_at', 'is', null)
+          .order('updated_at', { ascending: false })
+        return res as unknown as { data: ReviewRow[] | null; error: QueryError | null }
+      })
       if (empErr) return NextResponse.json({ error: empErr.message }, { status: 500 })
 
       return NextResponse.json({ reviews: mgrData ?? [], myReviews: empData ?? [] })
@@ -93,22 +106,28 @@ export async function GET(req: NextRequest) {
     // confirmed the review meeting took place. Employees must not see their
     // performance review before that meeting — gate server-side, not in the UI.
     if (role === 'employee') {
-      const { data, error } = await serviceClient
-        .from('reviews')
-        .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at, meeting_confirmed_at, meeting_scheduled_at, meeting_location')
-        .eq('employee_id', user.id)
-        .not('meeting_confirmed_at', 'is', null)
-        .order('updated_at', { ascending: false })
+      const { data, error } = await selectTolerant<ReviewRow[]>('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, admin_approved_at, meeting_confirmed_at', MEETING_SCHEDULE_COLUMNS, async columns => {
+        const res = await serviceClient
+          .from('reviews')
+          .select(columns)
+          .eq('employee_id', user.id)
+          .not('meeting_confirmed_at', 'is', null)
+          .order('updated_at', { ascending: false })
+        return res as unknown as { data: ReviewRow[] | null; error: QueryError | null }
+      })
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
       return NextResponse.json({ reviews: data ?? [] })
     }
 
     // Manager: own reviews only
-    const { data, error } = await serviceClient
-      .from('reviews')
-      .select('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at, meeting_scheduled_at, meeting_location')
-      .eq('user_id', user.id)
-      .order('saved_at', { ascending: false })
+    const { data, error } = await selectTolerant<ReviewRow[]>('id, user_id, employee_name, employee_position, step, max_step, form_data, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, employee_id, meeting_confirmed_at', MEETING_SCHEDULE_COLUMNS, async columns => {
+      const res = await serviceClient
+        .from('reviews')
+        .select(columns)
+        .eq('user_id', user.id)
+        .order('saved_at', { ascending: false })
+      return res as unknown as { data: ReviewRow[] | null; error: QueryError | null }
+    })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ reviews: data ?? [] })
   } catch {

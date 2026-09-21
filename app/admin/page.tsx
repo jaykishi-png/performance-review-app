@@ -1,6 +1,7 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import AdminDashboard from './AdminDashboard'
+import { MEETING_SCHEDULE_COLUMNS, selectTolerant, type QueryError } from '@/lib/optional-columns'
 
 export const dynamic = 'force-dynamic'
 
@@ -87,11 +88,35 @@ export default async function AdminPage() {
     .from('self_reviews')
     .select('id, employee_id, manager_id, status, submitted_at, created_at, updated_at, competencies, goals_objectives, next_year_goals, overall_rating')
 
-  // Fetch all reviews — redact comparison_report for dev_admin
-  const { data: reviewsRaw } = await serviceClient
-    .from('reviews')
-    .select('id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, admin_approved_at, employee_id, meeting_confirmed_at, meeting_scheduled_at, meeting_location')
-    .order('updated_at', { ascending: false })
+  // Optional columns are typed optional: the code must compile whether or not the
+  // pending migration has been applied.
+  type AdminReviewRow = {
+    id: string; user_id: string; employee_name: string; employee_position: string
+    step: number; max_step: number; drive_url: string | null; drive_doc_id: string | null
+    comparison_report: string | null; saved_at: string; updated_at: string
+    manager_signed_at: string | null; employee_signed_at: string | null
+    manager_signature: string | null; employee_signature: string | null
+    admin_approved_at: string | null; employee_id: string | null
+    meeting_confirmed_at: string | null
+    meeting_scheduled_at?: string | null; meeting_location?: string | null
+  }
+
+  // Fetch all reviews — redact comparison_report for dev_admin.
+  // Tolerant of the meeting-scheduling columns being absent: this page must keep
+  // listing reviews when a migration is still pending, and the error must be
+  // visible in the logs rather than silently becoming an empty list.
+  const { data: reviewsRaw, error: reviewsErr } = await selectTolerant<AdminReviewRow[]>(
+    'id, user_id, employee_name, employee_position, step, max_step, drive_url, drive_doc_id, comparison_report, saved_at, updated_at, manager_signed_at, employee_signed_at, manager_signature, employee_signature, admin_approved_at, employee_id, meeting_confirmed_at',
+    MEETING_SCHEDULE_COLUMNS,
+    async columns => {
+      const res = await serviceClient
+        .from('reviews')
+        .select(columns)
+        .order('updated_at', { ascending: false })
+      return res as unknown as { data: AdminReviewRow[] | null; error: QueryError | null }
+    },
+  )
+  if (reviewsErr) console.error('[admin] reviews query failed:', reviewsErr.message)
 
   const reviews = (reviewsRaw ?? []).map(r => ({
     ...r,
