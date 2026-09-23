@@ -27,7 +27,9 @@ export default async function EmployeePage({ searchParams }: { searchParams?: Pr
   if (p.role === 'pending') redirect('/pending')
   if (p.role === 'admin') redirect('/admin')
   if (p.role === 'manager') redirect('/performance-review')
-  if (p.role === 'middle_manager') redirect('/performance-review')
+  // middle_manager is deliberately allowed through: they are somebody's report too,
+  // and this portal holds the only self-assessment form. Their manager portal's
+  // "My Self-Assessment" tab links here, so redirecting them back would loop.
   if (p.role === 'dev_admin') redirect('/admin')
 
   // Fetch manager info via separate query (no FK constraint for join)

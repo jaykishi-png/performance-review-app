@@ -3917,8 +3917,8 @@ export function PerformanceReviewForm() {
           <div style={{ ...card, background: 'var(--surface-inset)', textAlign: 'center', padding: '48px 32px' }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
             <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>No self-assessment yet</div>
-            <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--text-faint)', lineHeight: 1.7 }}>Fill out your self-assessment in the Employee Portal. It will be shared with your manager as part of your review.</p>
-            <a href="/employee" style={{ display: 'inline-block', padding: '10px 24px', background: 'var(--brand-strong)', color: '#fff', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>Open Self-Assessment Form</a>
+            <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--text-faint)', lineHeight: 1.7 }}>Your self-assessment is filled out in the employee portal — you can come straight back here afterwards. It is shared with your own manager as part of your review.</p>
+            <a href="/employee?page=self-assessment" style={{ display: 'inline-block', padding: '10px 24px', background: 'var(--brand-strong)', color: '#fff', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>Start My Self-Assessment</a>
           </div>
         ) : (
           <>
@@ -3936,7 +3936,7 @@ export function PerformanceReviewForm() {
                   {mySAData.overall_rating && <span>{'★'.repeat(mySAData.overall_rating)} ({mySAData.overall_rating}/5)</span>}
                 </div>
               </div>
-              <a href="/employee" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--surface)', color: 'var(--brand-text)', border: '1px solid var(--surface-hover)', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+              <a href="/employee?page=self-assessment" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--surface)', color: 'var(--brand-text)', border: '1px solid var(--surface-hover)', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
                 {mySAData.status === 'submitted' ? 'View in Employee Portal' : 'Continue in Employee Portal'}
               </a>
             </div>

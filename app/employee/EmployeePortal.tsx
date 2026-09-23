@@ -7,7 +7,7 @@ import {
   Send, LogOut, CheckCircle2, Star, Plus, X, Loader2,
   ExternalLink, Bell, Target, User, ChevronDown,
   BarChart2, History, Pencil, Check, Sparkles,
-  ClipboardCheck, MessagesSquare, ClipboardList,
+  ClipboardCheck, MessagesSquare, ClipboardList, ArrowLeft,
 } from 'lucide-react'
 import { useCompetencies } from '@/lib/use-competencies'
 import { SignaturePad, SignatureDisplay, encodeSignature, decodeSignature, type SignatureResult } from '@/components/SignaturePad'
@@ -2104,6 +2104,18 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           <div style={{ padding: collapsed ? '0 12px 8px' : '0 12px 8px', display: 'flex', justifyContent: collapsed ? 'center' : 'flex-start' }}>
             <ThemeToggle compact={collapsed} />
           </div>
+
+          {/* Middle managers reach this portal from their own manager portal — give them the way back */}
+          {profile.role === 'middle_manager' && (
+            <a
+              href="/performance-review"
+              title={collapsed ? 'Back to Manager Portal' : undefined}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px', borderRadius: 'var(--radius-md)', textDecoration: 'none', boxSizing: 'border-box' }}
+            >
+              <ArrowLeft size={14} color="var(--brand-text)" />
+              {!collapsed && <span style={{ fontSize: 12, color: 'var(--brand-text)', fontWeight: 600 }}>Manager Portal</span>}
+            </a>
+          )}
 
           {/* Sign out */}
           <button onClick={async () => { await fetch('/api/auth/signout', { method: 'POST' }); router.push('/login') }} title={collapsed ? 'Sign out' : undefined}
