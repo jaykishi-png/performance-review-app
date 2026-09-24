@@ -2869,7 +2869,18 @@ function reviewPct(save: SavedReview): number {
 
 // ─── Main form ────────────────────────────────────────────────────────────────
 
-export function PerformanceReviewForm() {
+export function PerformanceReviewForm({
+  initialRole = '',
+  initialName = '',
+  initialEmail = '',
+  initialUserId = '',
+}: {
+  /** Resolved server-side on every navigation, so a role change reaches the UI. */
+  initialRole?: string
+  initialName?: string
+  initialEmail?: string
+  initialUserId?: string
+} = {}) {
   const COMPETENCIES = useCompetencies()
   const [step, setStep] = useState(0)
   const [maxStep, setMaxStep] = useState(0)
@@ -2902,9 +2913,9 @@ export function PerformanceReviewForm() {
   const [currentEmployeeId, setCurrentEmployeeId] = useState('')
   const [showEmployeePicker, setShowEmployeePicker] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
-  const [profileName, setProfileName] = useState('')
-  const [profileEmail, setProfileEmail] = useState('')
-  const [profileRole, setProfileRole] = useState('')
+  const [profileName, setProfileName] = useState(initialName)
+  const [profileEmail, setProfileEmail] = useState(initialEmail)
+  const [profileRole, setProfileRole] = useState(initialRole)
   const [profileSaving, setProfileSaving] = useState(false)
 
   // ── SA viewer ────────────────────────────────────────────────────────────────
@@ -2927,7 +2938,7 @@ export function PerformanceReviewForm() {
   const [rmAttested, setRmAttested] = useState(false)
 
   // ── Middle manager "My Performance" state ────────────────────────────────────
-  const [myUserId, setMyUserId] = useState<string | null>(null)
+  const [myUserId, setMyUserId] = useState<string | null>(initialUserId || null)
   const [mySAData, setMySAData] = useState<SAData | null>(null)
   const [mySALoading, setMySALoading] = useState(false)
   const [myReviews, setMyReviews] = useState<Array<{
@@ -3069,6 +3080,27 @@ export function PerformanceReviewForm() {
     } catch {}
   }
 
+  // Server-rendering the role fixes every navigation, but a tab left open all day
+  // still would not notice a role change. Re-read it when the tab regains focus.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState !== 'visible') return
+      ;(async () => {
+        try {
+          const { createClient } = await import('@/lib/supabase/client')
+          const supabase = createClient()
+          const { data: { user } } = await supabase.auth.getUser()
+          if (!user) return
+          const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+          const role = (data as { role: string | null } | null)?.role
+          if (role) setProfileRole(role)
+        } catch { /* best-effort */ }
+      })()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
+
   // Init: load reviews from API (falling back to localStorage) + profile
   useEffect(() => {
     setDirectReports(getReports())
@@ -3085,10 +3117,13 @@ export function PerformanceReviewForm() {
         if (user) {
           setMyUserId(user.id)
           setProfileEmail(user.email ?? '')
+          // The server already resolved these; this refresh only matters if the
+          // profile changed while the tab was open. Never overwrite with blanks.
           const { data: profile } = await supabase.from('profiles').select('name, role').eq('id', user.id).single()
           if (profile) {
-            setProfileName((profile as {name:string,role:string}).name ?? '')
-            setProfileRole((profile as {name:string,role:string}).role ?? '')
+            const p = profile as { name: string | null; role: string | null }
+            if (p.name) setProfileName(p.name)
+            if (p.role) setProfileRole(p.role)
           }
         }
       } catch { /* Supabase not configured */ }
