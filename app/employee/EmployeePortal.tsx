@@ -9,6 +9,7 @@ import {
   BarChart2, History, Pencil, Check, Sparkles,
   ClipboardCheck, MessagesSquare, ClipboardList, ArrowLeft,
 } from 'lucide-react'
+import { AutoTextarea } from '@/components/AutoTextarea'
 import { useCompetencies } from '@/lib/use-competencies'
 import { SignaturePad, SignatureDisplay, encodeSignature, decodeSignature, type SignatureResult } from '@/components/SignaturePad'
 import { CalibrIcon, CalibrLogo, ThemeToggle } from '@/components/Brand'
@@ -867,7 +868,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                   <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                     <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, marginTop: 9, background: comp?.examples[ei]?.trim() ? cfg.accent : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: comp?.examples[ei]?.trim() ? '#fff' : 'var(--text-faint)', transition: 'background 0.2s' }}>{ei + 1}</div>
                     <div style={{ flex: 1 }}>
-                      <textarea value={comp?.examples[ei] || ''} onChange={e => updateExample(ci, ei, e.target.value)} disabled={isSubmitted} placeholder={ei === 0 ? 'Required — describe a specific situation, your actions, and the result' : 'Optional — add another example'} rows={2} style={{ ...inp, resize: 'vertical' }} />
+                      <AutoTextarea value={comp?.examples[ei] || ''} onChange={e => updateExample(ci, ei, e.target.value)} disabled={isSubmitted} placeholder={ei === 0 ? 'Required — describe a specific situation, your actions, and the result' : 'Optional — add another example'} rows={2} style={{ ...inp, resize: 'vertical' }} />
                       {!isSubmitted && (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
                           {aiState.error && <span style={{ fontSize: 10, color: 'var(--danger)' }}>{aiState.error}</span>}
@@ -884,7 +885,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
                       {!isSubmitted && aiState.showPrompt && (
                         <div style={{ marginTop: 8, padding: '12px 14px', background: 'rgba(79,70,229,0.08)', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 'var(--radius-lg)' }}>
                           <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--brand-text)' }}>Describe what happened — AI will write the example.</p>
-                          <textarea
+                          <AutoTextarea
                             value={aiState.context}
                             onChange={e => setCompAIKey(ci, ei, { context: e.target.value })}
                             onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) draftCompExample(ci, ei) }}
@@ -921,7 +922,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           {review.goals_objectives.map((g, i) => (
             <div key={i} style={{ padding: '14px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-lg)', marginBottom: 10, border: '1px solid var(--border)' }}>
               <div style={{ fontWeight: 600, fontSize: 11, color: 'var(--success)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{i + 1}. Goal / Objective / Accomplishment</div>
-              <div style={{ marginBottom: 10 }}><div style={lbl}>Description</div><textarea value={g.description} onChange={e => updateGoal(i, 'description', e.target.value)} disabled={isSubmitted} rows={2} placeholder="Describe your goal, objective, or accomplishment…" style={{ ...inp, resize: 'vertical' }} /></div>
+              <div style={{ marginBottom: 10 }}><div style={lbl}>Description</div><AutoTextarea value={g.description} onChange={e => updateGoal(i, 'description', e.target.value)} disabled={isSubmitted} rows={2} placeholder="Describe your goal, objective, or accomplishment…" style={{ ...inp, resize: 'vertical' }} /></div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10 }}>
                 <div><div style={lbl}>Outcome</div><select value={g.outcome} onChange={e => updateGoal(i, 'outcome', e.target.value)} disabled={isSubmitted} style={{ ...inp, appearance: 'none' }}><option value="">— Select —</option><option value="successful">✓ Successful</option><option value="unsuccessful">✗ Unsuccessful</option><option value="ongoing">↻ Ongoing</option></select></div>
                 <div>
@@ -990,7 +991,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           <div key={i} style={{ ...card, borderLeft: '3px solid var(--warning)' }}>
             <div style={{ fontWeight: 600, fontSize: 11, color: 'var(--warning)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Goal {i + 1}</div>
             <div style={{ marginBottom: 10 }}><div style={lbl}>Goal</div><input value={g.goal} onChange={e => updateNext(i, 'goal', e.target.value)} disabled={isSubmitted} placeholder="e.g. Improve public speaking skills" style={inp} /></div>
-            <div><div style={lbl}>Objective / Roadmap</div><textarea value={g.objective} onChange={e => updateNext(i, 'objective', e.target.value)} disabled={isSubmitted} rows={2} placeholder="e.g. Attend a public speaking course and practice presentations quarterly" style={{ ...inp, resize: 'vertical' }} /></div>
+            <div><div style={lbl}>Objective / Roadmap</div><AutoTextarea value={g.objective} onChange={e => updateNext(i, 'objective', e.target.value)} disabled={isSubmitted} rows={2} placeholder="e.g. Attend a public speaking course and practice presentations quarterly" style={{ ...inp, resize: 'vertical' }} /></div>
           </div>
         ))}
         {!isSubmitted && review.next_year_goals.length < 5 && (
@@ -1501,7 +1502,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
     const formFields = (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div><div style={lbl}>Goal Title *</div><input value={goalForm.title} onChange={e => setGoalForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Improve public speaking skills" style={inp} autoFocus /></div>
-        <div><div style={lbl}>Description</div><textarea value={goalForm.description} onChange={e => setGoalForm(f => ({ ...f, description: e.target.value }))} placeholder="What does success look like?" rows={2} style={{ ...inp, resize: 'vertical' }} /></div>
+        <div><div style={lbl}>Description</div><AutoTextarea value={goalForm.description} onChange={e => setGoalForm(f => ({ ...f, description: e.target.value }))} placeholder="What does success look like?" rows={2} style={{ ...inp, resize: 'vertical' }} /></div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div><div style={lbl}>Status</div>
             <select value={goalForm.status} onChange={e => setGoalForm(f => ({ ...f, status: e.target.value as Goal['status'] }))} style={{ ...inp, appearance: 'none' }}>
@@ -1512,7 +1513,7 @@ export default function EmployeePortal({ profile, position, manager, initialSelf
           </div>
           <div><div style={lbl}>Target Date</div><input type="date" value={goalForm.target_date} onChange={e => setGoalForm(f => ({ ...f, target_date: e.target.value }))} style={inp} /></div>
         </div>
-        <div><div style={lbl}>Notes / Progress Update</div><textarea value={goalForm.notes} onChange={e => setGoalForm(f => ({ ...f, notes: e.target.value }))} placeholder="Add any notes or progress updates…" rows={2} style={{ ...inp, resize: 'vertical' }} /></div>
+        <div><div style={lbl}>Notes / Progress Update</div><AutoTextarea value={goalForm.notes} onChange={e => setGoalForm(f => ({ ...f, notes: e.target.value }))} placeholder="Add any notes or progress updates…" rows={2} style={{ ...inp, resize: 'vertical' }} /></div>
       </div>
     )
 

@@ -6,6 +6,7 @@ import { SignaturePad, SignatureDisplay, encodeSignature, type SignatureResult }
 import { useCompetencies } from '@/lib/use-competencies'
 import { CalibrIcon, CalibrLogo, ThemeToggle } from '@/components/Brand'
 import { EmptyState, Button as CButton } from '@/components/calibr'
+import { AutoTextarea } from '@/components/AutoTextarea'
 
 // §10 — the five scores map onto the restrained rating scale rather than a
 // red-amber-green scoreboard. The notable change is 3: "Meets Expectations" is
@@ -962,7 +963,7 @@ function TextArea({ value, onChange, placeholder, rows = 3 }: {
   value: string; onChange: (v: string) => void; placeholder?: string; rows?: number
 }) {
   return (
-    <textarea
+    <AutoTextarea
       value={value}
       onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
@@ -1195,7 +1196,7 @@ function ExampleRow({
           <p className="text-[11px] text-purple-300/80">
             Describe what happened — Claude will write the example.
           </p>
-          <textarea
+          <AutoTextarea
             value={context}
             onChange={e => setContext(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleDraft() }}
@@ -1917,7 +1918,7 @@ function StepNextGoals({ form, update }: { form: FormData; update: (p: Partial<F
                   <p className="text-[11px] text-purple-300/80">
                     Describe what you want this goal to focus on — AI will regenerate it using your guidance.
                   </p>
-                  <textarea
+                  <AutoTextarea
                     value={repromptText}
                     onChange={e => setRepromptTexts(prev => ({ ...prev, [i]: e.target.value }))}
                     onKeyDown={e => {
@@ -2493,7 +2494,7 @@ function ComparisonSection({
       ) : (
         <div className="space-y-2 pt-1">
           <p className="text-[11px] text-gray-500">Paste your manually written comparison report:</p>
-          <textarea
+          <AutoTextarea
             value={manualReportValue}
             onChange={e => setManualReportValue(e.target.value)}
             placeholder="Paste your comparison report here…"
@@ -2548,7 +2549,7 @@ function ComparisonSection({
           </div>
 
           {reportEditMode ? (
-            <textarea
+            <AutoTextarea
               value={compareReport}
               onChange={e => handleReportEdit(e.target.value)}
               rows={24}
@@ -4418,7 +4419,7 @@ export function PerformanceReviewForm({
 
             <div style={{ marginBottom: 12 }}>
               <label style={lbl2}>Reason / Background</label>
-              <textarea value={pipCreateReason} onChange={e => setPipCreateReason(e.target.value)} placeholder="Describe the performance concerns and context…" rows={3}
+              <AutoTextarea value={pipCreateReason} onChange={e => setPipCreateReason(e.target.value)} placeholder="Describe the performance concerns and context…" rows={3}
                 style={{ ...inp2, resize: 'vertical' }} />
             </div>
 
@@ -4545,7 +4546,7 @@ export function PerformanceReviewForm({
                     </div>
                     <div style={{ marginBottom: 12 }}>
                       <label style={lbl2}>Reason</label>
-                      <textarea value={pipEditReason} onChange={e => setPipEditReason(e.target.value)}
+                      <AutoTextarea value={pipEditReason} onChange={e => setPipEditReason(e.target.value)}
                         rows={3} style={{ ...inp2, resize: 'vertical', fontFamily: 'inherit' }} />
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
@@ -4745,7 +4746,7 @@ export function PerformanceReviewForm({
 
                   <div>
                     <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Optional Message to Reviewer</label>
-                    <textarea value={pf360SendMsg} onChange={e => setPf360SendMsg(e.target.value)}
+                    <AutoTextarea value={pf360SendMsg} onChange={e => setPf360SendMsg(e.target.value)}
                       placeholder={`Hi [name], I'd appreciate your perspective on ${sendForEmp?.name || 'this employee'}…`}
                       rows={2} style={{ width: '100%', padding: '8px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--brand-text)', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
                   </div>
