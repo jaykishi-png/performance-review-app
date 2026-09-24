@@ -2553,7 +2553,10 @@ function ComparisonSection({
               value={compareReport}
               onChange={e => handleReportEdit(e.target.value)}
               rows={24}
-              className="w-full bg-[var(--page)] border border-purple-800/40 rounded-xl px-5 py-4 text-[12px] text-gray-300 leading-relaxed font-mono focus:outline-none focus:border-purple-600 transition-colors resize-y
+              // A generated report can run to pages; past ~70% of the viewport
+              // an unbounded box is worse than a scrollbar.
+              style={{ maxHeight: '70vh' }}
+              className="w-full bg-[var(--page)] border border-purple-800/40 rounded-xl px-5 py-4 text-[12px] text-gray-300 leading-relaxed font-mono focus:outline-none focus:border-purple-600 transition-colors
                 [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
             />
           ) : (

@@ -6,6 +6,7 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  useState,
   type CSSProperties,
   type TextareaHTMLAttributes,
 } from 'react'
@@ -19,10 +20,17 @@ import {
  * Drop-in for `<textarea>`: same props. A `height` in the passed style becomes
  * a `minHeight`, because an explicit height would be re-applied by React on
  * every render and fight the measured height set here.
+ *
+ * A `maxHeight` (from a style or a class) caps the growth: past it the box stops
+ * growing and scrolls internally, for content long enough that an unbounded box
+ * would be worse than a scrollbar.
  */
 export const AutoTextarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
   function AutoTextarea({ style, onChange, value, ...rest }, forwardedRef) {
     const innerRef = useRef<HTMLTextAreaElement | null>(null)
+    // Once capped, the box has to scroll — kept in state so a re-render cannot
+    // reset overflow to hidden and strand the content below the cap.
+    const [capped, setCapped] = useState(false)
 
     const setRefs = useCallback((node: HTMLTextAreaElement | null) => {
       innerRef.current = node
@@ -56,7 +64,14 @@ export const AutoTextarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttribut
         target = Math.max(target, Math.ceil(floor))
       }
 
-      el.style.height = `${target}px`
+      const maxHeight = parseFloat(cs.maxHeight)
+      if (!Number.isNaN(maxHeight) && target > maxHeight) {
+        el.style.height = `${maxHeight}px`
+        setCapped(true)
+      } else {
+        el.style.height = `${target}px`
+        setCapped(false)
+      }
     }, [rows])
 
     // Layout effect so the first paint is already the right size — no flicker
@@ -76,8 +91,8 @@ export const AutoTextarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttribut
     const merged: CSSProperties = {
       ...restStyle,
       ...(height !== undefined && restStyle.minHeight === undefined ? { minHeight: height } : {}),
-      // The element never scrolls itself — that is the whole point.
-      overflowY: 'hidden',
+      // Scrolls only once it has hit an explicit maxHeight.
+      overflowY: capped ? 'auto' : 'hidden',
       resize: 'none',
     }
 
