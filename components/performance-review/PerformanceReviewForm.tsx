@@ -2911,7 +2911,8 @@ export function PerformanceReviewForm({
   const [teamGoalsLoaded, setTeamGoalsLoaded] = useState(false)
   const [managerGlossarySearch, setManagerGlossarySearch] = useState('')
   const [settings, setSettings] = useState<AppSettings>({ driveFolderUrl: '' })
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [saveError, setSaveError] = useState('')
   const reviewIdRef = useRef('')
   const [currentReviewId, setCurrentReviewId] = useState('')
   const [currentEmployeeId, setCurrentEmployeeId] = useState('')
@@ -3054,14 +3055,29 @@ export function PerformanceReviewForm({
     } catch { return null }
   }
 
-  async function apiSaveReview(save: SavedReview) {
+  /**
+   * Returns whether the server accepted the save. The result used to be
+   * discarded, so a rejected write still rendered "Saved" — the manager kept
+   * typing, reloaded, and found the work gone with nothing having said so.
+   */
+  async function apiSaveReview(save: SavedReview): Promise<{ ok: boolean; error?: string }> {
     try {
-      await fetch('/api/reviews', {
+      const res = await fetch('/api/reviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(save),
       })
-    } catch { /* offline — localStorage already written */ }
+      if (res.ok) return { ok: true }
+      let message = `Server error (${res.status})`
+      try {
+        const body = await res.json() as { error?: string }
+        if (body.error) message = body.error
+      } catch { /* non-JSON body */ }
+      return { ok: false, error: message }
+    } catch {
+      // Offline — localStorage already has it, but say so rather than claiming saved.
+      return { ok: false, error: 'No connection' }
+    }
   }
 
   async function apiDeleteReview(id: string) {
@@ -3318,8 +3334,14 @@ export function PerformanceReviewForm({
       upsertSave(save)
       setSaves(getSaves())
       // Persist to Supabase via API route
-      await apiSaveReview(save)
-      setSaveStatus('saved')
+      const result = await apiSaveReview(save)
+      if (result.ok) {
+        setSaveStatus('saved')
+        setSaveError('')
+      } else {
+        setSaveStatus('error')
+        setSaveError(result.error ?? 'Could not save')
+      }
     }, 1500)
     return () => clearTimeout(timer)
   }, [form, step, maxStep]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -6116,6 +6138,14 @@ export function PerformanceReviewForm({
                 </div>
                 {saveStatus === 'saving' && <span className="text-[10px] text-gray-600 flex items-center gap-1 flex-shrink-0"><Loader2 size={10} className="animate-spin" /> Saving…</span>}
                 {saveStatus === 'saved' && <span className="text-[10px] text-emerald-600 flex items-center gap-1 flex-shrink-0"><CheckCircle2 size={10} /> Saved</span>}
+                {saveStatus === 'error' && (
+                  <span
+                    title={`${saveError}. Your changes are still on this device — reload after the problem is fixed and they will be re-sent.`}
+                    className="text-[10px] text-red-400 flex items-center gap-1 flex-shrink-0"
+                  >
+                    <AlertCircle size={10} /> Not saved to server
+                  </span>
+                )}
               </div>
             )}
 
