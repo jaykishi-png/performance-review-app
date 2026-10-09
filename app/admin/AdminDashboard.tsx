@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useState, useMemo, useEffect, useCallback } from 'react'
+import { Fragment, useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, FileText, RefreshCw, BarChart2,
@@ -427,6 +427,18 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [cyclesTab, setCyclesTab] = useState<'manual' | 'employee'>('manual')
   const [confirmingCycle, setConfirmingCycle] = useState<string | null>(null)
   const [editingCyclePhase, setEditingCyclePhase] = useState<string | null>(null)
+  // Viewport position for the phase menu. It renders position:fixed so the table's
+  // overflow:hidden wrapper can't clip it on the last rows.
+  const [phaseMenuPos, setPhaseMenuPos] = useState<{ left: number; top?: number; bottom?: number; maxHeight: number } | null>(null)
+  const phaseMenuRef = useRef<HTMLDivElement>(null)
+  // A fixed menu would drift away from its button on scroll, so close it instead.
+  useEffect(() => {
+    if (!editingCyclePhase) return
+    const close = (e: Event) => { if (!phaseMenuRef.current?.contains(e.target as Node)) setEditingCyclePhase(null) }
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    return () => { window.removeEventListener('scroll', close, true); window.removeEventListener('resize', close) }
+  }, [editingCyclePhase])
   const [showTriggerModal, setShowTriggerModal] = useState(false)
   const [triggerEmployeeId, setTriggerEmployeeId] = useState('')
   const [triggerSaDays, setTriggerSaDays] = useState(14)
@@ -1975,7 +1987,17 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                           <td style={td}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, position: 'relative' }}>
                               <button
-                                onClick={() => setEditingCyclePhase(editingCyclePhase === ec.id ? null : ec.id)}
+                                onClick={e => {
+                                  if (editingCyclePhase === ec.id) { setEditingCyclePhase(null); return }
+                                  const rect = e.currentTarget.getBoundingClientRect()
+                                  const below = window.innerHeight - rect.bottom - 12
+                                  const above = rect.top - 12
+                                  // Open downward unless there's clearly more room above.
+                                  setPhaseMenuPos(below >= 240 || below >= above
+                                    ? { left: rect.left, top: rect.bottom + 4, maxHeight: below }
+                                    : { left: rect.left, bottom: window.innerHeight - rect.top + 4, maxHeight: above })
+                                  setEditingCyclePhase(ec.id)
+                                }}
                                 title="Click to change phase"
                                 style={{ padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontSize: 10, fontWeight: 700, background: pm.bg, color: pm.color, border: `1px solid ${pm.border}`, width: 'fit-content', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                                 {pm.label} <span style={{ fontSize: 8, opacity: 0.7 }}>▼</span>
@@ -1987,8 +2009,8 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                                 ))}
                               </div>
                               {/* Phase dropdown */}
-                              {editingCyclePhase === ec.id && (
-                                <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 50, background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', marginTop: 4, minWidth: 140 }}>
+                              {editingCyclePhase === ec.id && phaseMenuPos && (
+                                <div ref={phaseMenuRef} style={{ position: 'fixed', left: phaseMenuPos.left, top: phaseMenuPos.top, bottom: phaseMenuPos.bottom, maxHeight: phaseMenuPos.maxHeight, overflowY: 'auto', zIndex: 50, background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', minWidth: 140 }}>
                                   {PHASES.map(p => {
                                     const meta = EMP_PHASE_META[p] ?? EMP_PHASE_META.pending
                                     const isCurrent = p === ec.phase
