@@ -4,7 +4,7 @@ import { Fragment, useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, FileText, RefreshCw, BarChart2,
-  ClipboardList, Settings, ChevronLeft, ChevronRight,
+  ClipboardList, Settings, ChevronLeft, ChevronRight, ChevronDown,
   Plus, LogOut, ExternalLink, Bell, Star, TrendingUp, BookMarked, Trash2, Pencil,
   House, ClipboardCheck, RefreshCcw, ChartNoAxesCombined, UserRoundCheck, Files,
 } from 'lucide-react'
@@ -362,6 +362,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   const [editingDivision, setEditingDivision] = useState<string | null>(null)
   const [editingPronouns, setEditingPronouns] = useState<string | null>(null)
   const [userSearch, setUserSearch] = useState('')
+  const [showDeactivated, setShowDeactivated] = useState(false)
   const [userRoleFilter, setUserRoleFilter] = useState<string>('all')
   const [reminderCopied, setReminderCopied] = useState<string | null>(null)
 
@@ -1079,35 +1080,16 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
   }
 
   function renderUsers() {
-    return (
-      <div style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
-          <div>
-            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: 'var(--text-strong)' }}>Users</h1>
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Manage roles, manager assignments, start dates, and access.</p>
-          </div>
-          <button onClick={() => { setShowInviteModal(true); setInviteLink('') }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
-            <Plus size={14} /> Invite User
-          </button>
-        </div>
+    const activeUsersList = filteredUsers.filter(u => u.is_active)
+    const deactivatedUsersList = filteredUsers.filter(u => !u.is_active)
+    const userHeaders = ['Name / Email', 'Role', 'Position', 'Division', 'Pronouns', 'Manager', 'Start Date', 'Status', 'Actions']
+    const baseTd = td
 
-        {/* Filters */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-          <input value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Search by name or email…" style={{ ...inp, maxWidth: 280 }} />
-          <select value={userRoleFilter} onChange={e => setUserRoleFilter(e.target.value)} style={{ ...inp, maxWidth: 150, appearance: 'none' }}>
-            <option value="all">All roles</option>
-            {['admin', 'dev_admin', 'manager', 'middle_manager', 'employee', 'pending'].map(r => <option key={r} value={r}>{ROLE_LABELS[r] ?? r}</option>)}
-          </select>
-        </div>
-
-        {/* Users table */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflowX: 'auto', marginBottom: 24 }}>
-          <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
-            <thead><tr>{['Name / Email', 'Role', 'Position', 'Division', 'Pronouns', 'Manager', 'Start Date', 'Status', 'Actions'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
-            <tbody>
-              {filteredUsers.map((u, i) => (
-                <tr key={u.id} style={{ opacity: u.is_active ? 1 : 0.5, background: i % 2 === 0 ? 'transparent' : 'rgba(13,15,26,0.4)' }}>
+    // Deactivated rows dim every cell except Actions — Reactivate stays fully clickable-looking.
+    const renderUserRow = (u: UserRecord, i: number) => {
+      const td = u.is_active ? baseTd : { ...baseTd, opacity: 0.5 }
+      return (
+                <tr key={u.id} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(13,15,26,0.4)' }}>
                   <td style={td}>
                     <div style={{ fontWeight: 500, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
                       {u.name || '—'}
@@ -1218,7 +1200,7 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                       {u.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td style={td}>
+                  <td style={baseTd}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <button onClick={() => openProfile(u)} style={{ padding: '4px 10px', fontSize: 11, background: 'transparent', color: 'var(--brand-text)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 500 }}>
                         👤 Profile
@@ -1237,7 +1219,37 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
                     </div>
                   </td>
                 </tr>
-              ))}
+      )
+    }
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div>
+            <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: 'var(--text-strong)' }}>Users</h1>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Manage roles, manager assignments, start dates, and access.</p>
+          </div>
+          <button onClick={() => { setShowInviteModal(true); setInviteLink('') }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'var(--brand-strong)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+            <Plus size={14} /> Invite User
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+          <input value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Search by name or email…" style={{ ...inp, maxWidth: 280 }} />
+          <select value={userRoleFilter} onChange={e => setUserRoleFilter(e.target.value)} style={{ ...inp, maxWidth: 150, appearance: 'none' }}>
+            <option value="all">All roles</option>
+            {['admin', 'dev_admin', 'manager', 'middle_manager', 'employee', 'pending'].map(r => <option key={r} value={r}>{ROLE_LABELS[r] ?? r}</option>)}
+          </select>
+        </div>
+
+        {/* Users table */}
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflowX: 'auto', marginBottom: 24 }}>
+          <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
+            <thead><tr>{userHeaders.map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+            <tbody>
+              {activeUsersList.map(renderUserRow)}
             </tbody>
           </table>
         </div>
@@ -1288,6 +1300,27 @@ export default function AdminDashboard({ currentUser, users, invites, selfAssess
             </table>
           )}
         </div>
+
+        {/* Deactivated users — collapsed by default */}
+        <button type="button" onClick={() => setShowDeactivated(v => !v)} aria-expanded={showDeactivated}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 24, marginBottom: 12, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, color: 'var(--text-strong)' }}>
+          {showDeactivated ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+          Deactivated ({deactivatedUsersList.length})
+        </button>
+        {showDeactivated && (
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflowX: 'auto' }}>
+            {deactivatedUsersList.length === 0 ? (
+              <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No deactivated users</div>
+            ) : (
+              <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
+                <thead><tr>{userHeaders.map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {deactivatedUsersList.map(renderUserRow)}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
       </div>
     )
   }
